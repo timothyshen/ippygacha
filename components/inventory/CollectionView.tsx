@@ -7,22 +7,19 @@ import { Award } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
     GachaItemWithCount,
-    CollectionStats,
     COLLECTION_INFO,
     COLLECTION_TOTALS,
     COLLECTION_COLORS,
     VERSION_STYLES
-} from "./types"
+} from "./inventory"
 
 interface CollectionViewProps {
-    collectionStats: CollectionStats
     collectionCompletionPercentage: CollectionStats
     getCollectionItems: (collection: string) => GachaItemWithCount[]
     onOpenCollectionDetail: (collection: string) => void
 }
 
 export function CollectionView({
-    collectionStats,
     collectionCompletionPercentage,
     getCollectionItems,
     onOpenCollectionDetail

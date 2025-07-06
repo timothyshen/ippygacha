@@ -12,7 +12,7 @@ import {
     COLLECTION_TOTALS,
     COLLECTION_COLORS,
     VERSION_STYLES
-} from "./types"
+} from "./inventory"
 
 interface CollectionModalProps {
     selectedCollectionDetail: string | null

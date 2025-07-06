@@ -10,7 +10,6 @@ import { parseEther } from "viem";
 
 export const useMarketplace = () => {
   const { getWalletClient } = useWalletClient();
-  const [isPurchaseLoading, setIsPurchaseLoading] = useState(false);
   const { addNotification } = useNotifications();
 
   const listItem = async (

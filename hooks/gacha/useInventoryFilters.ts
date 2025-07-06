@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ViewMode, SortBy } from "@/components/inventory/types";
+import { ViewMode, SortBy } from "@/components/inventory/inventory";
 
 export const useInventoryFilters = () => {
   // UI filter state
