@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Award } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
+    CollectionStats,
     GachaItemWithCount,
     COLLECTION_INFO,
     COLLECTION_TOTALS,

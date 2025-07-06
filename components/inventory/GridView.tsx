@@ -116,6 +116,7 @@ export function GridView({ items, inventoryLength }: GridViewProps) {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {items.map((item, index) => {
+                console.log(item);
                 const imageData = imageCache[item.id];
                 return (
                     <ListingModal item={item} imageData={imageData} key={index} />

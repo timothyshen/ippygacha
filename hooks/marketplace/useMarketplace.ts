@@ -4,6 +4,8 @@ import {
   readClient,
   useWalletClient,
   NFTMarketplaceABI,
+  ippyIPABI,
+  ippyNFTAddress,
 } from "@/lib/contract";
 import { useState } from "react";
 import { parseEther } from "viem";
@@ -11,6 +13,24 @@ import { parseEther } from "viem";
 export const useMarketplace = () => {
   const { getWalletClient } = useWalletClient();
   const { addNotification } = useNotifications();
+
+  const isApprovedForMarketplace = async (
+    nftAddress: string,
+    tokenId: string
+  ) => {
+    try {
+      const approvedAddress = await readClient.readContract({
+        address: nftAddress as `0x${string}`,
+        abi: ippyIPABI,
+        functionName: "getApproved",
+        args: [BigInt(tokenId)],
+      });
+      return approvedAddress === nftMarketplaceAddress;
+    } catch (error) {
+      console.error("Error checking approval:", error);
+      return false;
+    }
+  };
 
   const listItem = async (
     nftAddress: string,
@@ -25,12 +45,46 @@ export const useMarketplace = () => {
 
       const [account] = await walletClient.getAddresses();
 
+      // Check if marketplace is approved for this token
+      const isApproved = await isApprovedForMarketplace(nftAddress, tokenId);
+
+      // If not approved, approve the marketplace first
+      if (!isApproved) {
+        addNotification({
+          title: "Approval required",
+          message: "Approving marketplace to transfer your NFT...",
+          type: "info",
+          duration: 5000,
+        });
+
+        const { request: approveRequest } = await readClient.simulateContract({
+          address: nftAddress as `0x${string}`,
+          abi: ippyIPABI,
+          functionName: "approve",
+          args: [nftMarketplaceAddress, BigInt(tokenId)],
+          account,
+        });
+
+        const approveTxHash = await walletClient.writeContract(approveRequest);
+
+        await readClient.waitForTransactionReceipt({
+          hash: approveTxHash,
+        });
+
+        addNotification({
+          title: "Approval successful!",
+          message: "Marketplace approved. Now listing your item...",
+          type: "success",
+          duration: 3000,
+        });
+      }
+
+      // Now list the item
       const { request } = await readClient.simulateContract({
         address: nftMarketplaceAddress,
         abi: NFTMarketplaceABI,
         functionName: "listItem",
-        args: [nftAddress, tokenId, price],
-        value: parseEther(price),
+        args: [nftAddress, BigInt(tokenId), parseEther(price)],
         account,
       });
 
@@ -42,7 +96,7 @@ export const useMarketplace = () => {
 
       addNotification({
         title: "Item listed successfully!",
-        message: `You have listed item ${tokenId} of ${nftAddress} for ${price} ETH!`,
+        message: `You have listed item ${tokenId} for ${price} IP!`,
         type: "success",
         action: {
           label: "View on StoryScan",
@@ -56,7 +110,14 @@ export const useMarketplace = () => {
         duration: 10000,
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error listing item:", error);
+      addNotification({
+        title: "Failed to list item",
+        message:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "error",
+        duration: 5000,
+      });
     }
   };
 
@@ -103,7 +164,11 @@ export const useMarketplace = () => {
     }
   };
 
-  const buyItem = async (nftAddress: string, tokenId: string) => {
+  const buyItem = async (
+    nftAddress: string,
+    tokenId: string,
+    price: string
+  ) => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
@@ -240,5 +305,6 @@ export const useMarketplace = () => {
     updateListing,
     getListing,
     getProceeds,
+    isApprovedForMarketplace,
   };
 };
