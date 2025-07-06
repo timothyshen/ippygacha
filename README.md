@@ -8,7 +8,6 @@ A blockchain-based blind box/gacha game built with Next.js, featuring NFT collec
 - **🎮 Claw Machine**: Interactive claw game experience
 - **📦 Inventory System**: Manage your NFT collection
 - **🛒 Marketplace**: Trade and purchase items
-- **🔊 Sound System**: Immersive audio experience
 - **📱 Responsive Design**: Works on desktop and mobile
 
 ## 🚀 Setup Instructions
@@ -85,14 +84,6 @@ This project implements server-side API routes to handle Pinata requests and avo
 - **Wallet Connection**: Privy authentication
 - **State Management**: React hooks and context
 
-## 🎯 Recent Improvements
-
-- ✅ Fixed CORS issues with Pinata integration
-- ✅ Cleaned up console statements and debug code
-- ✅ Improved TypeScript type safety
-- ✅ Enhanced error handling and user notifications
-- ✅ Optimized component structure and performance
-
 ## 🛠️ Development
 
 ### Code Quality
@@ -166,5 +157,7 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 📦 Single Module Deployment
-BlindBoxSystem#IPPYNFT - 0x702097673370e14F5b8a77dB55d2799D136767Bd
-BlindBoxSystem#BlindBox - 0x87d3FEE94B8306702Dfdba539c0BACAC0985594B
+
+- BlindBoxSystem#IPPYNFT - 0x702097673370e14F5b8a77dB55d2799D136767Bd
+- BlindBoxSystem#BlindBox - 0x87d3FEE94B8306702Dfdba539c0BACAC0985594B
+- NFTMarketplace#NFTMarketplace - 0x8D2729D9807E9FdD7d648BD3045c39B80aB2E5c7
