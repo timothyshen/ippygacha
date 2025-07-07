@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, Store, Coins, Star, Filter, Search } from "lucide-react"
-import Link from "next/link"
+import { Activity, Store, Loader2, AlertCircle, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
-import { BuyingModal } from "@/components/market/BuyingModal"
+import { MarketplaceBuyingModal } from "@/components/market/MarketplaceBuyingModal"
 import { Header } from "@/components/Header"
 import { MarketStats } from "@/components/market/MarketStats"
+import { useActiveListings } from "@/hooks/marketplace/useMarketplace"
 
 // Update the GachaItem interface to include version
 interface GachaItem {
@@ -248,31 +248,23 @@ const MOCK_ACTIVITY: TradeActivity[] = [
 ]
 
 export default function Market() {
-  const [coins, setCoins] = useState(0)
-  const [inventory, setInventory] = useState<GachaItem[]>([])
-  const [listings] = useState<MarketListing[]>(MOCK_LISTINGS)
-  const [trades] = useState<TradeActivity[]>(MOCK_ACTIVITY)
-  const [selectedCollection, setSelectedCollection] = useState<string>("all")
-  const [selectedVersion, setSelectedVersion] = useState<string>("all")
-  const [sortBy, setSortBy] = useState<"price" | "collection" | "name">("price")
   const [searchTerm, setSearchTerm] = useState("")
-  const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
-  const [showLimitedOnly, setShowLimitedOnly] = useState(false)
-  const [showDiscountOnly, setShowDiscountOnly] = useState(false)
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [trades] = useState<TradeActivity[]>(MOCK_ACTIVITY)
+  const [selectedCollection, setSelectedCollection] = useState("all")
+  const [selectedVersion, setSelectedVersion] = useState("all")
 
-  useEffect(() => {
-    // Initialize sound manager
-    const savedCoins = localStorage.getItem("gacha-coins")
-    if (savedCoins) {
-      setCoins(Number.parseInt(savedCoins))
-    }
+  // Use real marketplace data
+  const { listings: marketplaceListings, loading, error, refetch } = useActiveListings()
 
-    const savedInventory = localStorage.getItem("gacha-inventory")
-    if (savedInventory) {
-      setInventory(JSON.parse(savedInventory))
-    }
-  }, [])
+  // Filter marketplace listings
+  const filteredListings = marketplaceListings.filter((listing) => {
+    const matchesSearch = listing.metadata?.name
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase()) ?? true
+    const matchesCollection = selectedCollection === "all" || listing.metadata?.collection === selectedCollection
+    const matchesVersion = selectedVersion === "all" || listing.metadata?.version === selectedVersion
+    return matchesSearch && matchesCollection && matchesVersion
+  })
 
   const getActivityColor = (type: string) => {
     switch (type) {
@@ -289,91 +281,52 @@ export default function Market() {
     }
   }
 
-  const buyItem = (listing: MarketListing) => {
-    if (coins >= listing.price) {
-
-      setCoins((prev) => {
-        const newCoins = prev - listing.price
-        localStorage.setItem("gacha-coins", newCoins.toString())
-        return newCoins
-      })
-
-      if (listing.isBlindBox && listing.blindBox) {
-        // Add blind box to unrevealed items
-        const blindBoxItem: GachaItem = {
-          id: listing.blindBox.id,
-          name: listing.blindBox.name,
-          collection: "ippy", // Placeholder - will be determined when opened
-          emoji: listing.blindBox.emoji,
-          description: listing.blindBox.description,
-          version: "standard", // Placeholder
-        }
-
-        const currentUnrevealed = JSON.parse(localStorage.getItem("gacha-unrevealed") || "[]")
-        localStorage.setItem("gacha-unrevealed", JSON.stringify([...currentUnrevealed, blindBoxItem]))
-
-        alert(`Successfully purchased ${listing.blindBox.name} for ${listing.price} coins! Check your blind boxes.`)
-      } else if (listing.item) {
-        const newInventory = [...inventory, listing.item]
-        setInventory(newInventory)
-        localStorage.setItem("gacha-inventory", JSON.stringify(newInventory))
-
-        alert(`Successfully purchased ${listing.item.name} for ${listing.price} coins!`)
-      }
-    } else {
-      alert(`Not enough coins! You need ${listing.price - coins} more coins.`)
-    }
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
+        <div className="max-w-7xl mx-auto">
+          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
+          <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
+            <CardContent className="p-16 text-center">
+              <Loader2 className="w-20 h-20 text-blue-500 mx-auto mb-6 animate-spin" />
+              <h3 className="text-2xl font-bold text-slate-700 mb-3">Loading Marketplace</h3>
+              <p className="text-slate-500 text-lg">Fetching active listings from the blockchain...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
-
-  // Filter and sort listings
-  const filteredListings = listings
-    .filter((listing) => {
-      const matchesSearch = (listing.isBlindBox ? listing.blindBox?.name : listing.item?.name)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
-      const matchesCollection = selectedCollection === "all" || listing.item?.collection === selectedCollection
-      const matchesVersion = selectedVersion === "all" || listing.item?.version === selectedVersion
-      const matchesFeatured = showFeaturedOnly ? listing.featured : true
-      const matchesLimited = showLimitedOnly ? listing.limited : true
-      const matchesDiscount = showDiscountOnly ? listing.discount && listing.discount > 0 : true
-      return (
-        matchesSearch && matchesCollection && matchesVersion && matchesFeatured && matchesLimited && matchesDiscount
-      )
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "price":
-          return a.price - b.price
-        case "collection":
-          return (a.item?.collection || "").localeCompare(b.item?.collection || "")
-        case "name":
-          return (a.isBlindBox ? a.blindBox?.name || "" : a.item?.name || "").localeCompare(b.isBlindBox ? b.blindBox?.name || "" : b.item?.name || "")
-        default:
-          return 0
-      }
-    })
-
-  // Calculate market stats
-  const totalListings = listings.length
-  const spaceItems = listings.filter((listing) => listing.item?.collection === "ippy").length
-  const hiddenItems = listings.filter((listing) => listing.item?.version === "hidden").length
-  const blindBoxes = listings.filter((listing) => listing.isBlindBox).length
-  const averagePrice = Math.round(listings.reduce((sum, listing) => sum + listing.price, 0) / listings.length)
-  const featuredItems = listings.filter((listing) => listing.featured).length
-  const limitedItems = listings.filter((listing) => listing.limited).length
-
-  // Featured listings
-  const featuredListings = listings.filter((listing) => listing.featured)
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
+        <div className="max-w-7xl mx-auto">
+          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
+          <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
+            <CardContent className="p-16 text-center">
+              <AlertCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-slate-700 mb-3">Failed to Load Marketplace</h3>
+              <p className="text-slate-500 text-lg mb-6">{error}</p>
+              <Button onClick={refetch} className="bg-blue-600 hover:bg-blue-700">
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header name="Designer Market" subtitle="Buy, Sell & Trade Premium Collectibles" isDark={true} />
-        {/* Market Stats */}
-        <MarketStats totalListings={totalListings} hiddenItems={hiddenItems} blindBoxes={blindBoxes} averagePrice={averagePrice} featuredItems={featuredItems} limitedItems={limitedItems} />
+        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
 
-        {/* Featured Items Section */}
+        {/* Market Stats */}
+        <MarketStats totalListings={marketplaceListings.length} hiddenItems={0} blindBoxes={0} averagePrice={0} featuredItems={0} limitedItems={0} />
+
+        {/* Featured Items Section
         {featuredListings.length > 0 && (
           <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 mb-8 shadow-xl">
             <CardHeader>
@@ -446,7 +399,7 @@ export default function Market() {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         <Tabs defaultValue="marketplace" className="space-y-6">
           <TabsList className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
@@ -467,197 +420,46 @@ export default function Market() {
           </TabsList>
 
           <TabsContent value="marketplace" className="space-y-6">
-            {/* Enhanced Filters */}
+            {/* Search and Filters */}
             <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Search */}
+              <CardHeader>
+                <CardTitle className="text-slate-800 flex items-center gap-2">
+                  <Search className="w-5 h-5 text-blue-600" />
+                  Search & Filter
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
                   <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                      <Input
-                        placeholder="Search marketplace..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 bg-white/80 border-slate-200 text-slate-800 placeholder:text-slate-400 h-12 text-base shadow-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Sort By */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex items-center gap-2">
-                      <Filter className="w-4 h-4 text-slate-600" />
-                      <span className="text-sm font-medium text-slate-600">Sort:</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "price", label: "Price" },
-                        { value: "collection", label: "Collection" },
-                        { value: "name", label: "Name" },
-                      ].map((sort) => (
-                        <Button
-                          key={sort.value}
-                          variant={sortBy === sort.value ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setSortBy(sort.value as any)
-                          }}
-                          className={cn(
-                            "transition-all duration-300",
-                            sortBy === sort.value
-                              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                              : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                          )}
-                        >
-                          {sort.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filter Buttons */}
-                <div className="flex flex-wrap gap-3 mt-6">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600">Collection:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={selectedCollection === "all" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedCollection("all")
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        selectedCollection === "all"
-                          ? "bg-slate-600 hover:bg-slate-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      All
-                    </Button>
-                    {["toys", "magic", "fantasy", "tech", "nature", "space"].map((collection) => (
-                      <Button
-                        key={collection}
-                        variant={selectedCollection === collection ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCollection(collection)
-                        }}
-                        className={cn(
-                          "transition-all duration-300",
-                          "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                        )}
-                      >
-                        {collection.charAt(0).toUpperCase() + collection.slice(1)}
-                      </Button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-sm font-medium text-slate-600">Version:</span>
+                    <Input
+                      placeholder="Search NFTs..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-white/80"
+                    />
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      variant={selectedVersion === "all" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedVersion("all")
-                      }}
+                      variant={selectedCollection === "all" ? "default" : "outline"}
+                      onClick={() => setSelectedCollection("all")}
                       className={cn(
-                        "transition-all duration-300",
-                        selectedVersion === "all"
-                          ? "bg-slate-600 hover:bg-slate-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      All Versions
-                    </Button>
-                    <Button
-                      variant={selectedVersion === "standard" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedVersion("standard")
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        selectedVersion === "standard"
-                          ? "bg-slate-600 hover:bg-slate-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      Standard
-                    </Button>
-                    <Button
-                      variant={selectedVersion === "hidden" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedVersion("hidden")
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        selectedVersion === "hidden"
-                          ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      Hidden
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Special Filters */}
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600">Special:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={showFeaturedOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setShowFeaturedOnly(!showFeaturedOnly)
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        showFeaturedOnly
+                        selectedCollection === "all"
                           ? "bg-blue-600 hover:bg-blue-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
+                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100"
                       )}
                     >
-                      Featured Only
+                      All Collections
                     </Button>
                     <Button
-                      variant={showLimitedOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setShowLimitedOnly(!showLimitedOnly)
-                      }}
+                      variant={selectedCollection === "ippy" ? "default" : "outline"}
+                      onClick={() => setSelectedCollection("ippy")}
                       className={cn(
-                        "transition-all duration-300",
-                        showLimitedOnly
-                          ? "bg-red-600 hover:bg-red-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
+                        selectedCollection === "ippy"
+                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100"
                       )}
                     >
-                      Limited Edition
-                    </Button>
-                    <Button
-                      variant={showDiscountOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setShowDiscountOnly(!showDiscountOnly)
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        showDiscountOnly
-                          ? "bg-green-600 hover:bg-green-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      On Sale
+                      IPPY
                     </Button>
                   </div>
                 </div>
@@ -665,20 +467,30 @@ export default function Market() {
             </Card>
 
             {/* Marketplace Items */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredListings.map((listing, index) => (
-                <BuyingModal key={index} />
-              ))}
-            </div>
-
-            {filteredListings.length === 0 && (
+            {filteredListings.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredListings.map((listing) => (
+                  <MarketplaceBuyingModal key={`${listing.nftAddress}-${listing.tokenId}`} listing={listing} />
+                ))}
+              </div>
+            ) : (
               <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
                 <CardContent className="p-16 text-center">
                   <Store className="w-20 h-20 text-slate-300 mx-auto mb-6" />
-                  <h3 className="text-2xl font-bold text-slate-700 mb-3">No Items Found</h3>
+                  <h3 className="text-2xl font-bold text-slate-700 mb-3">
+                    {marketplaceListings.length === 0 ? "No Items Listed" : "No Items Found"}
+                  </h3>
                   <p className="text-slate-500 text-lg">
-                    No items match your current filters. Try adjusting your search criteria.
+                    {marketplaceListings.length === 0
+                      ? "No NFTs are currently listed for sale on the marketplace."
+                      : "No items match your current search criteria."
+                    }
                   </p>
+                  {marketplaceListings.length === 0 && (
+                    <Button onClick={refetch} className="mt-4 bg-blue-600 hover:bg-blue-700">
+                      Refresh Marketplace
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -742,8 +554,7 @@ export default function Market() {
                     <div className="text-right">
                       {item.price && (
                         <div className="flex items-center gap-1 text-slate-800 font-bold">
-                          <Coins className="w-4 h-4 text-amber-500" />
-                          {item.price}
+                          {item.price} IP
                         </div>
                       )}
                       <div className="text-xs text-slate-500 mt-1">{item.timestamp}</div>
