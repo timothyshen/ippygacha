@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Search, Filter, Bookmark, Grid3X3, List } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { ViewMode, SortBy } from "./types"
+import { ViewMode, SortBy } from "./inventory"
 
 interface CollectionFiltersProps {
     searchTerm: string

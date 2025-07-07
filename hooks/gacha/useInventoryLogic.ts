@@ -4,7 +4,7 @@ import {
   GachaItemWithCount,
   CollectionStats,
   COLLECTION_TOTALS,
-} from "@/components/inventory/types";
+} from "@/components/inventory/inventory";
 import { useBlindBox } from "../useBlindBox";
 
 export const useInventoryLogic = () => {
