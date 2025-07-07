@@ -50,7 +50,7 @@ export const Header = ({ name, subtitle, isDark }: { name: string, subtitle: str
 
                 <div className="flex gap-1 sm:gap-2 md:gap-3 lg:gap-4 items-center flex-shrink-0">
                     {user && (
-                        <div className="px-2 py-1 sm:px-3 sm:py-2 border-1 border-slate-200 rounded-md text-xs sm:text-sm bg-white/80 backdrop-blur-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl hidden xs:block">
+                        <div className="px-2 py-1 sm:px-3 sm:py-2 border-1 border-slate-200 rounded-md text-xs sm:text-sm bg-white/80 backdrop-blur-sm font-medium transition-all duration-300 shadow-lg">
                             {sliceAddress(user?.wallet?.address || "")}
                         </div>
                     )}
