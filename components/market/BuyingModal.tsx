@@ -2,28 +2,20 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Eye, List, Loader2, Minus, Plus } from "lucide-react"
+import { List, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
     Drawer,
-    DrawerClose,
     DrawerContent,
-    DrawerDescription,
-    DrawerFooter,
     DrawerHeader,
     DrawerTitle,
     DrawerTrigger,
 } from "@/components/ui/drawer"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { GachaItemWithCount, COLLECTION_COLORS, VERSION_STYLES, COLLECTION_GLOW } from "../inventory/inventory"
-import { getItemDisplayName, getRarityInfo, hasRichMetadata, getItemDisplayStyle } from "@/types/gacha"
-import { metadataMapping } from "@/lib/metadataMapping"
+import { COLLECTION_GLOW, GachaItemWithCount } from "../inventory/inventory"
 import { cn } from "@/lib/utils"
 import { useMarketplace } from "@/hooks/marketplace/useMarketplace"
 import { ippyNFTAddress } from "@/lib/contract/contractAddress"
@@ -47,10 +39,10 @@ export const BuyingModal = ({ item, key, imageData }: ListingModalProps) => {
     const [floorPrice, setFloorPrice] = useState(0)
     const [detailOpen, setDetailOpen] = useState(false)
     const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
-    const { listItem } = useMarketplace();
+    const { buyItem } = useMarketplace();
 
-    const handleList = async (tokenId: number) => {
-        await listItem(ippyNFTAddress, tokenId.toString(), "2");
+    const handlePurchase = async (tokenId: number) => {
+        await buyItem(ippyNFTAddress, tokenId.toString(), "2");
     };
 
     const handleCalculation = (floorPrice: number) => {
@@ -213,7 +205,7 @@ export const BuyingModal = ({ item, key, imageData }: ListingModalProps) => {
                                             </div>
 
                                             <div className="flex gap-4 pt-4">
-                                                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleList(nft.tokenId || 0)}>Confirm listing</Button>
+                                                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handlePurchase(nft.tokenId || 0)}>Confirm listing</Button>
                                             </div>
                                         </div>
                                     </DrawerContent>
