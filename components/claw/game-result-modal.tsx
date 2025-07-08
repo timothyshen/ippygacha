@@ -29,10 +29,7 @@ export function GameResultModal({ result, coins, onPlayAgain, onDismiss }: GameR
               <div className="text-6xl animate-bounce">{result.prize?.emoji}</div>
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold text-green-600">🎉 WINNER! 🎉</h2>
-                <p className="text-xl font-semibold text-gray-800">You won a {result.prize?.name}!</p>
-              </div>
-              <div className="bg-green-100 border-2 border-green-300 rounded-lg p-4">
-                <p className="text-green-800 font-medium">{result.message}</p>
+                <p className="text-xl font-semibold text-gray-800">You won a IPPY blind box!</p>
               </div>
             </div>
           ) : (
@@ -41,9 +38,6 @@ export function GameResultModal({ result, coins, onPlayAgain, onDismiss }: GameR
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold text-red-600">Better Luck Next Time!</h2>
                 <p className="text-lg text-gray-600">The prize slipped away...</p>
-              </div>
-              <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
-                <p className="text-red-800 font-medium">{result.message}</p>
               </div>
             </div>
           )}
