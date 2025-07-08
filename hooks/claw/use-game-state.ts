@@ -7,6 +7,7 @@ import type {
   GameResult as GameResultType,
   DroppedPrize as DroppedPrizeType,
 } from "../../types/game";
+import { useBlindBox } from "../useBlindBox";
 
 const INITIAL_PRIZES_CONFIG: Omit<
   Prize,
@@ -232,6 +233,7 @@ export function useGameState() {
   const [droppedPrize, setDroppedPrize] = useState<DroppedPrizeType | null>(
     null
   );
+  const { purchaseBoxes, openBoxes } = useBlindBox();
 
   const totalInitialPrizeCount = INITIAL_PRIZES_CONFIG.length;
 
@@ -272,10 +274,10 @@ export function useGameState() {
     setGrabbedPrizeId(null);
   };
 
-  const endGame = (result: GameResultType) => {
+  const endGame = async (result: GameResultType) => {
     if (!gameResult) {
+      const txHash = await purchaseBoxes(1);
       setGameResult(result);
-      setShowResult(true);
       if (result.won && result.prize) {
         // Remove from machine, add to collected
         setPrizesInMachine((prevInMachine) =>
@@ -285,6 +287,9 @@ export function useGameState() {
           ...prevCollected,
           { ...result.prize!, grabbed: true },
         ]);
+      }
+      if (txHash) {
+        setShowResult(true);
       }
     }
     setGameActive(false);
