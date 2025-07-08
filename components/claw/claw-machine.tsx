@@ -545,7 +545,7 @@ export default function ClawMachine() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900 p-2 sm:p-4">
-      <Header name="Claw Machine" subtitle="Premium Collection Experience" isDark={false} />
+      <Header name="Claw Machine" subtitle="Premium Collection Experience" isDark={false} isMarketplace={true} />
       <div className="w-full max-w-7xl mx-auto mt-[120px]">
         <div className="text-center mb-4 sm:mb-8">
           <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2">🎪 Claw Machine 🎪</h1>

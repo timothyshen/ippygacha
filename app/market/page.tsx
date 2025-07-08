@@ -191,7 +191,7 @@ export default function Market() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
         <div className="max-w-7xl mx-auto">
-          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
+          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={true} />
           <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
             <CardContent className="p-16 text-center">
               <Loader2 className="w-20 h-20 text-blue-500 mx-auto mb-6 animate-spin" />

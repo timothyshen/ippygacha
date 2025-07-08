@@ -5,7 +5,7 @@ import { usePrivy } from "@privy-io/react-auth"
 import { useRouter } from "next/navigation"
 
 
-export const Header = ({ name, subtitle, isDark }: { name: string, subtitle: string, isDark: boolean }) => {
+export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string, subtitle: string, isDark: boolean, isMarketplace: boolean }) => {
     const { login, logout, user } = usePrivy()
     const router = useRouter()
 
@@ -15,6 +15,14 @@ export const Header = ({ name, subtitle, isDark }: { name: string, subtitle: str
 
     const handleHomeClick = () => {
         router.push('/')
+    }
+
+    const handleMarketplaceClick = () => {
+        if (isMarketplace) {
+            router.push('/market')
+        } else {
+            router.push('/inventory')
+        }
     }
 
     return (
@@ -54,6 +62,15 @@ export const Header = ({ name, subtitle, isDark }: { name: string, subtitle: str
                             {sliceAddress(user?.wallet?.address || "")}
                         </div>
                     )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm sm:size-default lg:size-lg"
+                        onClick={handleHomeClick}
+                    >
+                        <Home className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">{isMarketplace ? "Inventory" : "Marketplace"}</span>
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"
