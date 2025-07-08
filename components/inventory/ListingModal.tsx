@@ -64,8 +64,8 @@ export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
         }
     };
 
-    const handleList = async (tokenId: number) => {
-        await listItem(ippyNFTAddress, tokenId.toString(), "2");
+    const handleList = async (tokenId: number, price: number) => {
+        await listItem(ippyNFTAddress, tokenId.toString(), price.toString());
     };
 
     const handleCalculation = (floorPrice: number) => {
@@ -292,7 +292,7 @@ export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
                                                         <SelectItem value="90">90 days</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleList(item.tokenId || 0)}>Confirm listing</Button>
+                                                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleList(item.tokenId || 0, floorPrice)}>Confirm listing</Button>
                                             </div>
                                         </div>
                                     </DrawerContent>

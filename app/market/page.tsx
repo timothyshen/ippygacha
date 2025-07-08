@@ -1,14 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Store, TrendingUp, Users, Coins, Star, Filter, Search } from "lucide-react"
-import Link from "next/link"
+import { Activity, Store, Loader2, AlertCircle, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import { MarketplaceBuyingModal } from "@/components/market/MarketplaceBuyingModal"
+import { Header } from "@/components/Header"
+import { MarketStats } from "@/components/market/MarketStats"
+import { useActiveListings } from "@/hooks/marketplace/useMarketplace"
 
 // Update the GachaItem interface to include version
 interface GachaItem {
@@ -37,38 +40,22 @@ interface MarketListing {
   discount?: number
   isBlindBox?: boolean // Add this flag
 }
-
-interface TradeOffer {
+interface TradeActivity {
   id: string
-  from: string
-  to: string
-  offering: (GachaItem | { isBlindBox: true; id: string; name: string; emoji: string })[]
-  requesting: (GachaItem | { isBlindBox: true; id: string; name: string; emoji: string })[]
-  status: "pending" | "accepted" | "rejected"
-  expiresIn?: string
+  type: "sale" | "listing" | "offer" | "transfer"
+  item: GachaItem | { isBlindBox: true; id: string; name: string; emoji: string }
+  from?: string
+  to?: string
+  price?: number
+  timestamp: string
+  status: "completed" | "pending" | "cancelled"
 }
 
-// Collection-based colors and styles
-const COLLECTION_COLORS = {
-  ippy: "bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500",
-}
-
-const COLLECTION_GLOW = {
-  ippy: "hover:shadow-pink-200/50",
-}
-
-// Add version styles
-const VERSION_STYLES = {
-  standard: "",
-  hidden: "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white border-white/30 shadow-lg",
-}
-
-
-
-// Update the mock listings with collection-based pricing
-const MOCK_LISTINGS: MarketListing[] = [
+// Update the mock trades with collection-based items
+const MOCK_ACTIVITY: TradeActivity[] = [
   {
     id: "1",
+    type: "sale",
     item: {
       id: "8",
       name: "Dragon Egg",
@@ -77,27 +64,15 @@ const MOCK_LISTINGS: MarketListing[] = [
       description: "Ancient and powerful",
       version: "standard",
     },
-    seller: "DragonMaster",
+    from: "DragonMaster",
+    to: "FantasyCollector",
     price: 35,
-    quantity: 1,
+    timestamp: "2 minutes ago",
+    status: "completed",
   },
   {
     id: "2",
-    item: {
-      id: "4",
-      name: "Magic Wand",
-      collection: "ippy",
-      emoji: "🪄",
-      description: "Sparkles with mystery",
-      version: "standard",
-    },
-    seller: "WizardKing",
-    price: 15,
-    quantity: 3,
-    featured: true,
-  },
-  {
-    id: "3",
+    type: "listing",
     item: {
       id: "9h",
       name: "Phoenix Feather",
@@ -106,375 +81,158 @@ const MOCK_LISTINGS: MarketListing[] = [
       description: "Burns with eternal flame",
       version: "hidden",
     },
-    seller: "FireBird",
+    from: "FireBird",
     price: 85,
-    quantity: 1,
-    limited: true,
-  },
-  {
-    id: "4",
-    item: {
-      id: "1",
-      name: "Rubber Duck",
-      collection: "ippy",
-      emoji: "🦆",
-      description: "A squeaky companion",
-      version: "standard",
-    },
-    seller: "DuckCollector",
-    price: 2,
-    quantity: 10,
-    discount: 20,
-  },
-  {
-    id: "5",
-    item: {
-      id: "15",
-      name: "Shooting Star",
-      collection: "ippy",
-      emoji: "⭐",
-      description: "Make a wish",
-      version: "standard",
-    },
-    seller: "StarGazer",
-    price: 120,
-    quantity: 1,
-    featured: true,
-  }
-]
-
-// Update the mock trades with collection-based items
-const MOCK_TRADES: TradeOffer[] = [
-  {
-    id: "1",
-    from: "TradeKing",
-    to: "You",
-    offering: [
-      {
-        id: "5",
-        name: "Crystal Ball",
-        collection: "ippy",
-        emoji: "🔮",
-        description: "Sees the future",
-        version: "standard",
-      },
-      {
-        id: "5",
-        name: "Crystal Ball",
-        collection: "ippy",
-        emoji: "🔮",
-        description: "Sees the future",
-        version: "standard",
-      },
-    ],
-    requesting: [
-      {
-        id: "7",
-        name: "Golden Crown",
-        collection: "ippy",
-        emoji: "👑",
-        description: "Fit for royalty",
-        version: "standard",
-      },
-    ],
+    timestamp: "5 minutes ago",
     status: "pending",
-    expiresIn: "23 hours",
-  },
-  {
-    id: "2",
-    from: "MagicUser",
-    to: "You",
-    offering: [
-      {
-        id: "2h",
-        name: "Teddy Bear",
-        collection: "ippy",
-        emoji: "🧸",
-        description: "Soft and cuddly",
-        version: "hidden",
-      },
-    ],
-    requesting: [
-      {
-        id: "4",
-        name: "Magic Wand",
-        collection: "ippy",
-        emoji: "🪄",
-        description: "Sparkles with mystery",
-        version: "standard",
-      },
-    ],
-    status: "pending",
-    expiresIn: "2 days",
   },
   {
     id: "3",
-    from: "SpaceExplorer",
-    to: "You",
-    offering: [
-      {
-        id: "12",
-        name: "Hologram",
-        collection: "ippy",
-        emoji: "🌐",
-        description: "3D projection",
-        version: "standard",
-      },
-      {
-        id: "14",
-        name: "Rainbow Flower",
-        collection: "ippy",
-        emoji: "🌺",
-        description: "Blooms in all colors",
-        version: "standard",
-      },
-    ],
-    requesting: [
-      {
-        id: "16h",
-        name: "Moon Crystal",
-        collection: "ippy",
-        emoji: "🌙",
-        description: "Lunar energy",
-        version: "hidden",
-      },
-    ],
-    status: "pending",
-    expiresIn: "12 hours",
+    type: "sale",
+    item: {
+      id: "16h",
+      name: "Moon Crystal",
+      collection: "ippy",
+      emoji: "🌙",
+      description: "Lunar energy",
+      version: "hidden",
+    },
+    from: "MoonWalker",
+    to: "SpaceExplorer",
+    price: 180,
+    timestamp: "12 minutes ago",
+    status: "completed",
   },
   {
     id: "4",
-    from: "BoxTrader",
-    to: "You",
-    offering: [
-      {
-        isBlindBox: true,
-        id: "bb4",
-        name: "Fantasy Mystery Box",
-        emoji: "📦",
-      },
-      {
-        isBlindBox: true,
-        id: "bb5",
-        name: "Magic Mystery Box",
-        emoji: "🎁",
-      },
-    ],
-    requesting: [
-      {
-        id: "15h",
-        name: "Shooting Star",
-        collection: "ippy",
-        emoji: "⭐",
-        description: "Make a wish",
-        version: "hidden",
-      },
-    ],
+    type: "offer",
+    item: {
+      id: "4",
+      name: "Magic Wand",
+      collection: "ippy",
+      emoji: "🪄",
+      description: "Sparkles with mystery",
+      version: "standard",
+    },
+    from: "WizardKing",
+    to: "MagicUser",
+    price: 15,
+    timestamp: "18 minutes ago",
     status: "pending",
-    expiresIn: "6 hours",
+  },
+  {
+    id: "5",
+    type: "sale",
+    item: {
+      isBlindBox: true,
+      id: "bb1",
+      name: "Mystery Premium Box",
+      emoji: "📦",
+    },
+    from: "MysteryTrader",
+    to: "BoxCollector",
+    price: 8,
+    timestamp: "25 minutes ago",
+    status: "completed",
+  },
+  {
+    id: "6",
+    type: "transfer",
+    item: {
+      id: "11h",
+      name: "Laser Sword",
+      collection: "ippy",
+      emoji: "⚡",
+      description: "Futuristic weapon",
+      version: "hidden",
+    },
+    from: "TechMaster",
+    to: "CyberWarrior",
+    timestamp: "1 hour ago",
+    status: "completed",
   },
 ]
 
 export default function Market() {
-  const [coins, setCoins] = useState(0)
-  const [inventory, setInventory] = useState<GachaItem[]>([])
-  const [listings] = useState<MarketListing[]>(MOCK_LISTINGS)
-  const [trades] = useState<TradeOffer[]>(MOCK_TRADES)
-  const [selectedCollection, setSelectedCollection] = useState<string>("all")
-  const [selectedVersion, setSelectedVersion] = useState<string>("all")
-  const [sortBy, setSortBy] = useState<"price" | "collection" | "name">("price")
   const [searchTerm, setSearchTerm] = useState("")
-  const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
-  const [showLimitedOnly, setShowLimitedOnly] = useState(false)
-  const [showDiscountOnly, setShowDiscountOnly] = useState(false)
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [trades] = useState<TradeActivity[]>(MOCK_ACTIVITY)
+  const [selectedCollection, setSelectedCollection] = useState("all")
+  const [selectedVersion, setSelectedVersion] = useState("all")
 
-  useEffect(() => {
-    // Initialize sound manager
-    const savedCoins = localStorage.getItem("gacha-coins")
-    if (savedCoins) {
-      setCoins(Number.parseInt(savedCoins))
-    }
+  // Use real marketplace data
+  const { listings: marketplaceListings, loading, error, refetch } = useActiveListings()
 
-    const savedInventory = localStorage.getItem("gacha-inventory")
-    if (savedInventory) {
-      setInventory(JSON.parse(savedInventory))
-    }
-  }, [])
+  // Filter marketplace listings
+  const filteredListings = marketplaceListings.filter((listing) => {
+    const matchesSearch = listing.metadata?.name
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase()) ?? true
+    const matchesCollection = selectedCollection === "all" || listing.metadata?.collection === selectedCollection
+    const matchesVersion = selectedVersion === "all" || listing.metadata?.version === selectedVersion
+    return matchesSearch && matchesCollection && matchesVersion
+  })
 
-  const buyItem = (listing: MarketListing) => {
-    if (coins >= listing.price) {
-
-      setCoins((prev) => {
-        const newCoins = prev - listing.price
-        localStorage.setItem("gacha-coins", newCoins.toString())
-        return newCoins
-      })
-
-      if (listing.isBlindBox && listing.blindBox) {
-        // Add blind box to unrevealed items
-        const blindBoxItem: GachaItem = {
-          id: listing.blindBox.id,
-          name: listing.blindBox.name,
-          collection: "ippy", // Placeholder - will be determined when opened
-          emoji: listing.blindBox.emoji,
-          description: listing.blindBox.description,
-          version: "standard", // Placeholder
-        }
-
-        const currentUnrevealed = JSON.parse(localStorage.getItem("gacha-unrevealed") || "[]")
-        localStorage.setItem("gacha-unrevealed", JSON.stringify([...currentUnrevealed, blindBoxItem]))
-
-        alert(`Successfully purchased ${listing.blindBox.name} for ${listing.price} coins! Check your blind boxes.`)
-      } else if (listing.item) {
-        const newInventory = [...inventory, listing.item]
-        setInventory(newInventory)
-        localStorage.setItem("gacha-inventory", JSON.stringify(newInventory))
-
-        alert(`Successfully purchased ${listing.item.name} for ${listing.price} coins!`)
-      }
-    } else {
-      alert(`Not enough coins! You need ${listing.price - coins} more coins.`)
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case "sale":
+        return "text-green-600 bg-green-50 border-green-200"
+      case "listing":
+        return "text-blue-600 bg-blue-50 border-blue-200"
+      case "offer":
+        return "text-orange-600 bg-orange-50 border-orange-200"
+      case "transfer":
+        return "text-purple-600 bg-purple-50 border-purple-200"
+      default:
+        return "text-slate-600 bg-slate-50 border-slate-200"
     }
   }
 
-  const acceptTrade = (trade: TradeOffer) => {
-    // In a real app, this would handle the trade logic
-    alert(`Trade accepted! You received ${trade.offering.map((item) => item.name).join(", ")}`)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
+        <div className="max-w-7xl mx-auto">
+          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
+          <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
+            <CardContent className="p-16 text-center">
+              <Loader2 className="w-20 h-20 text-blue-500 mx-auto mb-6 animate-spin" />
+              <h3 className="text-2xl font-bold text-slate-700 mb-3">Loading Marketplace</h3>
+              <p className="text-slate-500 text-lg">Fetching active listings from the blockchain...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
-  const rejectTrade = (trade: TradeOffer) => {
-    alert("Trade rejected!")
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
+        <div className="max-w-7xl mx-auto">
+          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
+          <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
+            <CardContent className="p-16 text-center">
+              <AlertCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-slate-700 mb-3">Failed to Load Marketplace</h3>
+              <p className="text-slate-500 text-lg mb-6">{error}</p>
+              <Button onClick={refetch} className="bg-blue-600 hover:bg-blue-700">
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
-
-  // Filter and sort listings
-  const filteredListings = listings
-    .filter((listing) => {
-      const matchesSearch = (listing.isBlindBox ? listing.blindBox?.name : listing.item?.name)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
-      const matchesCollection = selectedCollection === "all" || listing.item?.collection === selectedCollection
-      const matchesVersion = selectedVersion === "all" || listing.item?.version === selectedVersion
-      const matchesFeatured = showFeaturedOnly ? listing.featured : true
-      const matchesLimited = showLimitedOnly ? listing.limited : true
-      const matchesDiscount = showDiscountOnly ? listing.discount && listing.discount > 0 : true
-      return (
-        matchesSearch && matchesCollection && matchesVersion && matchesFeatured && matchesLimited && matchesDiscount
-      )
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "price":
-          return a.price - b.price
-        case "collection":
-          return (a.item?.collection || "").localeCompare(b.item?.collection || "")
-        case "name":
-          return (a.isBlindBox ? a.blindBox?.name || "" : a.item?.name || "").localeCompare(b.isBlindBox ? b.blindBox?.name || "" : b.item?.name || "")
-        default:
-          return 0
-      }
-    })
-
-  // Calculate market stats
-  const totalListings = listings.length
-  const spaceItems = listings.filter((listing) => listing.item?.collection === "ippy").length
-  const hiddenItems = listings.filter((listing) => listing.item?.version === "hidden").length
-  const blindBoxes = listings.filter((listing) => listing.isBlindBox).length
-  const averagePrice = Math.round(listings.reduce((sum, listing) => sum + listing.price, 0) / listings.length)
-  const featuredItems = listings.filter((listing) => listing.featured).length
-  const limitedItems = listings.filter((listing) => listing.limited).length
-
-  // Featured listings
-  const featuredListings = listings.filter((listing) => listing.featured)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Enhanced Header */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button
-                variant="outline"
-                className="bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Gacha
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-slate-800 flex items-center gap-3 tracking-tight">
-                <Store className="w-8 h-8 md:w-10 md:h-10 text-blue-600 drop-shadow-lg" />
-                Designer Market
-              </h1>
-              <p className="text-lg text-slate-600 font-medium mt-1">Buy, Sell & Trade Premium Collectibles</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 md:ml-auto">
-
-            <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
-              <CardContent className="p-4 flex items-center gap-2">
-                <Coins className="w-5 h-5 text-amber-500" />
-                <span className="text-slate-800 font-bold text-lg">{coins} Coins</span>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
 
         {/* Market Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <Card className="bg-white/80 border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-slate-800 mb-1">{totalListings}</div>
-              <div className="text-sm text-slate-600 font-medium">Total Listings</div>
-            </CardContent>
-          </Card>
+        <MarketStats totalListings={marketplaceListings.length} hiddenItems={0} blindBoxes={0} averagePrice={0} featuredItems={0} limitedItems={0} />
 
-          <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-300 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-indigo-700 mb-1">{spaceItems}</div>
-              <div className="text-sm text-indigo-600 font-medium">Space Items</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-300 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-purple-700 mb-1">{hiddenItems}</div>
-              <div className="text-sm text-purple-600 font-medium">Hidden Variants</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-amber-700 mb-1">{blindBoxes}</div>
-              <div className="text-sm text-amber-600 font-medium">Mystery Boxes</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-300 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-amber-700 mb-1">{averagePrice}</div>
-              <div className="text-sm text-amber-600 font-medium">Avg. Price</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-300 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-green-700 mb-1">{featuredItems}</div>
-              <div className="text-sm text-green-600 font-medium">Featured</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-red-50 to-pink-50 border-red-300 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-red-700 mb-1">{limitedItems}</div>
-              <div className="text-sm text-red-600 font-medium">Limited Edition</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Featured Items Section */}
+        {/* Featured Items Section
         {featuredListings.length > 0 && (
           <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 mb-8 shadow-xl">
             <CardHeader>
@@ -547,7 +305,7 @@ export default function Market() {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         <Tabs defaultValue="marketplace" className="space-y-6">
           <TabsList className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
@@ -559,206 +317,55 @@ export default function Market() {
               Marketplace
             </TabsTrigger>
             <TabsTrigger
-              value="trades"
+              value="activity"
               className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
             >
-              <Users className="w-4 h-4 mr-2" />
-              Trade Offers ({trades.length})
+              <Activity className="w-4 h-4 mr-2" />
+              Activity
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="marketplace" className="space-y-6">
-            {/* Enhanced Filters */}
+            {/* Search and Filters */}
             <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Search */}
+              <CardHeader>
+                <CardTitle className="text-slate-800 flex items-center gap-2">
+                  <Search className="w-5 h-5 text-blue-600" />
+                  Search & Filter
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
                   <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                      <Input
-                        placeholder="Search marketplace..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 bg-white/80 border-slate-200 text-slate-800 placeholder:text-slate-400 h-12 text-base shadow-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Sort By */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex items-center gap-2">
-                      <Filter className="w-4 h-4 text-slate-600" />
-                      <span className="text-sm font-medium text-slate-600">Sort:</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "price", label: "Price" },
-                        { value: "collection", label: "Collection" },
-                        { value: "name", label: "Name" },
-                      ].map((sort) => (
-                        <Button
-                          key={sort.value}
-                          variant={sortBy === sort.value ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setSortBy(sort.value as any)
-                          }}
-                          className={cn(
-                            "transition-all duration-300",
-                            sortBy === sort.value
-                              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                              : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                          )}
-                        >
-                          {sort.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filter Buttons */}
-                <div className="flex flex-wrap gap-3 mt-6">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600">Collection:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={selectedCollection === "all" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedCollection("all")
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        selectedCollection === "all"
-                          ? "bg-slate-600 hover:bg-slate-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      All
-                    </Button>
-                    {["toys", "magic", "fantasy", "tech", "nature", "space"].map((collection) => (
-                      <Button
-                        key={collection}
-                        variant={selectedCollection === collection ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCollection(collection)
-                        }}
-                        className={cn(
-                          "transition-all duration-300",
-                          "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                        )}
-                      >
-                        {collection.charAt(0).toUpperCase() + collection.slice(1)}
-                      </Button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-sm font-medium text-slate-600">Version:</span>
+                    <Input
+                      placeholder="Search NFTs..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-white/80"
+                    />
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      variant={selectedVersion === "all" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedVersion("all")
-                      }}
+                      variant={selectedCollection === "all" ? "default" : "outline"}
+                      onClick={() => setSelectedCollection("all")}
                       className={cn(
-                        "transition-all duration-300",
-                        selectedVersion === "all"
-                          ? "bg-slate-600 hover:bg-slate-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      All Versions
-                    </Button>
-                    <Button
-                      variant={selectedVersion === "standard" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedVersion("standard")
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        selectedVersion === "standard"
-                          ? "bg-slate-600 hover:bg-slate-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      Standard
-                    </Button>
-                    <Button
-                      variant={selectedVersion === "hidden" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedVersion("hidden")
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        selectedVersion === "hidden"
-                          ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      Hidden
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Special Filters */}
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600">Special:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={showFeaturedOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setShowFeaturedOnly(!showFeaturedOnly)
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        showFeaturedOnly
+                        selectedCollection === "all"
                           ? "bg-blue-600 hover:bg-blue-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
+                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100"
                       )}
                     >
-                      Featured Only
+                      All Collections
                     </Button>
                     <Button
-                      variant={showLimitedOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setShowLimitedOnly(!showLimitedOnly)
-                      }}
+                      variant={selectedCollection === "ippy" ? "default" : "outline"}
+                      onClick={() => setSelectedCollection("ippy")}
                       className={cn(
-                        "transition-all duration-300",
-                        showLimitedOnly
-                          ? "bg-red-600 hover:bg-red-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
+                        selectedCollection === "ippy"
+                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100"
                       )}
                     >
-                      Limited Edition
-                    </Button>
-                    <Button
-                      variant={showDiscountOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setShowDiscountOnly(!showDiscountOnly)
-                      }}
-                      className={cn(
-                        "transition-all duration-300",
-                        showDiscountOnly
-                          ? "bg-green-600 hover:bg-green-700 text-white"
-                          : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                      )}
-                    >
-                      On Sale
+                      IPPY
                     </Button>
                   </div>
                 </div>
@@ -766,291 +373,102 @@ export default function Market() {
             </Card>
 
             {/* Marketplace Items */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredListings.map((listing) => (
-                <Card
-                  key={listing.id}
-                  className={cn(
-                    "transition-all duration-300 cursor-pointer border-2 shadow-lg hover:shadow-xl hover:scale-105 relative",
-                    listing.isBlindBox
-                      ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300 hover:shadow-amber-200/50"
-                      : COLLECTION_COLORS[listing.item?.collection || "ippy"],
-                    listing.item && VERSION_STYLES[listing.item.version],
-                    listing.item && COLLECTION_GLOW[listing.item.collection],
-                    listing.item?.collection === "ippy" && "ring-2 ring-indigo-300/50",
-                    listing.featured && "ring-2 ring-blue-300/50",
-                    listing.limited && "ring-2 ring-red-300/50",
-                  )}
-                >
-                  {/* Special badges */}
-                  <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-                    {listing.isBlindBox && (
-                      <Badge className="bg-amber-500 text-white text-xs font-bold">📦 MYSTERY</Badge>
-                    )}
-                    {listing.featured && (
-                      <Badge className="bg-blue-500 text-white text-xs font-bold">⭐ FEATURED</Badge>
-                    )}
-                    {listing.limited && <Badge className="bg-red-500 text-white text-xs font-bold">🔥 LIMITED</Badge>}
-                    {listing.discount && listing.discount > 0 && (
-                      <Badge className="bg-green-500 text-white text-xs font-bold">-{listing.discount}% OFF</Badge>
-                    )}
-                  </div>
-
-                  <CardHeader className="pb-3">
-                    <div className="text-4xl md:text-5xl text-center mb-3 drop-shadow-sm">
-                      {listing.isBlindBox ? listing.blindBox?.emoji : listing.item?.emoji}
-                    </div>
-                    <CardTitle className="text-sm md:text-base text-center font-bold leading-tight">
-                      {listing.isBlindBox ? listing.blindBox?.name : listing.item?.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0 space-y-3">
-                    <p className="text-xs text-center opacity-80 leading-relaxed">
-                      {listing.isBlindBox ? listing.blindBox?.description : listing.item?.description}
-                    </p>
-
-                    <div className="flex justify-between items-center">
-                      {listing.isBlindBox ? (
-                        <>
-                          <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs font-bold">
-                            MYSTERY BOX
-                          </Badge>
-                          <Badge className="bg-orange-100 text-orange-800 border-orange-300 text-xs font-bold">
-                            SURPRISE
-                          </Badge>
-                        </>
-                      ) : (
-                        <>
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              "text-xs font-bold",
-                              "bg-pink-100 text-pink-800 border-pink-300",
-
-                            )}
-                          >
-                            {listing.item?.collection.toUpperCase()}
-                          </Badge>
-                          <Badge
-                            variant={listing.item?.version === "hidden" ? "default" : "outline"}
-                            className={cn(
-                              "text-xs font-bold",
-                              listing.item?.version === "hidden"
-                                ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white border-white/30"
-                                : "border-slate-300 text-slate-600",
-                            )}
-                          >
-                            {listing.item?.version.toUpperCase()}
-                          </Badge>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="text-center space-y-2">
-                      <div className="text-sm font-semibold text-slate-600">Seller: {listing.seller}</div>
-                      <div className="flex items-center justify-center gap-1 mb-3">
-                        <Coins className="w-4 h-4 text-amber-600" />
-                        {listing.discount && listing.discount > 0 ? (
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg text-green-600">
-                              {Math.round(listing.price * (1 - listing.discount / 100))}
-                            </span>
-                            <span className="text-sm line-through text-slate-500">{listing.price}</span>
-                          </div>
-                        ) : (
-                          <span className="font-bold text-lg">{listing.price}</span>
-                        )}
-                        <span className="text-xs text-slate-500">({listing.quantity} available)</span>
-                      </div>
-
-                      <Button
-                        onClick={() => buyItem(listing)}
-                        disabled={
-                          coins <
-                          (listing.discount ? Math.round(listing.price * (1 - listing.discount / 100)) : listing.price)
-                        }
-                        className={cn(
-                          "w-full font-bold shadow-lg hover:shadow-xl transition-all duration-300",
-                          coins >=
-                            (listing.discount
-                              ? Math.round(listing.price * (1 - listing.discount / 100))
-                              : listing.price)
-                            ? listing.isBlindBox
-                              ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
-                              : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
-                            : "bg-slate-300 text-slate-500 cursor-not-allowed",
-                        )}
-                        size="sm"
-                      >
-                        {coins >=
-                          (listing.discount ? Math.round(listing.price * (1 - listing.discount / 100)) : listing.price)
-                          ? listing.isBlindBox
-                            ? "Buy Mystery Box"
-                            : "Buy Now"
-                          : `Need ${(listing.discount ? Math.round(listing.price * (1 - listing.discount / 100)) : listing.price) - coins} more coins`}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {filteredListings.length === 0 && (
+            {filteredListings.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredListings.map((listing) => (
+                  <MarketplaceBuyingModal key={`${listing.nftAddress}-${listing.tokenId}`} listing={listing} />
+                ))}
+              </div>
+            ) : (
               <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
                 <CardContent className="p-16 text-center">
                   <Store className="w-20 h-20 text-slate-300 mx-auto mb-6" />
-                  <h3 className="text-2xl font-bold text-slate-700 mb-3">No Items Found</h3>
+                  <h3 className="text-2xl font-bold text-slate-700 mb-3">
+                    {marketplaceListings.length === 0 ? "No Items Listed" : "No Items Found"}
+                  </h3>
                   <p className="text-slate-500 text-lg">
-                    No items match your current filters. Try adjusting your search criteria.
+                    {marketplaceListings.length === 0
+                      ? "No NFTs are currently listed for sale on the marketplace."
+                      : "No items match your current search criteria."
+                    }
                   </p>
+                  {marketplaceListings.length === 0 && (
+                    <Button onClick={refetch} className="mt-4 bg-blue-600 hover:bg-blue-700">
+                      Refresh Marketplace
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
           </TabsContent>
 
-          <TabsContent value="trades" className="space-y-6">
-            {trades.length === 0 ? (
-              <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
-                <CardContent className="p-16 text-center">
-                  <Users className="w-20 h-20 text-slate-300 mx-auto mb-6" />
-                  <h3 className="text-2xl font-bold text-slate-700 mb-3">No Trade Offers</h3>
-                  <p className="text-slate-500 text-lg">You don&apos;t have any pending trade offers.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {trades.map((trade) => (
-                  <Card key={trade.id} className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
-                    <CardHeader>
-                      <div className="flex justify-between items-center">
-                        <CardTitle className="text-slate-800 flex items-center gap-2">
-                          <Users className="w-5 h-5 text-blue-600" />
-                          Trade from {trade.from}
-                        </CardTitle>
-                        {trade.expiresIn && (
+          <TabsContent value="activity" className="space-y-6">
+            <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-slate-800 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-600" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {trades.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-4 p-4 bg-slate-50/50 rounded-lg border border-slate-200 hover:bg-slate-100/50 transition-colors"
+                  >
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-slate-800">
+                          {"isBlindBox" in item.item ? item.item.name : item.item.name}
+                        </span>
+                        <Badge className={cn("text-xs", getActivityColor(item.type))}>{item.type.toUpperCase()}</Badge>
+                        {"collection" in item.item && (
                           <Badge variant="outline" className="text-xs">
-                            Expires in {trade.expiresIn}
+                            {item.item.collection.toUpperCase()}
                           </Badge>
                         )}
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-6">
-                        {/* Offering */}
-                        <div>
-                          <h4 className="text-slate-700 font-semibold mb-3 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-green-500" />
-                            They&apos;re Offering:
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {trade.offering.map((item, index) => (
-                              <div
-                                key={index}
-                                className={cn(
-                                  "p-3 rounded-lg text-center border-2 transition-all duration-300 hover:scale-105",
-                                  "isBlindBox" in item
-                                    ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300 text-amber-700"
-                                    : "collection" in item
-                                      ? COLLECTION_COLORS[item.collection]
-                                      : "bg-slate-100",
-                                  "version" in item && VERSION_STYLES[item.version],
-                                  "collection" in item && COLLECTION_GLOW[item.collection],
-                                )}
-                              >
-                                <div className="text-2xl mb-1">{item.emoji}</div>
-                                <div className="text-xs font-semibold mb-1">{item.name}</div>
-                                <div className="flex justify-center gap-1">
-                                  {"isBlindBox" in item ? (
-                                    <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
-                                      MYSTERY
-                                    </Badge>
-                                  ) : (
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        "text-xs",
-                                        "version" in item && item.version === "hidden"
-                                          ? "border-white/50 text-white bg-white/20"
-                                          : "border-slate-400 text-slate-600",
-                                      )}
-                                    >
-                                      {"collection" in item && item.collection.toUpperCase()}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
 
-                        {/* Requesting */}
-                        <div>
-                          <h4 className="text-slate-700 font-semibold mb-3 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-red-500 rotate-180" />
-                            They Want:
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {trade.requesting.map((item, index) => (
-                              <div
-                                key={index}
-                                className={cn(
-                                  "p-3 rounded-lg text-center border-2 transition-all duration-300 hover:scale-105",
-                                  "isBlindBox" in item
-                                    ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300 text-amber-700"
-                                    : "collection" in item
-                                      ? COLLECTION_COLORS[item.collection]
-                                      : "bg-slate-100",
-                                  "version" in item && VERSION_STYLES[item.version],
-                                  "collection" in item && COLLECTION_GLOW[item.collection],
-                                )}
-                              >
-                                <div className="text-2xl mb-1">{item.emoji}</div>
-                                <div className="text-xs font-semibold mb-1">{item.name}</div>
-                                <div className="flex justify-center gap-1">
-                                  {"isBlindBox" in item ? (
-                                    <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
-                                      MYSTERY
-                                    </Badge>
-                                  ) : (
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        "text-xs",
-                                        "version" in item && item.version === "hidden"
-                                          ? "border-white/50 text-white bg-white/20"
-                                          : "border-slate-400 text-slate-600",
-                                      )}
-                                    >
-                                      {"collection" in item && item.collection.toUpperCase()}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="text-sm text-slate-600">
+                        {item.type === "sale" && (
+                          <>
+                            Sold by <span className="font-medium">{item.from}</span> to{" "}
+                            <span className="font-medium">{item.to}</span>
+                          </>
+                        )}
+                        {item.type === "listing" && (
+                          <>
+                            Listed by <span className="font-medium">{item.from}</span>
+                          </>
+                        )}
+                        {item.type === "offer" && (
+                          <>
+                            Offer from <span className="font-medium">{item.from}</span> to{" "}
+                            <span className="font-medium">{item.to}</span>
+                          </>
+                        )}
+                        {item.type === "transfer" && (
+                          <>
+                            Transferred from <span className="font-medium">{item.from}</span> to{" "}
+                            <span className="font-medium">{item.to}</span>
+                          </>
+                        )}
                       </div>
+                    </div>
 
-                      <div className="flex gap-3 pt-4">
-                        <Button
-                          onClick={() => acceptTrade(trade)}
-                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300"
-                        >
-                          Accept Trade
-                        </Button>
-                        <Button
-                          onClick={() => rejectTrade(trade)}
-                          variant="outline"
-                          className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-red-500 font-bold shadow-lg hover:shadow-xl transition-all duration-300"
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <div className="text-right">
+                      {item.price && (
+                        <div className="flex items-center gap-1 text-slate-800 font-bold">
+                          {item.price} IP
+                        </div>
+                      )}
+                      <div className="text-xs text-slate-500 mt-1">{item.timestamp}</div>
+                    </div>
+                  </div>
                 ))}
-              </div>
-            )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
