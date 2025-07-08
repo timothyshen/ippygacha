@@ -66,7 +66,7 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
                         variant="outline"
                         size="sm"
                         className="bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm sm:size-default lg:size-lg"
-                        onClick={handleHomeClick}
+                        onClick={handleMarketplaceClick}
                     >
                         <Home className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">{isMarketplace ? "Inventory" : "Marketplace"}</span>
