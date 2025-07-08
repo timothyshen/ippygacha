@@ -16,7 +16,7 @@ export interface MarketplaceListing {
   nftAddress: string;
   tokenId: string;
   price: string; // in wei
-  priceInEth: number; // converted to ETH for display
+  priceInIP: number; // converted to IP for display
   seller: string;
   isActive: boolean;
   metadata?: GachaItemWithCount; // NFT metadata fetched separately
@@ -37,7 +37,7 @@ export const convertListingToGachaItem = (
   return {
     ...listing.metadata,
     // Add marketplace-specific fields
-    marketPrice: listing.priceInEth,
+    marketPrice: listing.priceInIP,
     seller: listing.seller,
     isListed: true,
   } as GachaItemWithCount & {
@@ -151,7 +151,7 @@ export const useMarketplace = () => {
             nftAddress: eventArgs.nftAddress as string,
             tokenId: eventArgs.tokenId.toString(),
             price: (listing as any).price.toString(),
-            priceInEth: parseFloat(formatEther((listing as any).price)),
+            priceInIP: parseFloat(formatEther((listing as any).price)),
             seller: (listing as any).seller as string,
             isActive: true,
             metadata: getMockMetadata(eventArgs.tokenId.toString()),

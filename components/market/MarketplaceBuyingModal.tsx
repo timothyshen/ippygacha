@@ -24,6 +24,13 @@ interface MarketplaceBuyingModalProps {
     listing: MarketplaceListing
 }
 
+const traits = [
+    { trait_type: "Background", value: "Light Blue", rarity: "15%" },
+    { trait_type: "Body", value: "Chubby", rarity: "8%" },
+    { trait_type: "Expression", value: "Peaceful", rarity: "12%" },
+    { trait_type: "Type", value: "Standard", rarity: "45%" },
+]
+
 export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps) => {
     const [isHovered, setIsHovered] = useState(false)
     const [detailOpen, setDetailOpen] = useState(false)
@@ -33,7 +40,7 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
     const handlePurchase = async () => {
         try {
             setLoading(true)
-            await buyItem(listing.nftAddress, listing.tokenId, listing.priceInEth.toString())
+            await buyItem(listing.nftAddress, listing.tokenId, listing.priceInIP.toString())
         } catch (error) {
             console.error("Purchase failed:", error)
         } finally {
@@ -133,8 +140,8 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
-                                                            <div>{listing.priceInEth.toFixed(2)} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(listing.priceInEth * 3).toFixed(2)})</div>
+                                                            <div>{listing.priceInIP.toFixed(2)} IP</div>
+                                                            <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -146,8 +153,8 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                                                 <div className="flex justify-between font-medium">
                                                     <span>Total</span>
                                                     <div className="text-right">
-                                                        <div>{listing.priceInEth.toFixed(2)} IP</div>
-                                                        <div className="text-xs text-gray-400">(${(listing.priceInEth * 3).toFixed(2)})</div>
+                                                        <div>{listing.priceInIP.toFixed(2)} IP</div>
+                                                        <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-gray-400">
@@ -173,10 +180,10 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                             <div className="flex w-full min-h-[40px] items-left justify-start bg-gray-800/80 backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out px-2">
                                 <div className="flex flex-col items-left ml-3 py-1">
                                     <p className="text-left text-gray-200 font-extrabold text-sm">
-                                        {listing.priceInEth.toFixed(2)} IP
+                                        {listing.priceInIP.toFixed(2)} IP
                                     </p>
                                     <p className="text-left text-gray-400 font-extrabold text-xs">
-                                        (${(listing.priceInEth * 3).toFixed(2)})
+                                        (${(listing.priceInIP * 3).toFixed(2)})
                                     </p>
                                 </div>
                             </div>
@@ -223,12 +230,27 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Price</span>
-                                        <span>{listing.priceInEth.toFixed(2)} IP</span>
+                                        <span>{listing.priceInIP.toFixed(2)} IP</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Contract</span>
                                         <span className="font-mono">{listing.nftAddress.slice(0, 8)}...{listing.nftAddress.slice(-6)}</span>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="font-semibold mb-3">Traits</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {traits.map((trait, index) => (
+                                        <div key={index} className="bg-gray-50 rounded-lg p-3 text-center">
+                                            <div className="text-xs text-gray-500 uppercase tracking-wide">
+                                                {trait.trait_type}
+                                            </div>
+                                            <div className="font-medium">{trait.value}</div>
+                                            <div className="text-xs text-blue-600">{trait.rarity}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>

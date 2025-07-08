@@ -15,10 +15,9 @@ import {
 } from "@/components/ui/drawer"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { COLLECTION_GLOW, GachaItemWithCount } from "../inventory/inventory"
+import { COLLECTION_GLOW } from "../inventory/inventory"
 import { cn } from "@/lib/utils"
 import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarketplace"
-import { ippyNFTAddress } from "@/lib/contract/contractAddress"
 
 
 interface ImageCache {
@@ -29,20 +28,15 @@ interface ImageCache {
 
 interface BuyingModalProps {
     listing: MarketplaceListing
-    key?: number
-    imageData?: ImageCache
 }
 
-export const BuyingModal = ({ listing, key, imageData }: BuyingModalProps) => {
+export const BuyingModal = ({ listing }: BuyingModalProps) => {
     const [isHovered, setIsHovered] = useState(false)
-    const [quantity, setQuantity] = useState(1)
-    const [floorPrice, setFloorPrice] = useState(0)
     const [detailOpen, setDetailOpen] = useState(false)
-    const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
     const { buyItem } = useMarketplace();
 
     const handlePurchase = async () => {
-        await buyItem(listing.nftAddress, listing.tokenId, listing.priceInEth.toString());
+        await buyItem(listing.nftAddress, listing.tokenId, listing.priceInIP.toString());
     };
 
     const handleCalculation = (price: number) => {
@@ -55,15 +49,30 @@ export const BuyingModal = ({ listing, key, imageData }: BuyingModalProps) => {
             platformFeeRate,
         }
     }
+    const traits = [
+        { trait_type: "Background", value: "Light Blue", rarity: "15%" },
+        { trait_type: "Body", value: "Chubby", rarity: "8%" },
+        { trait_type: "Expression", value: "Peaceful", rarity: "12%" },
+        { trait_type: "Type", value: "Standard", rarity: "45%" },
+    ]
 
     // Use listing data instead of hardcoded values
     const nft = listing.metadata || {
         name: "Unknown NFT",
         collection: "ippy",
         description: "NFT from marketplace listing",
+        rarity: "STANDARD",
+        owner: "0x1234...5678",
+        floorPrice: "0.00",
         tokenId: parseInt(listing.tokenId),
         version: "standard" as const,
         count: 1,
+        traits: [
+            { trait_type: "Background", value: "Light Blue", rarity: "15%" },
+            { trait_type: "Body", value: "Chubby", rarity: "8%" },
+            { trait_type: "Expression", value: "Peaceful", rarity: "12%" },
+            { trait_type: "Type", value: "Standard", rarity: "45%" },
+        ],
     }
 
     return (
@@ -124,7 +133,7 @@ export const BuyingModal = ({ listing, key, imageData }: BuyingModalProps) => {
                                     "text-white border-white/30 shadow-sm"
                                 )}
                             >
-                                {nft.rarity.toUpperCase()}
+                                {nft.rarity?.toUpperCase()}
                             </Badge>
                         </div>
                     </div>
@@ -175,8 +184,8 @@ export const BuyingModal = ({ listing, key, imageData }: BuyingModalProps) => {
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
-                                                            <div>{listing.priceInEth.toFixed(2)} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(listing.priceInEth * 3).toFixed(2)})</div>
+                                                            <div>{listing.priceInIP.toFixed(2)} IP</div>
+                                                            <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -188,14 +197,14 @@ export const BuyingModal = ({ listing, key, imageData }: BuyingModalProps) => {
                                                 <div className="flex justify-between font-medium">
                                                     <span>Total</span>
                                                     <div className="text-right">
-                                                        <div>{handleCalculation(floorPrice).proceeds} IP</div>
-                                                        <div className="text-xs text-gray-400">(${(handleCalculation(floorPrice).proceeds * 3).toFixed(2)})</div>
+                                                        <div>{handleCalculation(listing.priceInIP).proceeds} IP</div>
+                                                        <div className="text-xs text-gray-400">(${(handleCalculation(listing.priceInIP).proceeds * 3).toFixed(2)})</div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="flex gap-4 pt-4">
-                                                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handlePurchase(nft.tokenId || 0)}>Confirm listing</Button>
+                                                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={!nft.tokenId} onClick={() => handlePurchase()}>Confirm listing</Button>
                                             </div>
                                         </div>
                                     </DrawerContent>
@@ -256,11 +265,11 @@ export const BuyingModal = ({ listing, key, imageData }: BuyingModalProps) => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Owner</span>
-                                        <span className="font-mono">{nft.owner}</span>
+                                        <span className="font-mono">{listing.seller}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Floor Price</span>
-                                        <span>{nft.floorPrice} IP</span>
+                                        <span>{listing.priceInIP} IP</span>
                                     </div>
                                 </div>
                             </div>
@@ -268,7 +277,7 @@ export const BuyingModal = ({ listing, key, imageData }: BuyingModalProps) => {
                             <div>
                                 <h3 className="font-semibold mb-3">Traits</h3>
                                 <div className="grid grid-cols-2 gap-2">
-                                    {nft.traits.map((trait, index) => (
+                                    {traits.map((trait, index) => (
                                         <div key={index} className="bg-gray-50 rounded-lg p-3 text-center">
                                             <div className="text-xs text-gray-500 uppercase tracking-wide">
                                                 {trait.trait_type}
