@@ -1,6 +1,5 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-ignition";
 import "dotenv/config";
 
 const alchemyApiKey = process.env.ALCHEMY_API_KEY;

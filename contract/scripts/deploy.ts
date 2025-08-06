@@ -1,6 +1,5 @@
 import { ignition } from "hardhat";
 import BlindBoxSystemModule from "../ignition/modules/BlindBoxSystem";
-import BlindBoxModule from "../ignition/modules/BlindBox";
 
 async function main() {
   console.log("🚀 Deploying BlindBox System...");
