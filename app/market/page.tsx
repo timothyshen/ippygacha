@@ -208,7 +208,7 @@ export default function Market() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
         <div className="max-w-7xl mx-auto">
-          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={true} />
+          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={false} />
           <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
             <CardContent className="p-16 text-center">
               <AlertCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
@@ -227,7 +227,7 @@ export default function Market() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={true} />
+        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={false} />
 
         {/* Market Stats */}
         <MarketStats totalListings={marketplaceListings.length} hiddenItems={0} blindBoxes={0} averagePrice={0} featuredItems={0} limitedItems={0} />
