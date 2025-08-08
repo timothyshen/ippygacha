@@ -104,7 +104,7 @@ export default function Inventory() {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
 
-            <Header name="Inventory" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
+            <Header name="Inventory" subtitle="Premium Collection Experience" isDark={true} isMarketplace={true} />
 
             <div className="w-full max-w-7xl mx-auto flex-1 pt-20 sm:pt-24 md:pt-28">
                 {/* Contract Info Display - Show box price and supply info if available */}
