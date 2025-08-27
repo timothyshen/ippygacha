@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const LoginButton = () => {
+const LoginButton = ({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => void }) => {
     const { login, logout, user } = usePrivy()
     const sliceAddress = (address: string) => {
         return `${address.slice(0, 6)}...${address.slice(-4)}`
@@ -15,7 +15,7 @@ const LoginButton = () => {
         <>
             <div>
                 {user && (
-                    <div className="px-3 py-2 border-1 border-slate-200 rounded-md text-sm bg-white/80 backdrop-blur-sm md:text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl"> {sliceAddress(user.wallet?.address || "")}</div>
+                    <Button variant="outline" size="lg" className="px-3 py-2 border-1 border-slate-200 rounded-md text-sm bg-white/80 backdrop-blur-sm md:text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl" onClick={() => setSidebarOpen(true)}> {sliceAddress(user.wallet?.address || "")}</Button>
                 )}
             </div>
             <Button

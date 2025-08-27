@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { usePrivy } from "@privy-io/react-auth"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { ProfileSidebar } from "./ProfileSidebar"
 
 
 export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string, subtitle: string, isDark: boolean, isMarketplace: boolean }) => {
@@ -58,7 +60,10 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
 
                 <div className="flex gap-1 sm:gap-2 md:gap-3 lg:gap-4 items-center flex-shrink-0">
                     {user && (
-                        <div className="px-2 py-1 sm:px-3 sm:py-2 border-1 border-slate-200 rounded-md text-xs sm:text-sm bg-white/80 backdrop-blur-sm font-medium transition-all duration-300 shadow-lg">
+                        <div 
+                            className="px-2 py-1 sm:px-3 sm:py-2 border-1 border-slate-200 rounded-md text-xs sm:text-sm bg-white/80 backdrop-blur-sm font-medium transition-all duration-300 shadow-lg cursor-pointer hover:bg-white/90"
+                            onClick={() => setSidebarOpen(true)}
+                        >
                             {sliceAddress(user?.wallet?.address || "")}
                         </div>
                     )}
@@ -95,6 +100,7 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
                     </Button>
                 </div>
             </div>
+            <ProfileSidebar isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
         </div>
     )
 } 
