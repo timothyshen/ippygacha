@@ -52,16 +52,23 @@ export function ProfileSidebar({
 }) {
     return (
         <SidebarProvider
+            defaultOpen={false}
             open={isOpen}
             onOpenChange={onOpenChange}
             style={
                 {
-                    "--sidebar-width": "calc(var(--spacing) * 144)",
-                    "--header-height": "calc(var(--spacing) * 12)",
+                    "--sidebar-width": "20rem",
+                    "--header-height": "3rem",
                 } as React.CSSProperties
             }
+            className={`${!isOpen ? 'hidden' : ''}`}
         >
-            <Sidebar side="right" collapsible="offcanvas" variant="inset">
+            <Sidebar 
+                side="right" 
+                collapsible="offcanvas" 
+                variant="inset"
+                className="[&[data-side=right]]:right-0 [&[data-side=right]]:left-auto"
+            >
                 <SidebarHeader>
                     <SidebarMenu>
                         <SidebarMenuItem>
