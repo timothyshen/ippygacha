@@ -9,7 +9,7 @@ import {
 } from "@/lib/contract";
 import { useState, useEffect } from "react";
 import { parseEther, formatEther } from "viem";
-import { GachaItemWithCount } from "@/components/inventory/inventory";
+import { GachaItemWithCount } from "@/features/inventory/components/inventory";
 
 // Unified marketplace listing interface
 export interface MarketplaceListing {

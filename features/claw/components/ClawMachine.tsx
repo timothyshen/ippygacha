@@ -16,7 +16,7 @@ import { useKeyboardControls } from "@/hooks/claw/use-keyboard-controls"
 import { useGameState } from "@/hooks/claw/use-game-state"
 import { useCablePhysics } from "@/hooks/claw/use-cable-physics"
 import type { Prize, DroppedPrize as DroppedPrizeType } from "@/types/game"
-import { Header } from "@/components/Header"
+import { Header } from "@/features/shared/components/Header"
 import { ClawControlPanel } from "./ClawControlPanel"
 import { useRouter } from "next/navigation"
 

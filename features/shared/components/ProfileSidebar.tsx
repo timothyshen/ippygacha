@@ -11,11 +11,11 @@ import {
     SidebarMenuItem,
     SidebarProvider,
     SidebarRail,
-} from "./ui/sidebar"
+} from "@/components/ui/sidebar"
 
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
-import { Badge } from "./ui/badge"
-import { Button } from "./ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 // Menu items.
 const items = [

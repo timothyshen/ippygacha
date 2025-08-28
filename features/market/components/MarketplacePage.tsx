@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +9,7 @@ import { Activity, Store, Loader2, AlertCircle, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { MarketplaceBuyingModal } from "./MarketplaceBuyingModal"
-import { Header } from "@/components/Header"
+import { Header } from "@/features/shared/components/Header"
 import { MarketStats } from "./MarketStats"
 import { useActiveListings } from "@/hooks/marketplace/useMarketplace"
 
@@ -154,7 +154,7 @@ const MOCK_ACTIVITY: TradeActivity[] = [
   },
 ]
 
-export const MarketplacePage = () => {
+export const MarketplacePage = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState("")
   const [trades] = useState<TradeActivity[]>(MOCK_ACTIVITY)
   const [selectedCollection, setSelectedCollection] = useState("all")
@@ -399,4 +399,6 @@ export const MarketplacePage = () => {
       </div>
     </div>
   )
-}
+})
+
+MarketplacePage.displayName = "MarketplacePage"

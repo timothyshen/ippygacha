@@ -2,7 +2,7 @@ import { Coins, Sparkles, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { GachaItem } from "@/types/gacha"
 import { COLLECTION_COLORS, VERSION_STYLES } from "@/types/gacha"
-import { MachineIdleEffects } from "@/components/enhanced-animations"
+import { MachineIdleEffects } from "@/features/shared/components/enhanced-animations"
 
 interface MachineBodyProps {
     isSpinning: boolean

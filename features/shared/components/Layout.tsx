@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
-import LoginButton from "@/components/LoginButton"
-import { ProfileSidebar } from "@/components/ProfileSidebar"
+import LoginButton from "@/features/shared/components/LoginButton"
+import { ProfileSidebar } from "@/features/shared/components/ProfileSidebar"
 
 interface LayoutProps {
   children: React.ReactNode

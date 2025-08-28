@@ -4,17 +4,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Package, Bookmark } from "lucide-react"
 
 // Import all the new components
-import { InventoryStats } from "@/components/inventory/InventoryStats"
-import { BlindBoxTab } from "@/components/inventory/BlindBoxTab"
-import { CollectionFilters } from "@/components/inventory/CollectionFilters"
-import { GridView } from "@/components/inventory/GridView"
-import Footer from "@/components/Footer"
+import { InventoryStats } from "./InventoryStats"
+import { BlindBoxTab } from "./BlindBoxTab"
+import { CollectionFilters } from "./CollectionFilters"
+import { GridView } from "./GridView"
+import Footer from "@/features/shared/components/Footer"
 
 
 // Import custom hooks
 import { useInventoryLogic } from "@/hooks/gacha/useInventoryLogic"
 import { useInventoryFilters } from "@/hooks/gacha/useInventoryFilters"
-import { Header } from "@/components/Header"
+import { Header } from "@/features/shared/components/Header"
 
 export default function Inventory() {
     // Use the enhanced inventory logic hook

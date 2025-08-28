@@ -1,5 +1,5 @@
-import { GachaMachine } from "@/components/gacha/GachaMachine"
-import { NotificationContainer } from "@/components/notification-system"
+import { GachaMachine } from "@/features/gacha/components/GachaMachine"
+import { NotificationContainer } from "@/features/shared/components/notification-system"
 import { NotificationProvider } from "@/contexts/notification-context"
 
 export default function Home() {

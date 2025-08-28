@@ -1,14 +1,15 @@
 "use client"
+import React from "react"
 import { useGachaMachine } from "@/hooks/gacha/useGachaMachine"
 import { useInventory } from "@/hooks/gacha/useInventory"
-import { Header } from "@/components/Header"
+import { Header } from "@/features/shared/components/Header"
 import { MachineBody } from "./MachineBody"
 import { ControlPanel } from "./ControlPanel"
 import { BlindBoxModal } from "./BlindBoxModal"
 import { AnimationEffects } from "./AnimationEffects"
 import { useRouter } from "next/navigation"
 
-export const GachaMachine = () => {
+export const GachaMachine = React.memo(() => {
     const {
         coins,
         isSpinning,
@@ -72,4 +73,6 @@ export const GachaMachine = () => {
             />
         </div>
     )
-} 
+})
+
+GachaMachine.displayName = "GachaMachine" 

@@ -1,6 +1,6 @@
-import { Layout } from "@/components/Layout"
-import { HeroHeader } from "@/components/HeroHeader"
-import { GamesGrid } from "@/components/GamesGrid"
+import { Layout } from "@/features/shared/components/Layout"
+import { HeroHeader } from "@/features/shared/components/HeroHeader"
+import { GamesGrid } from "@/features/shared/components/GamesGrid"
 
 export default function HomePage() {
   return (
