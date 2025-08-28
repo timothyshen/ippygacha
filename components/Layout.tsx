@@ -42,7 +42,7 @@ export function Layout({ children }: LayoutProps) {
         `}</style>
 
         {/* Login Button - Fixed Position */}
-        <div className="fixed top-4 right-4 z-20 flex gap-3 items-center h-10">
+        <div className={`fixed top-4 right-4 flex gap-3 items-center h-10 ${sidebarOpen ? 'z-10' : 'z-20'}`}>
           <LoginButton setSidebarOpen={setSidebarOpen} />
         </div>
 

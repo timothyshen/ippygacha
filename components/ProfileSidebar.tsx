@@ -1,4 +1,6 @@
-import { Calendar, Home, Inbox, Link, Search, Settings } from "lucide-react"
+"use client"
+import { Calendar, Home, Inbox, Link, Search, Settings, X } from "lucide-react"
+import { useEffect, useState } from "react"
 import {
     Sidebar,
     SidebarContent,
@@ -13,6 +15,7 @@ import {
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 // Menu items.
 const items = [
@@ -50,6 +53,16 @@ export function ProfileSidebar({
     isOpen: boolean
     onOpenChange: (open: boolean) => void
 }) {
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        return null
+    }
+
     return (
         <SidebarProvider
             defaultOpen={false}
@@ -61,15 +74,25 @@ export function ProfileSidebar({
                     "--header-height": "3rem",
                 } as React.CSSProperties
             }
-            className={`${!isOpen ? 'hidden' : ''}`}
+            className="z-50"
         >
-            <Sidebar 
-                side="right" 
-                collapsible="offcanvas" 
-                variant="inset"
+            <Sidebar
+                side="right"
+                collapsible="offcanvas"
                 className="[&[data-side=right]]:right-0 [&[data-side=right]]:left-auto"
             >
                 <SidebarHeader>
+                    <div className="flex justify-between items-center p-2">
+                        <h2 className="text-lg font-semibold">Profile</h2>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onOpenChange(false)}
+                            className="h-8 w-8"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton
@@ -101,7 +124,7 @@ export function ProfileSidebar({
                     </SidebarMenu>
                 </SidebarHeader>
 
-                <SidebarContent className="p-2">
+                <SidebarContent>
                     <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="flex flex-col gap-3 border rounded-lg p-4 bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 shadow-sm">
                             <div className="flex items-center gap-2">
@@ -195,7 +218,7 @@ export function ProfileSidebar({
                             <SidebarMenuButton>
                                 <Link href="/">
                                     <Home />
-                                    <span>Home</span>
+                                    <span className="text-sm text-black">Home</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
