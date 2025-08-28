@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { GameStats } from "./game-stats"
-import { PrizesWon } from "./prizes-won"
-import { MobileControls } from "./mobile-controls"
-import { ControlsInfo } from "./controls-info"
-import { PrizeBall } from "./prize-ball"
-import { CableSystem } from "./cable-system"
-import { ClawMechanism } from "./claw-mechanism"
-import { GameResultModal } from "./game-result-modal"
+import { GameStats } from "./GameStats"
+import { PrizesWon } from "./PrizesWon"
+import { MobileControls } from "./MobileControls"
+import { ControlsInfo } from "./ControlsInfo"
+import { PrizeBall } from "./PrizeBall"
+import { CableSystem } from "./CableSystem"
+import { ClawMechanism } from "./ClawMechanism"
+import { GameResultModal } from "./GameResultModal"
 import { useMobileDetection } from "@/hooks/claw/use-mobile-detection"
 import { useButtonInteractions } from "@/hooks/claw/use-button-interactions"
 import { useKeyboardControls } from "@/hooks/claw/use-keyboard-controls"
@@ -17,7 +17,7 @@ import { useGameState } from "@/hooks/claw/use-game-state"
 import { useCablePhysics } from "@/hooks/claw/use-cable-physics"
 import type { Prize, DroppedPrize as DroppedPrizeType } from "@/types/game"
 import { Header } from "@/components/Header"
-import { ControlPanel } from "@/components/gacha/ControlPanel"
+import { ClawControlPanel } from "./ClawControlPanel"
 import { useRouter } from "next/navigation"
 
 
@@ -965,7 +965,7 @@ export default function ClawMachine() {
           </div>
         )}
       </div>
-      <ControlPanel
+      <ClawControlPanel
         coins={coins}
         onAddCoin={addCoins}
         onOpenInventory={() => router.push("/inventory")}

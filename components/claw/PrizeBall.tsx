@@ -1,4 +1,4 @@
-import type { Prize } from "../types/game"
+import type { Prize } from "@/types/game"
 
 interface PrizeBallProps {
   prize: Prize

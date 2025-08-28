@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { Prize } from "../types/game"
+import type { Prize } from "@/types/game"
 
 interface PrizesWonProps {
   collectedPrizes: Prize[] // Changed from 'prizes'
