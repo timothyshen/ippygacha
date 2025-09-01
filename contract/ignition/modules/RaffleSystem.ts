@@ -8,13 +8,13 @@ const RaffleSystemModule = buildModule("RaffleSystem", (m) => {
   // For testnet/mainnet, you'll need to get the actual Pyth Entropy contract address
   const entropyAddress = m.getParameter(
     "entropyAddress",
-    "0x0000000000000000000000000000000000000000"
+    "0x5744Cbf430D99456a0A8771208b674F27f8EF0Fb"
   );
 
   // Deploy OnChainRaffle with native IP token support
   const onChainRaffle = m.contract("OnChainRaffle", [
     entropyAddress, // Pyth Entropy contract address
-    ippyNFT, // IPPY NFT contract address for prizes
+    "0x6CC14824Ea2918f5De5C2f75A9Da968ad4BD6344",
   ]);
 
   return {

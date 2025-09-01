@@ -1,12 +1,16 @@
-import { blindBoxABI } from "./blindboxABI";
-import { ippyIPABI } from "./ippyIPABI";
-import { readClient, useWalletClient } from "./client";
 import {
   blindBoxAddress,
   ippyNFTAddress,
   nftMarketplaceAddress,
+  raffleAddress,
 } from "./contractAddress";
+
+import { readClient, useWalletClient } from "./client";
+
+import { blindBoxABI } from "./blindboxABI";
+import { ippyIPABI } from "./ippyIPABI";
 import { NFTMarketplaceABI } from "./nftMarketplaceABI";
+import { onchainRaffleABI } from "./onchainRaffleABI";
 
 export {
   blindBoxABI,
@@ -17,4 +21,6 @@ export {
   ippyNFTAddress,
   NFTMarketplaceABI,
   nftMarketplaceAddress,
+  raffleAddress,
+  onchainRaffleABI,
 };
