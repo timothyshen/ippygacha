@@ -9,6 +9,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./interface/IOnChainRaffle.sol";
+import "./lib/RandomNumberLib.sol";
+import "./lib/PrizeLib.sol";
+import "./lib/ArrayLib.sol";
 
 contract OnChainRaffle is
     IEntropyConsumer,
@@ -25,8 +28,8 @@ contract OnChainRaffle is
 
     // Raffle Configuration
     uint256 public constant ENTRY_PRICE = 0.1 ether; // 0.1 native IP tokens
-    uint256 public constant GUARANTEED_RETURN_RATE = 1005; // 100.5% (1005/1000)
-    uint256 public constant RATE_DENOMINATOR = 1000;
+    uint256 private constant GUARANTEED_RETURN_RATE = 1005; // 100.5% (1005/1000)
+    uint256 private constant RATE_DENOMINATOR = 1000;
 
     // Raffle State
     uint256 public totalEntries;
@@ -34,10 +37,10 @@ contract OnChainRaffle is
     bool public raffleActive = true;
 
     // Prize Tiers (probability out of 10,000)
-    uint256 public constant TIER_2_PROBABILITY = 100; // 1% chance for common prizes
-    uint256 public constant TIER_3_PROBABILITY = 50; // 0.5% chance for rare prizes
-    uint256 public constant TIER_4_PROBABILITY = 10; // 0.1% chance for legendary prizes
-    uint256 public constant TIER_5_PROBABILITY = 1; // 0.01% chance for hidden jackpot
+    uint256 private constant TIER_2_PROB = 100; // 1% chance for common prizes
+    uint256 private constant TIER_3_PROB = 50; // 0.5% chance for rare prizes
+    uint256 private constant TIER_4_PROB = 10; // 0.1% chance for legendary prizes
+    uint256 private constant TIER_5_PROB = 1; // 0.01% chance for hidden jackpot
 
     // Pending random requests
     struct PendingDraw {
@@ -62,7 +65,6 @@ contract OnChainRaffle is
 
     // Prize pool reserves (native IP tokens)
     uint256 public ipTokenReserve;
-    uint256 public houseContribution;
 
     // NFT management
     mapping(uint256 => bool) public availableNFTs; // tokenId => available for prizes
@@ -121,13 +123,7 @@ contract OnChainRaffle is
         uint256[] storage array,
         uint256 tokenId
     ) internal {
-        for (uint256 i = 0; i < array.length; i++) {
-            if (array[i] == tokenId) {
-                array[i] = array[array.length - 1];
-                array.pop();
-                break;
-            }
-        }
+        ArrayLib.removeByValue(array, tokenId);
     }
 
     function pause() external onlyOwner {
@@ -186,10 +182,9 @@ contract OnChainRaffle is
         uint256 guaranteedReturn = (ipTokensSpent * GUARANTEED_RETURN_RATE) /
             RATE_DENOMINATOR;
 
-        // Immediately distribute guaranteed return
         require(
             address(this).balance >= guaranteedReturn,
-            "Insufficient contract balance for guaranteed return"
+            "Insufficient contract balance for guaranteed return - contract needs funding"
         );
         payable(user).transfer(guaranteedReturn);
 
@@ -250,39 +245,37 @@ contract OnChainRaffle is
 
         pendingDraw.processed = true;
 
-        // Process potential bonus prizes
-        _processBonusPrizes(
-            pendingDraw.user,
-            pendingDraw.entryAmount,
-            randomNumber
-        );
+        // Process prizes
+        _processPrizes(pendingDraw.user, pendingDraw.entryAmount, randomNumber);
     }
 
-    function _processBonusPrizes(
+    function _processPrizes(
         address user,
         uint256 entryAmount,
         bytes32 randomNumber
     ) internal {
-        // Use different bytes of the same random number for each tier
-        uint256 tier2Random = uint256(randomNumber) % 10000;
-        uint256 tier3Random = uint256(randomNumber >> 16) % 10000;
-        uint256 tier4Random = uint256(randomNumber >> 32) % 10000;
-        uint256 tier5Random = uint256(randomNumber >> 48) % 10000;
+        // Use library to extract tier random numbers
+        (
+            uint256 tier2Random,
+            uint256 tier3Random,
+            uint256 tier4Random,
+            uint256 tier5Random
+        ) = RandomNumberLib.extractTierRandomNumbers(randomNumber);
 
-        // Direct comparisons - no extra random generation
-        if (tier2Random < TIER_2_PROBABILITY) {
+        // Check each tier using library functions
+        if (RandomNumberLib.isTierWon(tier2Random, TIER_2_PROB)) {
             _createBonusPrize(user, entryAmount, 2, randomNumber, 100);
         }
 
-        if (tier3Random < TIER_3_PROBABILITY) {
+        if (RandomNumberLib.isTierWon(tier3Random, TIER_3_PROB)) {
             _createBonusPrize(user, entryAmount, 3, randomNumber, 200);
         }
 
-        if (tier4Random < TIER_4_PROBABILITY) {
+        if (RandomNumberLib.isTierWon(tier4Random, TIER_4_PROB)) {
             _createBonusPrize(user, entryAmount, 4, randomNumber, 300);
         }
 
-        if (tier5Random < TIER_5_PROBABILITY) {
+        if (RandomNumberLib.isTierWon(tier5Random, TIER_5_PROB)) {
             _createBonusPrize(user, entryAmount, 5, randomNumber, 400);
         }
     }
@@ -297,31 +290,23 @@ contract OnChainRaffle is
         uint256 ipBonus = 0;
         uint256 nftTokenId = 0;
 
-        // Use different parts of the random number for bonus calculations
-        uint256 bonusRandom = uint256(randomNumber >> (64 + offset)) % 100;
+        // Use library to calculate bonus percentage
+        ipBonus = PrizeLib.getTierBonusPercentage(tier, randomNumber, offset);
 
-        // Determine prize based on tier
-        if (tier == 2) {
-            // Common: 10-50% bonus
-            ipBonus = (bonusRandom % 40) + 10;
-        } else if (tier == 3) {
-            // Rare: 100-200% bonus
-            ipBonus = (bonusRandom % 100) + 100;
-        } else if (tier == 4) {
-            // Legendary: 500-1000% bonus
-            ipBonus = (bonusRandom % 500) + 500;
-        } else if (tier == 5) {
-            // Hidden Jackpot: 5000-10000% bonus + NFT
-            ipBonus = (bonusRandom % 5000) + 5000;
-            nftTokenId = _selectRandomNFT(
+        // Check if tier includes NFT
+        if (PrizeLib.tierIncludesNFT(tier)) {
+            nftTokenId = RandomNumberLib.selectRandomNFT(
                 commonNFTPool,
                 randomNumber,
                 offset + 100
             );
         }
 
-        // Calculate IP token bonus based on entry amount
-        uint256 ipTokenBonus = (entryAmount * ipBonus) / 100;
+        // Calculate IP token bonus using library
+        uint256 ipTokenBonus = PrizeLib.calculateBonusAmount(
+            entryAmount,
+            ipBonus
+        );
 
         // Immediately distribute the prize
         bool distributed = _distributePrizeImmediately(

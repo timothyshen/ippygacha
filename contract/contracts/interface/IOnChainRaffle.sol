@@ -86,19 +86,4 @@ interface IOnChainRaffle {
     function getNFTPoolInfo() external view returns (uint256 commonPoolSize);
 
     function getNFTPoolTokenIds() external view returns (uint256[] memory);
-
-    // Constants
-    function ENTRY_PRICE() external view returns (uint256);
-
-    function GUARANTEED_RETURN_RATE() external view returns (uint256);
-
-    function RATE_DENOMINATOR() external view returns (uint256);
-
-    function TIER_2_PROBABILITY() external view returns (uint256);
-
-    function TIER_3_PROBABILITY() external view returns (uint256);
-
-    function TIER_4_PROBABILITY() external view returns (uint256);
-
-    function TIER_5_PROBABILITY() external view returns (uint256);
 }
