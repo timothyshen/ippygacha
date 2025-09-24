@@ -9,8 +9,13 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
     // Address of the BlindBox contract that can mint NFTs
     address public blindBoxContract;
 
-    // NFT type constants (matching BlindBox contract)
+    // NFT type constants (matching BlindBox contract)    uint256 private constant TOTAL_RANGE = 1_000_000; // 1 million for precise probability
+    uint256 private constant TOTAL_RANGE = 1_000_000; // 1 million for precise probability
+
     uint256 public constant HIDDEN_NFT_ID = 0; // Ultra rare hidden NFT
+    uint256 private constant HIDDEN_NFT_THRESHOLD = 1; // 1 in 10,000,000 = 0.0001%
+    uint256 private constant STANDARD_NFT_RANGE =
+        (TOTAL_RANGE - HIDDEN_NFT_THRESHOLD) / 6; // ~1,666,666 each
     uint256 public constant STANDARD_NFT_1 = 1; // Nature Theme
     uint256 public constant STANDARD_NFT_2 = 2; // Tech Theme
     uint256 public constant STANDARD_NFT_3 = 3; // Art Theme
@@ -80,21 +85,36 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
     /**
      * @dev Mint function called by BlindBox contract - now properly stores NFT type
      */
-    function mint(address to, uint256 nftType) external onlyBlindBox {
-        require(nftType <= STANDARD_NFT_6, "Invalid NFT type");
+    function mint(
+        address to,
+        uint256 randomIndex
+    ) external onlyBlindBox returns (uint256) {
+        uint256 selectedNFTId;
+        bool isHidden = false;
 
+        if (randomIndex < uint256(HIDDEN_NFT_THRESHOLD)) {
+            selectedNFTId = HIDDEN_NFT_ID;
+            isHidden = true;
+        } else {
+            // Distribute among 6 standard NFTs
+            uint256 standardIndex = (randomIndex -
+                uint256(HIDDEN_NFT_THRESHOLD)) / uint256(STANDARD_NFT_RANGE);
+            if (standardIndex >= 6) standardIndex = 5; // Ensure within bounds
+            selectedNFTId = STANDARD_NFT_1 + standardIndex;
+        }
         uint256 newTokenId = totalSupply(); // Use sequential token IDs
         _mint(to, newTokenId);
 
         // Store the actual NFT type for this token (this is the key improvement)
-        tokenIdToNFTType[newTokenId] = nftType;
+        tokenIdToNFTType[newTokenId] = selectedNFTId;
 
         // Track statistics
-        nftTypeCounts[nftType]++;
-        userNFTTypeCounts[to][nftType]++;
+        nftTypeCounts[selectedNFTId]++;
+        userNFTTypeCounts[to][selectedNFTId]++;
 
-        bool isHidden = nftType == HIDDEN_NFT_ID;
-        emit NFTMinted(to, newTokenId, nftType, isHidden);
+        isHidden = selectedNFTId == HIDDEN_NFT_ID;
+        emit NFTMinted(to, newTokenId, selectedNFTId, isHidden);
+        return selectedNFTId;
     }
 
     /**
