@@ -43,7 +43,7 @@ export const GachaMachine = React.memo(() => {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
-            <Header name="Gacha Zone" subtitle="Premium Collection Experience" isDark={true} isMarketplace={true} />
+            <Header name="Gacha Zone" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
             <MachineBody
                 isSpinning={isSpinning}
                 showBlindBoxModal={showBlindBoxModal}

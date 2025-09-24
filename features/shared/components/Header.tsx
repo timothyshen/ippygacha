@@ -72,7 +72,7 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
                         onClick={handleMarketplaceClick}
                     >
                         <Home className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">{isMarketplace ? "Inventory" : "Marketplace"}</span>
+                        <span className="hidden sm:inline">{isMarketplace ? "Marketplace" : "Inventory"}</span>
                     </Button>
                     <Button
                         variant="outline"
