@@ -85,17 +85,17 @@ const ClawMachine = React.memo(() => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
-      <Header 
-        name="Claw Machine" 
-        subtitle="Premium Collection Experience" 
-        isDark={false} 
-        isMarketplace={true} 
+      <Header
+        name="Claw Machine"
+        subtitle="Premium Collection Experience"
+        isDark={false}
+        isMarketplace={true}
       />
 
       <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Game Stats */}
         <div className="lg:col-span-1">
-          <GameStats 
+          <GameStats
             coins={coins}
             score={score}
             gameActive={gameActive}
