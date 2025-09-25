@@ -122,13 +122,13 @@ export const BlindBoxModal = ({
                 )}
 
                 <div className="space-y-4">
-                    <Button
+                    {!isRevealed && <Button
                         onClick={onReveal}
                         size="lg"
                         className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                         🎁 Open Box
-                    </Button>
+                    </Button>}
 
                     {/* Enhanced Share Button */}
                     <Button

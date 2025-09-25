@@ -17,6 +17,7 @@ export const GachaMachine = React.memo(() => {
         showBlindBoxModal,
         blinkingCell,
         animationPhase,
+        isItemRevealed,
         showResults,
         leverPulled,
         showCelebration,
@@ -67,7 +68,7 @@ export const GachaMachine = React.memo(() => {
                     onClose={closeModalAndReset}
                     item={currentBlindBox!}
                     onReveal={handleRevealBlindBox}
-                    isRevealed={showResults}
+                    isRevealed={isItemRevealed}
                 />
                 <AnimationEffects
                     showCelebration={showCelebration}
