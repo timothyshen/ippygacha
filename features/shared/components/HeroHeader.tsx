@@ -18,8 +18,8 @@ export function HeroHeader() {
                 Ippy Playground
               </h1>
               <div className="relative">
-                <Sparkles className="w-8 h-8 md:w-12 md:h-12 text-pink-400 drop-shadow-lg animate-pulse" />
-                <div className="absolute inset-0 w-8 h-8 md:w-12 md:h-12 text-pink-400 animate-ping opacity-20">
+                <Sparkles className="w-8 h-8 md:w-12 md:h-12 text-yellow-400 drop-shadow-lg animate-pulse" />
+                <div className="absolute inset-0 w-8 h-8 md:w-12 md:h-12 text-yellow-400 animate-ping opacity-20">
                   <Sparkles className="w-full h-full" />
                 </div>
               </div>
