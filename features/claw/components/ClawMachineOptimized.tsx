@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { GameStats } from "./GameStats"
 import { PrizesWon } from "./PrizesWon"
 import { MobileControls } from "./MobileControls"
@@ -21,6 +21,12 @@ const CLAW_EFFECTIVE_WIDTH_FOR_GRAB = 30
 const CLAW_GRAB_POSITION_Y_OFFSET = 35
 
 const ClawMachine = React.memo(() => {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const {
     clawX,
     clawY,
@@ -49,6 +55,11 @@ const ClawMachine = React.memo(() => {
 
   const router = useRouter()
   const isMobile = useMobileDetection()
+
+  // Prevent SSR issues by only rendering on client
+  if (!isMounted) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
 
   // Use our optimized animation hook
   const { clawShaking, clawOpenness, clawTipY } = useClawAnimation({

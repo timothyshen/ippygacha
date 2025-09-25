@@ -28,7 +28,7 @@ export const useInventoryLogic = () => {
       // Create a unique key using name and version for proper grouping
       const key = `${item.name}-${item.version}`;
 
-      if (itemMap.has(key)) {
+      if (itemMap?.has(key)) {
         itemMap.get(key)!.count += 1;
       } else {
         itemMap.set(key, { ...item, count: 1 });
