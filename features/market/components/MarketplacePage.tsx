@@ -12,6 +12,7 @@ import { MarketplaceBuyingModal } from "./MarketplaceBuyingModal"
 import { Header } from "@/features/shared/components/Header"
 import { MarketStats } from "./MarketStats"
 import { useActiveListings } from "@/hooks/marketplace/useMarketplace"
+import Footer from "@/features/shared/components/Footer"
 
 // Update the GachaItem interface to include version
 interface GachaItem {
@@ -228,7 +229,7 @@ export const MarketplacePage = React.memo(() => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={true} />
+        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={false} />
 
         {/* Market Stats */}
         <MarketStats totalListings={marketplaceListings.length} hiddenItems={0} blindBoxes={0} averagePrice={0} featuredItems={0} limitedItems={0} />
@@ -396,6 +397,7 @@ export const MarketplacePage = React.memo(() => {
             </Card>
           </TabsContent>
         </Tabs>
+        <Footer />
       </div>
     </div>
   )

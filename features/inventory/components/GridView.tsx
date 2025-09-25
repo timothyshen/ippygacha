@@ -11,7 +11,7 @@ import {
     getItemDisplayStyle,
     hasRichMetadata,
 } from "@/types/gacha"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { metadataMapping } from "@/lib/metadataMapping"
 import { ListingModal } from "./ListingModal"
@@ -32,6 +32,8 @@ interface ImageCache {
 export function GridView({ items, inventoryLength }: GridViewProps) {
     const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
     const [imageCache, setImageCache] = useState<ImageCache>({});
+    const [isLoading, setIsLoading] = useState(true);
+    const imageCacheRef = useRef<ImageCache>({});
 
     const fetchIPFSJson = async (tokenURI: string) => {
         try {
@@ -61,31 +63,52 @@ export function GridView({ items, inventoryLength }: GridViewProps) {
     // Fetch images for all items when they change
     useEffect(() => {
         const fetchAllImages = async () => {
+            // Reset loading state when items change
+            setIsLoading(true);
+
+            // If no items, don't show loading
+            if (items.length === 0) {
+                setIsLoading(false);
+                return;
+            }
+
             const promises = items.map(async (item) => {
                 // Skip if already cached or no tokenURI
-                if (!item.tokenURI || imageCache[item.id]) {
+                if (!item.tokenURI || imageCacheRef.current[item.id]) {
                     return;
                 }
 
                 // Set loading state
-                setImageCache(prev => ({
-                    ...prev,
-                    [item.id]: { imageUrl: null, loading: true, error: false }
-                }));
+                setImageCache(prev => {
+                    const newCache = {
+                        ...prev,
+                        [item.id]: { imageUrl: null, loading: true, error: false }
+                    };
+                    imageCacheRef.current = newCache;
+                    return newCache;
+                });
 
                 try {
                     const imageUrl = await fetchIPFSJson(item.tokenURI);
 
-                    setImageCache(prev => ({
-                        ...prev,
-                        [item.id]: { imageUrl, loading: false, error: !imageUrl }
-                    }));
+                    setImageCache(prev => {
+                        const newCache = {
+                            ...prev,
+                            [item.id]: { imageUrl, loading: false, error: !imageUrl }
+                        };
+                        imageCacheRef.current = newCache;
+                        return newCache;
+                    });
                 } catch (error) {
                     console.error(`Error fetching image for ${item.name}:`, error);
-                    setImageCache(prev => ({
-                        ...prev,
-                        [item.id]: { imageUrl: null, loading: false, error: true }
-                    }));
+                    setImageCache(prev => {
+                        const newCache = {
+                            ...prev,
+                            [item.id]: { imageUrl: null, loading: false, error: true }
+                        };
+                        imageCacheRef.current = newCache;
+                        return newCache;
+                    });
                 }
             });
 
@@ -93,9 +116,46 @@ export function GridView({ items, inventoryLength }: GridViewProps) {
         };
 
         fetchAllImages();
-    }, [items, imageCache]);
+    }, [items]);
+
+    // Check loading status whenever imageCache changes
+    useEffect(() => {
+        if (items.length === 0) {
+            setIsLoading(false);
+            return;
+        }
+
+        const allItemsProcessed = items.every(item => {
+            const cacheEntry = imageCache[item.id];
+            return cacheEntry && !cacheEntry.loading;
+        });
+
+        if (allItemsProcessed) {
+            setIsLoading(false);
+        }
+    }, [imageCache, items]);
 
 
+
+    // Show loading state while images are being fetched
+    if (isLoading) {
+        return (
+            <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
+                <CardContent className="p-16 text-center">
+                    <div className="flex flex-col items-center space-y-4">
+                        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+                        <h3 className="text-xl font-semibold text-slate-700">Loading Collection</h3>
+                        <p className="text-slate-500">
+                            Fetching your NFT images...
+                        </p>
+                        <div className="w-48 bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
 
     if (items.length === 0) {
         return (

@@ -1,12 +1,11 @@
-import { Crown, Package, Store, User, Home } from "lucide-react"
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Crown, Package, Store, User, Home, LogOut, PackageOpen, ShoppingBag } from "lucide-react"
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Filter } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Trophy, Clock, Zap } from "lucide-react"
-import { Link } from "lucide-react"
-import { PackageOpen, ShoppingBag } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { usePrivy } from "@privy-io/react-auth"
@@ -66,17 +65,11 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
                 </div>
 
                 <div className="flex gap-1 sm:gap-2 md:gap-3 lg:gap-4 items-center flex-shrink-0">
-                    {user && (
-                        <div
-                            className="px-2 py-1 sm:px-3 sm:py-2 border-1 border-slate-200 rounded-md text-xs sm:text-sm bg-white/80 backdrop-blur-sm font-medium transition-all duration-300 shadow-lg cursor-pointer hover:bg-white/90"
-                        >
-                            {sliceAddress(user?.wallet?.address || "")}
-                        </div>
-                    )}
+
                     <Button
                         variant="outline"
                         size="sm"
-                        className="bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm sm:size-default lg:size-lg"
+                        className="text-xs sm:text-sm md:text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm sm:size-default lg:size-lg"
                         onClick={handleMarketplaceClick}
                     >
                         <Home className="w-4 h-4 sm:mr-2" />
@@ -85,25 +78,22 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
                     <Button
                         variant="outline"
                         size="sm"
-                        className="bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm sm:size-default lg:size-lg"
+                        className="text-xs sm:text-sm md:text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm sm:size-default lg:size-lg"
                         onClick={handleHomeClick}
                     >
                         <Home className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">Home</span>
                     </Button>
-                    <Button
+                    {!user && (<Button
                         variant="outline"
                         size="sm"
-                        className={cn(
-                            "text-xs sm:text-sm md:text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl",
-                            "bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm",
-                            "sm:size-default lg:size-lg"
-                        )}
-                        onClick={user ? logout : login}
+                        className="text-xs sm:text-sm md:text-base font-medium transition-all duration-300 shadow-lg hover:shadow-xl bg-white/80 border-slate-200 text-slate-700 hover:bg-white backdrop-blur-sm sm:size-default lg:size-lg"
+                        onClick={login}
                     >
                         <User className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">{user ? "Logout" : "Login"}</span>
+                        <span className="hidden sm:inline">Login</span>
                     </Button>
+                    )}
                     {user && (
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" className="sm:hidden" aria-label="Open filters">
@@ -127,7 +117,9 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
                                                 <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-xl">PL</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1">
-                                                <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">PlayerOne</div>
+                                                <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">
+                                                    {sliceAddress(user?.wallet?.address || "")}
+                                                </div>
                                                 <div className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                                                     <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-medium">
                                                         Level 42
@@ -135,6 +127,12 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
                                                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                                                     <span>Active</span>
                                                 </div>
+                                            </div>
+                                            <div>
+                                                <Button variant="outline" size="sm" onClick={logout}>
+                                                    <LogOut className="h-4 w-4" />
+                                                    <span className="hidden sm:inline">Logout</span>
+                                                </Button>
                                             </div>
                                         </SheetTitle>
                                     </SheetHeader>

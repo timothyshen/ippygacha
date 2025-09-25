@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { ViewMode, SortBy } from "@/features/inventory/components/inventory";
+import { SortBy } from "@/features/inventory/components/inventory";
 
 export const useInventoryFilters = () => {
   // UI filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCollection, setSelectedCollection] = useState<string>("all");
   const [selectedVersion, setSelectedVersion] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortBy, setSortBy] = useState<SortBy>("recent");
 
   // Modal state
@@ -36,8 +35,6 @@ export const useInventoryFilters = () => {
     setSelectedCollection,
     selectedVersion,
     setSelectedVersion,
-    viewMode,
-    setViewMode,
     sortBy,
     setSortBy,
 

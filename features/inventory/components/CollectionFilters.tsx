@@ -3,9 +3,9 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, Bookmark, Grid3X3, List } from "lucide-react"
+import { Search, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { ViewMode, SortBy } from "./inventory"
+import { SortBy } from "./inventory"
 
 interface CollectionFiltersProps {
     searchTerm: string
@@ -16,8 +16,6 @@ interface CollectionFiltersProps {
     onVersionChange: (value: string) => void
     sortBy: SortBy
     onSortChange: (value: SortBy) => void
-    viewMode: ViewMode
-    onViewModeChange: (value: ViewMode) => void
 }
 
 export function CollectionFilters({
@@ -29,41 +27,10 @@ export function CollectionFilters({
     onVersionChange,
     sortBy,
     onSortChange,
-    viewMode,
-    onViewModeChange,
 }: CollectionFiltersProps) {
 
     return (
         <div className="space-y-6">
-            {/* View Mode Toggle */}
-            <div className="flex items-center justify-between">
-                <div className="flex bg-white/80 backdrop-blur-sm rounded-lg border border-slate-200 shadow-lg">
-                    {/* <Button
-                        variant={viewMode === "collection" ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => {
-                            onViewModeChange("collection")
-                            handleButtonClick()
-                        }}
-                        className="rounded-r-none"
-                        title="Collection View"
-                    >
-                        <Bookmark className="w-4 h-4" />
-                    </Button> */}
-                    <Button
-                        variant={viewMode === "grid" ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => {
-                            onViewModeChange("grid")
-                        }}
-                        className="rounded-none"
-                        title="Grid View"
-                    >
-                        <Grid3X3 className="w-4 h-4" />
-                    </Button>
-                </div>
-            </div>
-
             {/* Enhanced Filters */}
             <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
                 <CardContent className="p-6">
