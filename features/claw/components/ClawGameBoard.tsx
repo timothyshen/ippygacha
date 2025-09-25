@@ -10,11 +10,11 @@ interface ClawGameBoardProps {
   clawY: number
   isGrabbing: boolean
   grabPhase: string
-  grabbedPrizeId: string | null
+  grabbedPrizeId: number | null
   clawShaking: boolean
   prizeWillFall: boolean
   clawOpenness: number
-  touchingPrize: string | null
+  touchingPrize: number | null
   prizesInMachine: Prize[]
   clawTipY: number
   effectiveClawWidth: number
@@ -41,24 +41,27 @@ export const ClawGameBoard = React.memo(({
       <CardContent className="p-0 relative">
         {/* Game Area Background */}
         <div className="relative w-full h-96 bg-gradient-to-b from-transparent via-blue-800/50 to-blue-900 overflow-hidden">
-          
+
           {/* Glass Effect Overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20 pointer-events-none" />
-          
+
           {/* Cable System */}
-          <CableSystem clawX={clawX} clawY={clawY} />
-          
+          <CableSystem
+            clawY={clawY}
+            cableSwayAngle={0}
+            grabbedPrizeId={grabbedPrizeId}
+            prizeWillFall={prizeWillFall}
+            cableStabilizing={false}
+          />
+
           {/* Claw Mechanism */}
           <ClawMechanism
-            clawX={clawX}
-            clawY={clawY}
-            isGrabbing={isGrabbing}
-            grabPhase={grabPhase}
-            grabbedPrizeId={grabbedPrizeId}
-            clawShaking={clawShaking}
             clawOpenness={clawOpenness}
+            cableSwayAngle={0}
+            grabbedPrizeId={grabbedPrizeId}
+            prizeWillFall={prizeWillFall}
           />
-          
+
           {/* Prize Balls */}
           {prizesInMachine.map((prize) => (
             <PrizeBall
@@ -70,11 +73,9 @@ export const ClawGameBoard = React.memo(({
               touchingPrize={touchingPrize === prize.id}
               clawX={clawX}
               clawY={clawTipY}
-              effectiveClawWidth={effectiveClawWidth}
-              grabPositionYOffset={grabPositionYOffset}
             />
           ))}
-          
+
           {/* Drop Zone Indicator */}
           <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-20 h-8 border-2 border-dashed border-yellow-400/50 bg-yellow-400/10 rounded flex items-center justify-center">
             <span className="text-yellow-400 text-xs font-bold">DROP</span>

@@ -48,20 +48,15 @@ const ClawMachine = React.memo(() => {
     setIsGrabbing,
     startGame,
     addCoins,
+    resetGame,
     dismissResult,
-    // Simplified grab function with fewer dependencies
     grabPrize: originalGrabPrize
   } = useGameState()
 
   const router = useRouter()
   const isMobile = useMobileDetection()
 
-  // Prevent SSR issues by only rendering on client
-  if (!isMounted) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
-  }
-
-  // Use our optimized animation hook
+  // Use our optimized animation hook - MUST be called before any conditional returns
   const { clawShaking, clawOpenness, clawTipY } = useClawAnimation({
     clawX,
     clawY,
@@ -76,7 +71,7 @@ const ClawMachine = React.memo(() => {
     originalGrabPrize()
   }, [gameActive, isGrabbing, originalGrabPrize])
 
-  // Use our optimized controls hook
+  // Use our optimized controls hook - MUST be called before any conditional returns
   const { controls, handleKeyDown } = useClawControls({
     clawX,
     clawY,
@@ -88,11 +83,18 @@ const ClawMachine = React.memo(() => {
     grabPrize
   })
 
-  // Keyboard event listener
+  // Keyboard event listener - MUST be called before any conditional returns
   useEffect(() => {
+    if (!isMounted) return
+
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  }, [handleKeyDown, isMounted])
+
+  // Prevent SSR issues by only rendering on client
+  if (!isMounted) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
@@ -112,6 +114,7 @@ const ClawMachine = React.memo(() => {
             gameActive={gameActive}
             onStartGame={startGame}
             onAddCoins={addCoins}
+            onResetGame={resetGame}
           />
         </div>
 
@@ -136,15 +139,18 @@ const ClawMachine = React.memo(() => {
           {/* Controls */}
           {isMobile ? (
             <MobileControls
+              gameActive={gameActive}
+              isGrabbing={isGrabbing}
+              pressedButtons={new Set()}
+              heldButtons={new Set()}
+              onStartHolding={() => { }}
+              onStopHolding={() => { }}
               onMoveLeft={controls.moveLeft}
               onMoveRight={controls.moveRight}
-              onMoveUp={controls.moveUp}
-              onMoveDown={controls.moveDown}
               onGrab={controls.grab}
-              disabled={!gameActive || isGrabbing}
             />
           ) : (
-            <ControlsInfo />
+            <ControlsInfo isMobile={isMobile} heldKeys={new Set()} />
           )}
         </div>
 
@@ -170,7 +176,9 @@ const ClawMachine = React.memo(() => {
       {showResult && gameResult && (
         <GameResultModal
           result={gameResult}
-          onClose={dismissResult}
+          coins={coins}
+          onPlayAgain={startGame}
+          onDismiss={dismissResult}
         />
       )}
     </div>

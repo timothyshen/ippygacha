@@ -42,35 +42,37 @@ export const GachaMachine = React.memo(() => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
-            <Header name="Gacha Zone" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
-            <MachineBody
-                isSpinning={isSpinning}
-                showBlindBoxModal={showBlindBoxModal}
-                blinkingCell={blinkingCell}
-                animationPhase={animationPhase}
-                showResults={showResults}
-                currentResults={currentResults}
-                leverPulled={leverPulled}
-                coins={coins}
-                onPullGacha={handlePullGacha}
-            />
-            <ControlPanel
-                coins={coins}
-                onAddCoin={addCoin}
-                onOpenInventory={() => router.push("/inventory")}
-                onOpenMarket={() => router.push("/market")}
-            />
-            <BlindBoxModal
-                isOpen={showBlindBoxModal}
-                onClose={closeModalAndReset}
-                item={currentBlindBox!}
-                onReveal={handleRevealBlindBox}
-                isRevealed={showResults}
-            />
-            <AnimationEffects
-                showCelebration={showCelebration}
-            />
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+            <div className="max-w-7xl mx-auto">
+                <Header name="Gacha Zone" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
+                <MachineBody
+                    isSpinning={isSpinning}
+                    showBlindBoxModal={showBlindBoxModal}
+                    blinkingCell={blinkingCell}
+                    animationPhase={animationPhase}
+                    showResults={showResults}
+                    currentResults={currentResults}
+                    leverPulled={leverPulled}
+                    coins={coins}
+                    onPullGacha={handlePullGacha}
+                />
+                <ControlPanel
+                    coins={coins}
+                    onAddCoin={addCoin}
+                    onOpenInventory={() => router.push("/inventory")}
+                    onOpenMarket={() => router.push("/market")}
+                />
+                <BlindBoxModal
+                    isOpen={showBlindBoxModal}
+                    onClose={closeModalAndReset}
+                    item={currentBlindBox!}
+                    onReveal={handleRevealBlindBox}
+                    isRevealed={showResults}
+                />
+                <AnimationEffects
+                    showCelebration={showCelebration}
+                />
+            </div>
         </div>
     )
 })

@@ -18,7 +18,7 @@ export function ControlsInfo({ isMobile, heldKeys }: ControlsInfoProps) {
               <div className="bg-white/10 p-2 rounded text-center my-1 ">
                 <kbd className="bg-white/20 px-2 py-1 rounded">←</kbd>
                 <p>Move Left</p>
-                {(heldKeys.has("a") || heldKeys.has("arrowleft")) && (
+                {(heldKeys?.has("a") || heldKeys?.has("arrowleft")) && (
                   <div className="mt-1 flex justify-center">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   </div>
@@ -27,7 +27,7 @@ export function ControlsInfo({ isMobile, heldKeys }: ControlsInfoProps) {
               <div className="bg-white/10 p-2 rounded text-center leading-8 my-1">
                 <kbd className="bg-white/20 px-2 py-1 rounded">→</kbd>
                 <p>Move Right</p>
-                {(heldKeys.has("d") || heldKeys.has("arrowright")) && (
+                {(heldKeys?.has("d") || heldKeys?.has("arrowright")) && (
                   <div className="mt-1 flex justify-center">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   </div>

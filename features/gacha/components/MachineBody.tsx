@@ -28,7 +28,7 @@ export const MachineBody = ({
     onPullGacha,
 }: MachineBodyProps) => {
     return (
-        <div className="relative flex flex-col items-center">
+        <div className="relative flex flex-col items-center pt-20 sm:pt-24 md:pt-28">
             {/* Machine Stand/Base */}
             <div
                 className={cn(
