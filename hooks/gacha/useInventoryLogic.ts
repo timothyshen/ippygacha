@@ -60,13 +60,15 @@ export const useInventoryLogic = () => {
     [collectionStats]
   );
 
-  // Get items for a specific collection
-  const getCollectionItems = (collection: string): GachaItemWithCount[] => {
-    return getUniqueItems.filter((item) => item.collection === collection);
-  };
+  // Get items for a specific collection with memoization
+  const getCollectionItems = useMemo(() => {
+    return (collection: string): GachaItemWithCount[] => {
+      return getUniqueItems.filter((item) => item.collection === collection);
+    };
+  }, [getUniqueItems]);
 
-  // Get NFT type breakdown from contract stats
-  const getNFTTypeBreakdown = () => {
+  // Get NFT type breakdown from contract stats with memoization
+  const getNFTTypeBreakdown = useMemo(() => {
     if (stats?.nftTypeCounts) {
       return Object.entries(stats.nftTypeCounts).map(([typeName, count]) => ({
         typeName,
@@ -74,7 +76,7 @@ export const useInventoryLogic = () => {
       }));
     }
     return [];
-  };
+  }, [stats?.nftTypeCounts]);
 
   // Reveal function using useBlindBox hook
   const revealItemFromInventory = async (index: number) => {
@@ -93,39 +95,41 @@ export const useInventoryLogic = () => {
     }
   };
 
-  // Filter and sort function
-  const getFilteredItems = (
-    searchTerm: string,
-    selectedCollection: string,
-    selectedVersion: string,
-    sortBy: "name" | "collection" | "count" | "recent"
-  ): GachaItemWithCount[] => {
-    return getUniqueItems
-      .filter((item) => {
-        const matchesSearch = item.name
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-        const matchesCollection =
-          selectedCollection === "all" ||
-          item.collection === selectedCollection;
-        const matchesVersion =
-          selectedVersion === "all" || item.version === selectedVersion;
-        return matchesSearch && matchesCollection && matchesVersion;
-      })
-      .sort((a, b) => {
-        switch (sortBy) {
-          case "name":
-            return a.name.localeCompare(b.name);
-          case "collection":
-            return a.collection.localeCompare(b.collection);
-          case "count":
-            return b.count - a.count;
-          case "recent":
-          default:
-            return 0;
-        }
-      });
-  };
+  // Filter and sort function with memoization for better performance
+  const getFilteredItems = useMemo(() => {
+    return (
+      searchTerm: string,
+      selectedCollection: string,
+      selectedVersion: string,
+      sortBy: "name" | "collection" | "count" | "recent"
+    ): GachaItemWithCount[] => {
+      return getUniqueItems
+        .filter((item) => {
+          const matchesSearch = item.name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase());
+          const matchesCollection =
+            selectedCollection === "all" ||
+            item.collection === selectedCollection;
+          const matchesVersion =
+            selectedVersion === "all" || item.version === selectedVersion;
+          return matchesSearch && matchesCollection && matchesVersion;
+        })
+        .sort((a, b) => {
+          switch (sortBy) {
+            case "name":
+              return a.name.localeCompare(b.name);
+            case "collection":
+              return a.collection.localeCompare(b.collection);
+            case "count":
+              return b.count - a.count;
+            case "recent":
+            default:
+              return 0;
+          }
+        });
+    };
+  }, [getUniqueItems]);
 
   return {
     // From useInventory hook

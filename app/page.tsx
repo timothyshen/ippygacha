@@ -32,6 +32,7 @@ import {
     Play,
 } from "lucide-react";
 import { Header } from "@/features/shared/components/Header";
+import Image from "next/image";
 
 // Real games from the original GamesGrid
 const ALL_GAMES = [
@@ -357,10 +358,12 @@ export default function HomePage() {
                             >
                                 <div className="relative">
                                     <AspectRatio ratio={16 / 9}>
-                                        <img
+                                        <Image
                                             src={game.cover}
                                             alt={game.name}
-                                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                            fill
+                                            className="object-cover transition-transform duration-300 group-hover:scale-110"
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                                         <div className="absolute left-3 right-3 bottom-3 flex items-center justify-between">

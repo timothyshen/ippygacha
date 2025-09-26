@@ -1,3 +1,4 @@
+import React from "react"
 import { Gift, Package, Coins } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ interface ControlPanelProps {
     onOpenMarket: () => void
 }
 
-export const ControlPanel = ({
+export const ControlPanel = React.memo(({
     coins,
     onAddCoin,
     onOpenInventory,
@@ -65,4 +66,6 @@ export const ControlPanel = ({
             </div>
         </div>
     )
-} 
+})
+
+ControlPanel.displayName = "ControlPanel" 

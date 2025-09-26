@@ -27,8 +27,32 @@ const nextConfig = {
         port: "",
         pathname: "/ipfs/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
+  // Enable experimental features for better performance
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
+  // Bundle analyzer can be enabled by setting ANALYZE=true
+  ...(process.env.ANALYZE === 'true' && {
+    webpack: (config: any) => {
+      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'static',
+          openAnalyzer: false,
+          reportFilename: 'bundle-analyzer-report.html'
+        })
+      );
+      return config;
+    },
+  }),
 };
 
 export default nextConfig;

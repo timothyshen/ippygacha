@@ -1,3 +1,4 @@
+import React from "react"
 import { Crown, Package, Store, User, Home, LogOut, PackageOpen, ShoppingBag } from "lucide-react"
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -13,7 +14,7 @@ import { useRouter } from "next/navigation"
 
 
 
-export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string, subtitle: string, isDark: boolean, isMarketplace: boolean }) => {
+export const Header = React.memo(({ name, subtitle, isDark, isMarketplace }: { name: string, subtitle: string, isDark: boolean, isMarketplace: boolean }) => {
     const { login, logout, user } = usePrivy()
     const router = useRouter()
 
@@ -244,4 +245,6 @@ export const Header = ({ name, subtitle, isDark, isMarketplace }: { name: string
             </div>
         </div>
     )
-} 
+})
+
+Header.displayName = "Header" 
