@@ -34,11 +34,12 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
     uint256 public maxTotalSupply = 1000000; // Max total boxes
     uint256 public currentSupply = 0; // Current minted boxes
 
-    // VRF state management
+    // VRF state management - optimized storage packing
     struct PendingBoxOpen {
-        address user;
-        uint256 amount;
-        bool processed;
+        address user;        // 20 bytes
+        uint128 amount;      // 16 bytes (sufficient for box amounts)
+        bool processed;      // 1 byte
+        // Total: 37 bytes = 2 storage slots instead of 3
     }
     mapping(uint64 => PendingBoxOpen) public pendingBoxOpens;
 
@@ -77,7 +78,9 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
 
         // Mint boxes to buyer (using token ID 1 for all blind boxes)
         _mint(msg.sender, 1, amount, "");
-        currentSupply += amount;
+        unchecked {
+            currentSupply += amount; // Safe: already checked supply limit above
+        }
 
         emit BlindBoxPurchased(msg.sender, amount, boxPrice * amount);
 
@@ -104,7 +107,7 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
         // Store pending request
         pendingBoxOpens[sequenceNumber] = PendingBoxOpen({
             user: msg.sender,
-            amount: amount,
+            amount: uint128(amount), // Safe cast - box amounts won't exceed uint128
             processed: false
         });
 
@@ -137,7 +140,8 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
         pending.processed = true;
 
         // Open multiple boxes with one random seed
-        for (uint256 i = 0; i < pending.amount; i++) {
+        uint128 amount = pending.amount; // Cache to avoid repeated storage reads
+        for (uint256 i; i < amount;) { // Remove ++i from condition for unchecked increment
             // Derive unique random number for each box
             bytes32 boxRandomNumber = keccak256(
                 abi.encodePacked(randomNumber, i)
@@ -147,6 +151,10 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
             ippyNFT.mint(pending.user, randomIndex);
             emit BlindBoxOpened(pending.user, 1, randomIndex, false);
             emit NFTMinted(pending.user, randomIndex);
+
+            unchecked {
+                ++i; // Safe: loop bound is known and reasonable
+            }
         }
     }
 
