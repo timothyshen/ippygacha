@@ -31,7 +31,7 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
 
     // Pricing and limits
     uint256 public boxPrice = 0.01 ether; // Price per blind box
-    uint256 public maxTotalSupply = 1000000; // Max total boxes
+    uint256 public maxTotalSupply = 777_777; // Max total boxes
     uint256 public currentSupply = 0; // Current minted boxes
 
     // VRF state management - optimized storage packing
