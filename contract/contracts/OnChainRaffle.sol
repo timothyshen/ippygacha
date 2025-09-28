@@ -9,9 +9,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./interface/IOnChainRaffle.sol";
-import "./lib/RandomNumberLib.sol";
-import "./lib/PrizeLib.sol";
-import "./lib/ArrayLib.sol";
 
 contract OnChainRaffle is
     IEntropyConsumer,
@@ -23,24 +20,35 @@ contract OnChainRaffle is
 {
     IEntropyV2 public entropy;
 
-    // NFT contract for prize distribution
-    IERC721 public nftContract;
 
     // Raffle Configuration
     uint256 public constant ENTRY_PRICE = 0.1 ether; // 0.1 native IP tokens
-    uint256 private constant GUARANTEED_RETURN_RATE = 1005; // 100.5% (1005/1000)
+    uint32  public constant ONE_MILLION = 1_000_000;
+    uint32  public rebatePPM = 5_000; // 0.5%
+
+    uint256 private constant GUARANTEED_RETURN_RATE = 1000; // 100% (1000/1000)
     uint256 private constant RATE_DENOMINATOR = 1000;
+    uint32 private constant BONUS_EV_PPM = 5_000; // target ~0.5% EV of entry
+    uint32 private constant PPM_DENOM = 1_000_000; // 1e6 (parts per million)
+
+    // reserves and accounting
+    uint256 public prizeReserve;    // ETH kept for tier payouts
+    uint256 public rebateReserve;   // ETH kept for the 0.5% cash-back
+    uint256 public vrfReserve;      // ETH set aside for VRF fees
+    uint256 public totalEntries;
 
     // Raffle State
-    uint256 public totalEntries;
     uint256 public totalIPTokensCollected;
     bool public raffleActive = true;
 
-    // Prize Tiers (probability out of 10,000)
-    uint256 private constant TIER_2_PROB = 100; // 1% chance for common prizes
-    uint256 private constant TIER_3_PROB = 50; // 0.5% chance for rare prizes
-    uint256 private constant TIER_4_PROB = 10; // 0.1% chance for legendary prizes
-    uint256 private constant TIER_5_PROB = 1; // 0.01% chance for hidden jackpot
+    // ---- Single-outcome bonus configuration (Design A) ----
+    struct BonusOutcome {
+        uint32 payoutPpm; // payout as ppm of entry (e.g., 40_000 = 4%)
+        uint32 probPpm;   // probability in ppm (e.g., 7_000 = 0.7%)
+        bool givesNFT;    // whether this outcome also awards an NFT
+    }
+    BonusOutcome[] public bonus;
+    uint32 public bonusProbSumPpm; // must be <= PPM_DENOM
 
     // Pending random requests
     struct PendingDraw {
@@ -56,7 +64,9 @@ contract OnChainRaffle is
     mapping(uint64 => PendingDraw) public pendingDraws; // sequenceNumber => pending draw
 
     // NFT Pool storage
-    uint256[] public commonNFTPool; // Token IDs for common tier prizes
+    // Parallel arrays to support multiple NFT contracts without changing external ABI too much
+    uint256[] public commonNFTPool;            // tokenIds
+    address[] public commonNFTPoolContracts;   // nft contract addresses (same length as commonNFTPool)
 
     mapping(address => uint256[]) public userEntryIndices; // user => entry indices
     mapping(address => uint256[]) public userPrizeIndices; // user => prize indices
@@ -67,12 +77,23 @@ contract OnChainRaffle is
     uint256 public ipTokenReserve;
 
     // NFT management
-    mapping(uint256 => bool) public availableNFTs; // tokenId => available for prizes
+    mapping(address => mapping(uint256 => bool)) public availableNFTs; // nft => tokenId => available
 
-    constructor(address _entropy, address _nftContract) Ownable(msg.sender) {
+    constructor(address _entropy, address /*_nftContract*/) Ownable(msg.sender) {
         entropy = IEntropyV2(_entropy);
-        nftContract = IERC721(_nftContract);
         raffleActive = true;
+        _initBonusDistribution();
+    }
+
+    function _initBonusDistribution() internal {
+        delete bonus;
+        bonusProbSumPpm = 0;
+        // Example distribution: ~0.536% EV of entry (close to 0.5%), adjust as desired.
+        bonus.push(BonusOutcome({ payoutPpm: 400_000, probPpm: 7_000, givesNFT: false }));    // 0.7% chance of +40%
+        bonus.push(BonusOutcome({ payoutPpm: 1_200_000, probPpm: 1_800, givesNFT: true }));   // 0.18% chance of +120% + NFT
+        bonus.push(BonusOutcome({ payoutPpm: 2_000_000, probPpm: 200, givesNFT: false }));    // 0.02% chance of +200%
+        bonusProbSumPpm = 7_000 + 1_800 + 200; // 0.9% any-bonus probability
+        // NOTE: Expected value ≈ 0.536% of entry; tune (payoutPpm, probPpm) to hit 0.5% exactly if needed.
     }
 
     // Admin Functions
@@ -88,42 +109,49 @@ contract OnChainRaffle is
     }
 
     // NFT Management Functions
-    function depositNFTs(uint256[] calldata tokenIds) external onlyOwner {
+    function depositNFTs(address nft, uint256[] calldata tokenIds) external onlyOwner {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
-            require(!availableNFTs[tokenId], "NFT already deposited");
+            require(!availableNFTs[nft][tokenId], "NFT already deposited");
 
             // Transfer NFT to contract
-            nftContract.transferFrom(msg.sender, address(this), tokenId);
-            availableNFTs[tokenId] = true;
+            IERC721(nft).transferFrom(msg.sender, address(this), tokenId);
+            availableNFTs[nft][tokenId] = true;
 
             // Add to appropriate tier pool
             commonNFTPool.push(tokenId);
+            commonNFTPoolContracts.push(nft);
 
             emit NFTDeposited(tokenId);
         }
     }
 
-    function withdrawNFT(uint256 tokenId, address to) external onlyOwner {
-        require(availableNFTs[tokenId], "NFT not available");
+    function withdrawNFT(address nft, uint256 tokenId, address to) external onlyOwner {
+        require(availableNFTs[nft][tokenId], "NFT not available");
         require(to != address(0), "Invalid address");
 
-        availableNFTs[tokenId] = false;
-        _removeFromPools(tokenId);
-        nftContract.transferFrom(address(this), to, tokenId);
+        availableNFTs[nft][tokenId] = false;
+        _removeFromPools(nft, tokenId);
+        IERC721(nft).transferFrom(address(this), to, tokenId);
 
         emit NFTWithdrawn(tokenId, to);
     }
 
-    function _removeFromPools(uint256 tokenId) internal {
-        _removeFromArray(commonNFTPool, tokenId);
-    }
-
-    function _removeFromArray(
-        uint256[] storage array,
-        uint256 tokenId
-    ) internal {
-        ArrayLib.removeByValue(array, tokenId);
+    function _removeFromPools(address nft, uint256 tokenId) internal {
+        // Remove from both arrays
+        uint256 len = commonNFTPool.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (commonNFTPool[i] == tokenId && commonNFTPoolContracts[i] == nft) {
+                // swap with last and pop both arrays
+                if (i != len - 1) {
+                    commonNFTPool[i] = commonNFTPool[len - 1];
+                    commonNFTPoolContracts[i] = commonNFTPoolContracts[len - 1];
+                }
+                commonNFTPool.pop();
+                commonNFTPoolContracts.pop();
+                break;
+            }
+        }
     }
 
     function pause() external onlyOwner {
@@ -234,6 +262,7 @@ contract OnChainRaffle is
         _requestDraw(user, entryAmount);
     }
 
+    /// @notice This function is internal and guarded by IEntropyConsumer base; no external access checks needed here.
     function entropyCallback(
         uint64 sequenceNumber,
         address provider,
@@ -245,122 +274,89 @@ contract OnChainRaffle is
 
         pendingDraw.processed = true;
 
-        // Process prizes
-        _processPrizes(pendingDraw.user, pendingDraw.entryAmount, randomNumber);
+        // Process bonus based on single-outcome bonus distribution
+        _processBonus(pendingDraw.user, pendingDraw.entryAmount, randomNumber);
     }
 
-    function _processPrizes(
+    function _processBonus(
         address user,
         uint256 entryAmount,
-        bytes32 randomNumber
+        bytes32 randomWord
     ) internal {
-        // Use library to extract tier random numbers
-        (
-            uint256 tier2Random,
-            uint256 tier3Random,
-            uint256 tier4Random,
-            uint256 tier5Random
-        ) = RandomNumberLib.extractTierRandomNumbers(randomNumber);
+        if (bonus.length == 0 || bonusProbSumPpm == 0) return;
 
-        // Check each tier using library functions
-        if (RandomNumberLib.isTierWon(tier2Random, TIER_2_PROB)) {
-            _createBonusPrize(user, entryAmount, 2, randomNumber, 100);
-        }
+        uint256 x = uint256(randomWord) % PPM_DENOM; // [0, 1e6)
+        uint32 acc = 0;
+        for (uint i = 0; i < bonus.length; i++) {
+            acc += bonus[i].probPpm;
+            if (x < acc) {
+                uint256 payout = (entryAmount * bonus[i].payoutPpm) / PPM_DENOM;
+                uint256 nftTokenId = 0;
+                address nftAddr = address(0);
+                if (bonus[i].givesNFT) {
+                    (nftAddr, nftTokenId) = _selectRandomNFT(commonNFTPool, commonNFTPoolContracts, randomWord, 1337 + i);
+                }
 
-        if (RandomNumberLib.isTierWon(tier3Random, TIER_3_PROB)) {
-            _createBonusPrize(user, entryAmount, 3, randomNumber, 200);
-        }
+                bool distributed = _distributePrizeImmediately(user, payout, nftAddr, nftTokenId);
 
-        if (RandomNumberLib.isTierWon(tier4Random, TIER_4_PROB)) {
-            _createBonusPrize(user, entryAmount, 4, randomNumber, 300);
-        }
+                Prize memory prize = Prize({
+                    winner: user,
+                    tier: 2, // "bonus" tier
+                    ipTokenAmount: payout,
+                    nftTokenId: nftTokenId,
+                    distributed: distributed,
+                    timestamp: block.timestamp
+                });
 
-        if (RandomNumberLib.isTierWon(tier5Random, TIER_5_PROB)) {
-            _createBonusPrize(user, entryAmount, 5, randomNumber, 400);
+                uint256 prizeIndex = allPrizes.length;
+                allPrizes.push(prize);
+                userPrizeIndices[user].push(prizeIndex);
+                userTotalWinnings[user] += payout;
+
+                emit PrizeAwarded(user, prizeIndex, 2, payout, nftTokenId);
+                if (distributed) {
+                    emit PrizeDistributed(user, prizeIndex, payout, nftTokenId);
+                }
+                return; // exactly one outcome per ticket
+            }
         }
+        // If x >= bonusProbSumPpm: no bonus outcome
     }
 
-    function _createBonusPrize(
-        address user,
-        uint256 entryAmount,
-        uint8 tier,
-        bytes32 randomNumber,
-        uint256 offset
-    ) internal {
-        uint256 ipBonus = 0;
-        uint256 nftTokenId = 0;
-
-        // Use library to calculate bonus percentage
-        ipBonus = PrizeLib.getTierBonusPercentage(tier, randomNumber, offset);
-
-        // Check if tier includes NFT
-        if (PrizeLib.tierIncludesNFT(tier)) {
-            nftTokenId = RandomNumberLib.selectRandomNFT(
-                commonNFTPool,
-                randomNumber,
-                offset + 100
-            );
-        }
-
-        // Calculate IP token bonus using library
-        uint256 ipTokenBonus = PrizeLib.calculateBonusAmount(
-            entryAmount,
-            ipBonus
-        );
-
-        // Immediately distribute the prize
-        bool distributed = _distributePrizeImmediately(
-            user,
-            ipTokenBonus,
-            nftTokenId
-        );
-
-        Prize memory prize = Prize({
-            winner: user,
-            tier: tier,
-            ipTokenAmount: ipTokenBonus,
-            nftTokenId: nftTokenId,
-            distributed: distributed,
-            timestamp: block.timestamp
-        });
-
-        uint256 prizeIndex = allPrizes.length;
-        allPrizes.push(prize);
-        userPrizeIndices[user].push(prizeIndex);
-        userTotalWinnings[user] += ipTokenBonus;
-
-        emit PrizeAwarded(user, prizeIndex, tier, ipTokenBonus, nftTokenId);
-
-        if (distributed) {
-            emit PrizeDistributed(user, prizeIndex, ipTokenBonus, nftTokenId);
+    function _maxBonusPpm() internal view returns (uint32 m) {
+        for (uint i = 0; i < bonus.length; i++) {
+            if (bonus[i].payoutPpm > m) m = bonus[i].payoutPpm;
         }
     }
 
     function _selectRandomNFT(
-        uint256[] storage nftArray,
+        uint256[] storage tokenArray,
+        address[] storage nftArrayAddrs,
         bytes32 randomNumber,
         uint256 offset
-    ) internal returns (uint256) {
-        if (nftArray.length == 0) {
-            return 0; // No NFT available
+    ) internal returns (address nft, uint256 tokenId) {
+        if (tokenArray.length == 0) {
+            return (address(0), 0); // No NFT available
         }
-
-        // Use a different part of the random number for NFT selection
-        uint256 randomIndex = uint256(randomNumber >> (128 + offset)) %
-            nftArray.length;
-        uint256 selectedTokenId = nftArray[randomIndex];
-
-        // Remove selected NFT from pool
-        nftArray[randomIndex] = nftArray[nftArray.length - 1];
-        nftArray.pop();
-
-        return selectedTokenId;
+        uint256 idx = uint256(randomNumber >> (128 + offset)) % tokenArray.length;
+        nft = nftArrayAddrs[idx];
+        tokenId = tokenArray[idx];
+        // Remove selected NFT from pool (swap with last and pop both arrays)
+        uint256 lastIdx = tokenArray.length - 1;
+        if (idx != lastIdx) {
+            tokenArray[idx] = tokenArray[lastIdx];
+            nftArrayAddrs[idx] = nftArrayAddrs[lastIdx];
+        }
+        tokenArray.pop();
+        nftArrayAddrs.pop();
+        return (nft, tokenId);
     }
 
     // Internal function to immediately distribute prizes
     function _distributePrizeImmediately(
         address user,
         uint256 ipTokenAmount,
+        address nftAddr,
         uint256 nftTokenId
     ) internal returns (bool success) {
         success = true;
@@ -376,8 +372,8 @@ contract OnChainRaffle is
         }
 
         // Try to distribute NFT
-        if (nftTokenId > 0) {
-            try nftContract.transferFrom(address(this), user, nftTokenId) {
+        if (nftAddr != address(0) && nftTokenId > 0) {
+            try IERC721(nftAddr).transferFrom(address(this), user, nftTokenId) {
                 // NFT transfer successful
             } catch {
                 // Mark as failed if NFT transfer fails
@@ -402,8 +398,8 @@ contract OnChainRaffle is
     {
         return (
             raffleActive,
-            totalEntriesCount,
-            totalIPTokensCollectedAmount,
+            totalEntries,
+            totalIPTokensCollected,
             address(this).balance,
             commonNFTPool.length
         );
@@ -440,12 +436,22 @@ contract OnChainRaffle is
         return commonNFTPool.length;
     }
 
+    // Returns tokenIds. To get their contract addresses, use commonNFTPoolContracts (same indices)
     function getNFTPoolTokenIds()
         external
         view
         returns (uint256[] memory tokenIds)
     {
+        // Note: contract addresses are in commonNFTPoolContracts with the same indices.
         return commonNFTPool;
+    }
+
+    function getNFTPoolDetails()
+        external
+        view
+    returns (address[] memory nftAddrs, uint256[] memory tokenIds)
+    {
+        return (commonNFTPoolContracts, commonNFTPool);
     }
 
     // This method is required by the IEntropyConsumer interface.
