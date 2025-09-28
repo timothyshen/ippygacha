@@ -446,14 +446,6 @@ contract OnChainRaffle is
         return commonNFTPool;
     }
 
-    function getNFTPoolDetails()
-        external
-        view
-    returns (address[] memory nftAddrs, uint256[] memory tokenIds)
-    {
-        return (commonNFTPoolContracts, commonNFTPool);
-    }
-
     // This method is required by the IEntropyConsumer interface.
     function getEntropy() internal view override returns (address) {
         return address(entropy);

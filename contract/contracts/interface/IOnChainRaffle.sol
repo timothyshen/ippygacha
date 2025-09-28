@@ -48,9 +48,9 @@ interface IOnChainRaffle {
     function enterRaffle() external payable;
 
     // Admin Functions
-    function depositNFTs(uint256[] calldata tokenIds) external;
+    function depositNFTs(address nft, uint256[] calldata tokenIds) external;
 
-    function withdrawNFT(uint256 tokenId, address to) external;
+    function withdrawNFT(address nft, uint256 tokenId, address to) external;
 
     function emergencyWithdraw() external;
 
