@@ -6,8 +6,8 @@ import "@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "./lib/MetadataLibBlindBox.sol";
 
 interface IIPPYNFT {
     function mint(address to, uint256 tokenId) external;
@@ -23,22 +23,18 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
     string public symbol = "IPPY_BOX";
 
     // NFT IDs for the 7 different NFTs
-    uint256 private constant TOTAL_RANGE = 1_000_000; // 1 million for precise probability
-
-    // Embedded SVG for blind box (no external files needed)
-    string private constant BLIND_BOX_SVG =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="188" height="188" viewBox="0 0 188 188" fill="none"><circle cx="94" cy="94" r="90.5" fill="url(#paint0_linear_66_5)" stroke="#634048" stroke-width="7"/><defs><linearGradient id="paint0_linear_66_5" x1="152.465" y1="2.35098e-06" x2="35.5353" y2="188" gradientUnits="userSpaceOnUse"><stop stop-color="#FEF3EF"/><stop offset="1" stop-color="#F0C0CA"/></linearGradient></defs></svg>';
+    uint256 private constant TOTAL_RANGE = 1000000; // 1 million for precise probability
 
     // Pricing and limits
     uint256 public boxPrice = 0.01 ether; // Price per blind box
-    uint256 public maxTotalSupply = 777_777; // Max total boxes
+    uint256 public maxTotalSupply = 666666; // Max total boxes
     uint256 public currentSupply = 0; // Current minted boxes
 
     // VRF state management - optimized storage packing
     struct PendingBoxOpen {
-        address user;        // 20 bytes
-        uint128 amount;      // 16 bytes (sufficient for box amounts)
-        bool processed;      // 1 byte
+        address user; // 20 bytes
+        uint128 amount; // 16 bytes (sufficient for box amounts)
+        bool processed; // 1 byte
         // Total: 37 bytes = 2 storage slots instead of 3
     }
     mapping(uint64 => PendingBoxOpen) public pendingBoxOpens;
@@ -141,7 +137,8 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
 
         // Open multiple boxes with one random seed
         uint128 amount = pending.amount; // Cache to avoid repeated storage reads
-        for (uint256 i; i < amount;) { // Remove ++i from condition for unchecked increment
+        for (uint256 i; i < amount; ) {
+            // Remove ++i from condition for unchecked increment
             // Derive unique random number for each box
             bytes32 boxRandomNumber = keccak256(
                 abi.encodePacked(randomNumber, i)
@@ -216,47 +213,7 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
      * @dev Override uri function to generate metadata on-chain
      */
     function uri(uint256 tokenId) public pure override returns (string memory) {
-        if (tokenId == 1) {
-            // Generate blind box metadata on-chain
-            return _generateBlindBoxMetadata();
-        }
-        return "";
-    }
-
-    /**
-     * @dev Generate blind box metadata with embedded SVG
-     */
-    function _generateBlindBoxMetadata() private pure returns (string memory) {
-        string memory svg = BLIND_BOX_SVG;
-        string memory svgBase64 = Base64.encode(bytes(svg));
-        string memory imageURI = string(
-            abi.encodePacked("data:image/svg+xml;base64,", svgBase64)
-        );
-
-        string memory json = string(
-            abi.encodePacked(
-                '{"name": "IPPY Mystery Box",',
-                '"description": "A mysterious blind box containing one of 7 possible IPPY NFTs. Each box holds the potential for incredible discoveries!",',
-                '"image": "',
-                imageURI,
-                '",',
-                '"background_color": "F0C0CA",',
-                '"attributes": [',
-                '{"trait_type": "Type", "value": "Mystery Box"},',
-                '{"trait_type": "Status", "value": "Unopened"},',
-                '{"trait_type": "Hidden NFT Chance", "value": "0.0001%"},',
-                '{"trait_type": "Standard NFT Chance", "value": "99.9999%"}',
-                "]}"
-            )
-        );
-
-        return
-            string(
-                abi.encodePacked(
-                    "data:application/json;base64,",
-                    Base64.encode(bytes(json))
-                )
-            );
+        return MetadataLibBlindBox.tokenURI(tokenId);
     }
 
     function getIPPYNFT() external view returns (address) {

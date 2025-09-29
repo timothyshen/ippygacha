@@ -5,19 +5,18 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./lib/MetadataLib.sol";
+import "./lib/MetadataLibIPPYNFT.sol";
 
 contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
     // Address of the BlindBox contract that can mint NFTs
     address public blindBoxContract;
 
     // NFT type constants (matching BlindBox contract)
-    uint256 private constant TOTAL_RANGE = 777_777; // 1 million for precise probability
+    uint256 private constant TOTAL_RANGE = 666666; // 1 million for precise probability
 
     uint256 public constant HIDDEN_NFT_ID = 0; // Ultra rare hidden NFT
-    uint256 private constant HIDDEN_NFT_THRESHOLD = 1000; // 1 in 1,000,000 = 0.0001%
-    // uint256 private constant STANDARD_NFT_RANGE = 166666; // Pre-calculated: (1000000 - 1) / 6
-    uint256 private constant STANDARD_NFT_RANGE = 111111; 
+    uint256 private constant HIDDEN_NFT_THRESHOLD = 6666; // 1 in 1,000,000 = 0.0001%
+    uint256 private constant STANDARD_NFT_RANGE = 110000; // Pre-calculated: (1000000 - 1) / 6
     uint256 public constant STANDARD_NFT_1 = 1; // Nature Theme
     uint256 public constant STANDARD_NFT_2 = 2; // Tech Theme
     uint256 public constant STANDARD_NFT_3 = 3; // Art Theme
@@ -51,7 +50,10 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
      * @dev Set the BlindBox contract address (only owner can call)
      */
     function setBlindBoxContract(address _blindBoxContract) external onlyOwner {
-        require(_blindBoxContract != address(0), "BlindBox contract cannot be zero address");
+        require(
+            _blindBoxContract != address(0),
+            "BlindBox contract cannot be zero address"
+        );
         blindBoxContract = _blindBoxContract;
     }
 
@@ -65,14 +67,14 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         uint256 selectedNFTId;
         bool isHidden = false;
 
-        if (randomIndex < uint256(STANDARD_NFT_RANGE)) {
+        if (randomIndex < uint256(HIDDEN_NFT_THRESHOLD)) {
             selectedNFTId = HIDDEN_NFT_ID;
             isHidden = true;
         } else {
             // Distribute among 6 standard NFTs
             uint256 adjustedIndex;
             unchecked {
-                adjustedIndex = randomIndex - STANDARD_NFT_RANGE; // Safe: randomIndex >= HIDDEN_NFT_THRESHOLD
+                adjustedIndex = randomIndex - HIDDEN_NFT_THRESHOLD; // Safe: randomIndex >= HIDDEN_NFT_THRESHOLD
             }
             uint256 standardIndex = adjustedIndex / STANDARD_NFT_RANGE;
             if (standardIndex >= 6) standardIndex = 5; // Ensure within bounds
@@ -97,8 +99,6 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         return selectedNFTId;
     }
 
-  
-
     /**
      * @dev Override tokenURI to provide proper metadata URLs for different NFT types
      */
@@ -108,7 +108,7 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         _requireOwned(tokenId);
 
         uint256 nftType = tokenIdToNFTType[tokenId];
-        return MetadataLib.tokenURI(uint8(nftType), tokenId);
+        return MetadataLibIPPYNFT.tokenURI(uint8(nftType), tokenId);
     }
 
     /**
@@ -125,7 +125,7 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
     function getNFTTypeName(
         uint256 nftType
     ) external pure returns (string memory) {
-        return MetadataLib.getNFTTypeName(uint8(nftType));
+        return MetadataLibIPPYNFT.getNFTTypeName(uint8(nftType));
     }
 
     /**
@@ -149,14 +149,15 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         tokenURIs = new string[](balance);
         typeNames = new string[](balance);
 
-        for (uint256 i; i < balance; ++i) { // ++i saves gas, no initialization needed
+        for (uint256 i; i < balance; ++i) {
+            // ++i saves gas, no initialization needed
             uint256 tokenId = tokenOfOwnerByIndex(user, i);
             uint256 nftType = tokenIdToNFTType[tokenId];
 
             tokenIds[i] = tokenId;
             nftTypes[i] = nftType;
             tokenURIs[i] = tokenURI(tokenId);
-            typeNames[i] = MetadataLib.getNFTTypeName(uint8(nftType));
+            typeNames[i] = MetadataLibIPPYNFT.getNFTTypeName(uint8(nftType));
         }
 
         return (tokenIds, nftTypes, tokenURIs, typeNames);
@@ -180,10 +181,11 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         counts = new uint256[](7);
         typeNames = new string[](7);
 
-        for (uint256 i; i < 7; ++i) { // ++i saves gas, no initialization needed
+        for (uint256 i; i < 7; ++i) {
+            // ++i saves gas, no initialization needed
             types[i] = i;
             counts[i] = userNFTTypeCounts[user][i];
-            typeNames[i] = MetadataLib.getNFTTypeName(uint8(i));
+            typeNames[i] = MetadataLibIPPYNFT.getNFTTypeName(uint8(i));
         }
 
         return (types, counts, typeNames);
@@ -206,10 +208,11 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         counts = new uint256[](7);
         typeNames = new string[](7);
 
-        for (uint256 i; i < 7; ++i) { // ++i saves gas, no initialization needed
+        for (uint256 i; i < 7; ++i) {
+            // ++i saves gas, no initialization needed
             types[i] = i;
             counts[i] = nftTypeCounts[i];
-            typeNames[i] = MetadataLib.getNFTTypeName(uint8(i));
+            typeNames[i] = MetadataLibIPPYNFT.getNFTTypeName(uint8(i));
         }
 
         return (types, counts, typeNames, totalSupply());
@@ -233,7 +236,8 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         uint256[] memory tempTokenIds = new uint256[](balance);
         uint256 count = 0;
 
-        for (uint256 i; i < balance; ++i) { // ++i saves gas, no initialization needed
+        for (uint256 i; i < balance; ++i) {
+            // ++i saves gas, no initialization needed
             uint256 tokenId = tokenOfOwnerByIndex(user, i);
             if (tokenIdToNFTType[tokenId] == nftType) {
                 tempTokenIds[count] = tokenId;
@@ -243,7 +247,8 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
 
         // Create properly sized array
         tokenIds = new uint256[](count);
-        for (uint256 i; i < count; ++i) { // ++i saves gas, no initialization needed
+        for (uint256 i; i < count; ++i) {
+            // ++i saves gas, no initialization needed
             tokenIds[i] = tempTokenIds[i];
         }
 
