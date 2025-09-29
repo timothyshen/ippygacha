@@ -2,7 +2,7 @@ import {
   blindBoxAddress,
   ippyNFTAddress,
   nftMarketplaceAddress,
-  raffleAddress,
+  onchainRaffleAddress,
 } from "./contractAddress";
 
 import { readClient, useWalletClient } from "./client";
@@ -21,6 +21,6 @@ export {
   ippyNFTAddress,
   NFTMarketplaceABI,
   nftMarketplaceAddress,
-  raffleAddress,
+  onchainRaffleAddress,
   onchainRaffleABI,
 };

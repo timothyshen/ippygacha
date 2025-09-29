@@ -2,4 +2,4 @@ export const blindBoxAddress = "0x87d3FEE94B8306702Dfdba539c0BACAC0985594B";
 export const ippyNFTAddress = "0x702097673370e14F5b8a77dB55d2799D136767Bd";
 export const nftMarketplaceAddress =
   "0x8D2729D9807E9FdD7d648BD3045c39B80aB2E5c7";
-export const raffleAddress = "0xB6D28C352607f4988eE3b8D184777E40aFfC3bBC";
+export const onchainRaffleAddress = "0xB6D28C352607f4988eE3b8D184777E40aFfC3bBC";
