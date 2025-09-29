@@ -9,6 +9,8 @@ import { RaffleHeader } from "./RaffleHeader"
 import { PrizeWheelCard } from "./PrizeWheelCard"
 import { RecentWinners } from "./RecentWinners"
 import { Header } from "@/features/shared/components/Header"
+import { usePrivy } from "@privy-io/react-auth"
+
 
 export default function RafflePage() {
   const {
@@ -37,6 +39,8 @@ export default function RafflePage() {
     handleSpinWheel,
   } = useRaffleState()
 
+  const { user } = usePrivy()
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
       <WinModal
@@ -62,7 +66,7 @@ export default function RafflePage() {
           <div className="grid lg:grid-cols-2 gap-8">
             <div className="space-y-6">
               <PrizeWheelCard
-                walletConnected={walletConnected}
+                walletAddress={user?.wallet?.address || ""}
                 canSpin={canSpin}
                 timeRemaining={timeRemaining}
                 spinnerRotation={spinnerRotation}

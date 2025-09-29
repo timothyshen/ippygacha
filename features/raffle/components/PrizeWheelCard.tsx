@@ -6,7 +6,7 @@ import { PrizeWheel } from "./PrizeWheel"
 import { PrizesInfo } from "./PrizesInfo"
 
 interface PrizeWheelCardProps {
-  walletConnected: boolean
+  walletAddress: string
   canSpin: boolean
   timeRemaining: string
   spinnerRotation: number
@@ -20,7 +20,7 @@ interface PrizeWheelCardProps {
 }
 
 export const PrizeWheelCard = React.memo(({
-  walletConnected,
+  walletAddress,
   canSpin,
   timeRemaining,
   spinnerRotation,
@@ -40,15 +40,15 @@ export const PrizeWheelCard = React.memo(({
           Prize Wheel
         </CardTitle>
         <CardDescription>
-          {!walletConnected
+          {!walletAddress
             ? "Connect your wallet to start spinning!"
             : canSpin
-            ? "Click the button to spin and win! (0.1 IP entry fee)"
-            : `Next spin available in: ${timeRemaining}`}
+              ? "Click the button to spin and win! (0.1 IP entry fee)"
+              : `Next spin available in: ${timeRemaining}`}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center space-y-6">
-        {!canSpin && walletConnected && (
+        {!canSpin && walletAddress && (
           <CooldownDisplay
             cooldownHours={cooldownHours}
             cooldownMinutes={cooldownMinutes}
@@ -61,7 +61,7 @@ export const PrizeWheelCard = React.memo(({
           spinnerRotation={spinnerRotation}
           isSpinning={isSpinning}
           isTransactionPending={isTransactionPending}
-          walletConnected={walletConnected}
+          walletConnected={true}
           canSpin={canSpin}
           cooldownHours={cooldownHours}
           cooldownMinutes={cooldownMinutes}
