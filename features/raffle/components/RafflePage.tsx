@@ -8,6 +8,7 @@ import { Confetti } from "./Confetti"
 import { RaffleHeader } from "./RaffleHeader"
 import { PrizeWheelCard } from "./PrizeWheelCard"
 import { RecentWinners } from "./RecentWinners"
+import { Header } from "@/features/shared/components/Header"
 
 export default function RafflePage() {
   const {
@@ -32,12 +33,6 @@ export default function RafflePage() {
     cooldownProgress,
     serverSyncStatus,
     contractValidation,
-
-    // Wallet state
-    walletConnected,
-    walletAddress,
-    connectWallet,
-
     // Actions
     handleSpinWheel,
   } = useRaffleState()
@@ -51,18 +46,17 @@ export default function RafflePage() {
         selectedPrizeValue={selectedPrizeValue}
       />
 
+      <Header name="Raffle" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
       <WinnerTicker recentWinners={recentWinners} />
 
       <div className="pt-12">
+
         <Confetti show={showConfetti} />
 
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <RaffleHeader
-            walletConnected={walletConnected}
-            walletAddress={walletAddress}
             serverSyncStatus={serverSyncStatus}
             contractValidation={contractValidation}
-            onConnectWallet={connectWallet}
           />
 
           <div className="grid lg:grid-cols-2 gap-8">

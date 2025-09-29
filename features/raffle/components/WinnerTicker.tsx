@@ -8,7 +8,7 @@ interface WinnerTickerProps {
 
 export const WinnerTicker = React.memo(({ recentWinners }: WinnerTickerProps) => {
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 bg-primary text-primary-foreground py-2 overflow-hidden shadow-lg">
+    <div className="sticky left-0 right-0 z-40 bg-primary text-primary-foreground py-2 overflow-hidden shadow-lg">
       <div
         className="flex whitespace-nowrap animate-scroll"
         style={{

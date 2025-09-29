@@ -48,9 +48,8 @@ export default function Inventory() {
 
     // Get filtered items based on current filters
     const filteredItems = getFilteredItems(searchTerm, selectedCollection, selectedVersion, sortBy)
-
     // Get NFT type breakdown for additional insights
-    const nftTypeBreakdown = getNFTTypeBreakdown()
+    const nftTypeBreakdown = getNFTTypeBreakdown
 
     const renderCollectionContent = () => {
         return <GridView items={filteredItems} inventoryLength={inventory.length} />
