@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { MockServerAPI, MockSmartContract, CooldownResponse, SpinResponse } from "../types"
+import { MockServerAPI, CooldownResponse, SpinResponse } from "../types"
 import { COOLDOWN_PERIOD, PRIZES } from "../constants"
 
 export const useMockServices = () => {
@@ -56,58 +56,5 @@ export const useMockServices = () => {
     },
   }), [])
 
-  const mockSmartContract: MockSmartContract = useMemo(() => ({
-    async checkCooldown(walletAddress: string): Promise<boolean> {
-      console.log("[v0] Checking smart contract cooldown for:", walletAddress)
-
-      // Simulate blockchain query delay
-      await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000))
-
-      // Mock contract cooldown logic (could be different from server)
-      const contractLastSpin = localStorage.getItem(`contract_cooldown_${walletAddress}`)
-      if (contractLastSpin) {
-        const lastSpin = Number.parseInt(contractLastSpin)
-        const timeSinceLastSpin = Date.now() - lastSpin
-
-        return timeSinceLastSpin >= COOLDOWN_PERIOD
-      }
-
-      return true
-    },
-
-    async spin(walletAddress: string): Promise<{ success: boolean; prize: string; transactionHash: string }> {
-      console.log("[v0] Executing smart contract spin for:", walletAddress)
-
-      // Simulate transaction time
-      await new Promise((resolve) => setTimeout(resolve, 2000 + Math.random() * 3000))
-
-      // Mock contract validation - reject if cooldown not met
-      const canSpin = await this.checkCooldown(walletAddress)
-      if (!canSpin) {
-        throw new Error("Contract cooldown not met")
-      }
-
-      // Record contract cooldown
-      localStorage.setItem(`contract_cooldown_${walletAddress}`, Date.now().toString())
-
-      // Simulate 90% success rate
-      if (Math.random() > 0.1) {
-        const randomPrizeIndex = Math.floor(Math.random() * PRIZES.length)
-        const prize = PRIZES[randomPrizeIndex].name
-
-        return {
-          success: true,
-          prize,
-          transactionHash: "0x" + Math.random().toString(16).substr(2, 64),
-        }
-      } else {
-        throw new Error("Transaction failed")
-      }
-    },
-  }), [])
-
-  return {
-    mockServerAPI,
-    mockSmartContract,
-  }
+  return mockServerAPI
 }

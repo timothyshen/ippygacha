@@ -19,6 +19,11 @@ export const RecentWinners = React.memo(({ recentWinners }: RecentWinnersProps) 
     return <Gift className="h-5 w-5 text-primary" />
   }
 
+
+  const sliceAddWinnerAddress = (winner: string) => {
+    return winner.slice(0, 6) + "..." + winner.slice(-4)
+  }
+
   return (
     <Card className="border-2 border-primary/20 h-fit">
       <CardHeader>
@@ -33,11 +38,10 @@ export const RecentWinners = React.memo(({ recentWinners }: RecentWinnersProps) 
           {recentWinners.map((winner, index) => (
             <div
               key={winner.id}
-              className={`p-4 rounded-lg border transition-all duration-300 ${
-                index === 0 && winner.date === "Just now"
-                  ? "bg-accent/10 border-accent animate-pulse shadow-lg"
-                  : "bg-card border-border hover:border-primary/30 hover:shadow-md"
-              }`}
+              className={`p-4 rounded-lg border transition-all duration-300 ${index === 0 && winner.date === "Just now"
+                ? "bg-accent/10 border-accent animate-pulse shadow-lg"
+                : "bg-card border-border hover:border-primary/30 hover:shadow-md"
+                }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -52,7 +56,7 @@ export const RecentWinners = React.memo(({ recentWinners }: RecentWinnersProps) 
                     )}
                   </div>
                   <div>
-                    <p className="font-semibold text-card-foreground">{winner.name}</p>
+                    <p className="font-semibold text-card-foreground">{sliceAddWinnerAddress(winner.name)}</p>
                     <p className="text-sm text-muted-foreground">Won: {winner.prize}</p>
                   </div>
                 </div>
