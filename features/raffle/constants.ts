@@ -1,76 +1,68 @@
-import { Coins, ImageIcon, Heart } from "lucide-react";
-import { Prize, Winner } from "./types";
+import { Coins, ImageIcon, Heart, Trophy } from "lucide-react";
+import { Prize } from "./types";
 
+// Contract-based prize tiers (matching OnChainRaffle.sol)
+export const PRIZE_TIERS = {
+  GUARANTEED: 1, // Guaranteed return (100% of entry)
+  BONUS: 2, // Bonus prizes (40%, 120%, 200% + potential NFT)
+} as const;
+
+// Display prizes based on contract logic
 export const PRIZES: Prize[] = [
-  { name: "1 IP", icon: Coins, color: "text-yellow-500" },
-  { name: "2 IP", icon: Coins, color: "text-green-500" },
-  { name: "0.5 IP", icon: Coins, color: "text-blue-500" },
-  { name: "5 IP", icon: Coins, color: "text-purple-500" },
-  { name: "NFT", icon: ImageIcon, color: "text-pink-500" },
-  { name: "Thank You", icon: Heart, color: "text-red-500" },
-];
-
-export const PRIZE_VALUES = [
-  "1 IP",
-  "2 IP",
-  "0.5 IP",
-  "5 IP",
-  "NFT",
-  "Thank You",
-];
-
-export const INITIAL_WINNERS: Winner[] = [
   {
-    id: 1,
-    name: "0x2F6D5c8eE17aA4F3c5B0C6E9F4b7D2E3a8E9f7B1",
-    prize: "1 IP",
-    date: "2 hours ago",
-    value: "1 IP",
+    name: "Guaranteed Return",
+    icon: Coins,
+    color: "text-yellow-500",
+    tier: PRIZE_TIERS.GUARANTEED,
+    probability: 100, // Always awarded
   },
   {
-    id: 2,
-    name: "0x67c6e6d45a01668109ad13c13a9dd0f23a7556f9",
-    prize: "NFT",
-    date: "4 hours ago",
-    value: "NFT",
+    name: "40% Bonus",
+    icon: Coins,
+    color: "text-green-500",
+    tier: PRIZE_TIERS.BONUS,
+    probability: 0.7, // 0.7% chance
   },
   {
-    id: 3,
-    name: "0x12c9a35fB39D82c51B4201E57B783Da3e1A43F8C",
-    prize: "Thank You",
-    date: "6 hours ago",
-    value: "Thank You",
+    name: "120% Bonus + NFT",
+    icon: ImageIcon,
+    color: "text-purple-500",
+    tier: PRIZE_TIERS.BONUS,
+    probability: 0.18, // 0.18% chance
   },
   {
-    id: 4,
-    name: "0x4bE7F68B7a8d2dB7C2e6aE97C4B8eE2A9dC9F3a4",
-    prize: "5 IP",
-    date: "1 day ago",
-    value: "5 IP",
-  },
-  {
-    id: 5,
-    name: "0x9E6F0D3A7A84E41A9C8e3A54Bc7D87F9F21C3A55",
-    prize: "0.5 IP",
-    date: "1 day ago",
-    value: "0.5 IP",
-  },
-  {
-    id: 6,
-    name: "0x84d7A3a617dFd7F6e6f0D2c5d22E6a9B8a7E90f2",
-    prize: "2 IP",
-    date: "2 days ago",
-    value: "2 IP",
+    name: "200% Bonus",
+    icon: Trophy,
+    color: "text-pink-500",
+    tier: PRIZE_TIERS.BONUS,
+    probability: 0.02, // 0.02% chance
   },
 ];
 
-export const COOLDOWN_PERIOD = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+// Contract constants (matching OnChainRaffle.sol)
+export const CONTRACT_CONSTANTS = {
+  ENTRY_PRICE: "0.1", // 0.1 ETH/IP tokens
+  GUARANTEED_RETURN_RATE: 1000, // 100% (1000/1000)
+  RATE_DENOMINATOR: 1000,
+  BONUS_EV_PPM: 5000, // 0.5% expected value
+  PPM_DENOM: 1000000, // 1e6 (parts per million)
+} as const;
 
+// Local cooldown period (5 minutes for demo - contract doesn't enforce cooldown)
+export const LOCAL_COOLDOWN_PERIOD = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// Prize colors for UI display
 export const PRIZE_COLORS = [
-  "bg-gradient-to-br from-yellow-400 to-yellow-600",
-  "bg-gradient-to-br from-green-400 to-green-600",
-  "bg-gradient-to-br from-blue-400 to-blue-600",
-  "bg-gradient-to-br from-purple-400 to-purple-600",
-  "bg-gradient-to-br from-pink-400 to-pink-600",
-  "bg-gradient-to-br from-red-400 to-red-600",
+  "bg-gradient-to-br from-yellow-400 to-yellow-600", // Guaranteed return
+  "bg-gradient-to-br from-green-400 to-green-600", // 40% bonus
+  "bg-gradient-to-br from-purple-400 to-purple-600", // 120% bonus + NFT
+  "bg-gradient-to-br from-pink-400 to-pink-600", // 200% bonus
 ];
+
+// Contract event names (for listening to events)
+export const CONTRACT_EVENTS = {
+  RAFFLE_ENTERED: "RaffleEntered",
+  PRIZE_AWARDED: "PrizeAwarded",
+  PRIZE_DISTRIBUTED: "PrizeDistributed",
+  DRAW_REQUESTED: "DrawRequested",
+} as const;

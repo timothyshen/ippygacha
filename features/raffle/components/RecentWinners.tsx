@@ -31,7 +31,7 @@ export const RecentWinners = React.memo(({ recentWinners }: RecentWinnersProps) 
           <Trophy className="h-5 w-5" />
           Recent Winners
         </CardTitle>
-        <CardDescription>See who's been lucky lately! Your prize could be next on this list.</CardDescription>
+        <CardDescription>See who&apos;s been lucky lately! Your prize could be next on this list.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">

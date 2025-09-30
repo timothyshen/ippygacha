@@ -1,29 +1,55 @@
+// Contract-based interfaces
+export interface ContractRaffleInfo {
+  active: boolean;
+  totalEntries: bigint;
+  totalIPTokensCollected: bigint;
+  contractBalance: bigint;
+  nftPoolSize: bigint;
+}
+
+export interface ContractUserStats {
+  totalUserEntries: bigint;
+  totalWinnings: bigint;
+  distributedPrizes: bigint;
+}
+
+export interface ContractEntry {
+  user: string;
+  entryCount: bigint;
+  ipTokensSpent: bigint;
+  timestamp: bigint;
+}
+
+export interface ContractPrize {
+  winner: string;
+  tier: number;
+  ipTokenAmount: bigint;
+  nftTokenId: bigint;
+  distributed: boolean;
+  timestamp: bigint;
+}
+
+export interface ContractNFTPoolInfo {
+  commonCount: bigint;
+}
+
+// UI/Display interfaces
 export interface Winner {
   id: number;
   name: string;
   prize: string;
   date: string;
   value: string;
-}
-
-export interface CooldownResponse {
-  canSpin: boolean;
-  lastSpinTime: number | null;
-  nextAllowedSpin: number | null;
-  remainingTime: number;
-}
-
-export interface SpinResponse {
-  success: boolean;
-  transactionHash: string;
-  prize: string;
-  nextAllowedSpin: number;
+  transactionHash?: string;
+  tier?: number;
 }
 
 export interface Prize {
   name: string;
   icon: any; // Lucide icon component
   color: string;
+  tier?: number;
+  probability?: number;
 }
 
 export interface RaffleState {
@@ -44,12 +70,29 @@ export interface RaffleState {
   cooldownMinutes: number;
   cooldownSeconds: number;
   cooldownProgress: number;
-  serverSyncStatus: "synced" | "syncing" | "error";
+  contractSyncStatus: "synced" | "syncing" | "error";
   contractValidation: "pending" | "valid" | "invalid";
   recentWinners: Winner[];
+  // Contract data
+  raffleInfo: ContractRaffleInfo | null;
+  userStats: ContractUserStats | null;
+  entryPrice: bigint | null;
 }
 
-export interface MockServerAPI {
-  checkCooldown(walletAddress: string): Promise<CooldownResponse>;
-  recordSpin(walletAddress: string, prize: string): Promise<SpinResponse>;
+// Transaction response interface
+export interface RaffleTransactionResult {
+  txHash: string;
+  txReceipt: any;
+  txLink: string;
+}
+
+// Cooldown management (now contract-based)
+export interface CooldownState {
+  canSpin: boolean;
+  lastSpinTime: number | null;
+  timeRemaining: string;
+  cooldownHours: number;
+  cooldownMinutes: number;
+  cooldownSeconds: number;
+  cooldownProgress: number;
 }

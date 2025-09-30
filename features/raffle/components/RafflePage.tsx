@@ -30,11 +30,16 @@ export default function RafflePage() {
     cooldownMinutes,
     cooldownSeconds,
     cooldownProgress,
-    serverSyncStatus,
+    contractSyncStatus,
     contractValidation,
 
     // Wallet state
     walletAddress,
+
+    // Contract data
+    raffleInfo,
+    userStats,
+    entryPrice,
 
     // Actions
     handleSpinWheel,
@@ -58,8 +63,11 @@ export default function RafflePage() {
 
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <RaffleHeader
-            serverSyncStatus={serverSyncStatus}
+            contractSyncStatus={contractSyncStatus}
             contractValidation={contractValidation}
+            raffleInfo={raffleInfo}
+            userStats={userStats}
+            entryPrice={entryPrice}
           />
 
           <div className="grid lg:grid-cols-2 gap-8">
