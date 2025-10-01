@@ -45,6 +45,7 @@ export interface Winner {
 }
 
 export interface Prize {
+  id: number;
   name: string;
   icon: any; // Lucide icon component
   color: string;
@@ -70,8 +71,6 @@ export interface RaffleState {
   cooldownMinutes: number;
   cooldownSeconds: number;
   cooldownProgress: number;
-  contractSyncStatus: "synced" | "syncing" | "error";
-  contractValidation: "pending" | "valid" | "invalid";
   recentWinners: Winner[];
   // Contract data
   raffleInfo: ContractRaffleInfo | null;
@@ -102,4 +101,14 @@ export interface ContractCooldownStatus {
   lastEntryTime: bigint;
   cooldownEndTime: bigint;
   timeRemaining: bigint;
+}
+
+export interface PrizeEvent {
+  type: "guaranteed" | "bonus";
+  tier: number;
+  ipTokenAmount: bigint;
+  nftTokenId: bigint;
+  prizeIndex: bigint;
+  transactionHash: string;
+  blockNumber: bigint;
 }

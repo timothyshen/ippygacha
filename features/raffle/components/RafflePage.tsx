@@ -30,8 +30,6 @@ export default function RafflePage() {
     cooldownMinutes,
     cooldownSeconds,
     cooldownProgress,
-    contractSyncStatus,
-    contractValidation,
 
     // Wallet state
     walletAddress,
@@ -40,6 +38,7 @@ export default function RafflePage() {
     raffleInfo,
     userStats,
     entryPrice,
+    transactionHash,
 
     // Actions
     handleSpinWheel,
@@ -54,10 +53,8 @@ export default function RafflePage() {
         selectedPrizeValue={selectedPrizeValue}
         cooldownHours={cooldownHours}
         cooldownMinutes={cooldownMinutes}
-        raffleInfo={raffleInfo}
         userStats={userStats}
-        contractSyncStatus={contractSyncStatus}
-        contractValidation={contractValidation}
+        transactionHash={transactionHash}
       />
 
       <Header name="Raffle" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
@@ -69,8 +66,6 @@ export default function RafflePage() {
 
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <RaffleHeader
-            contractSyncStatus={contractSyncStatus}
-            contractValidation={contractValidation}
             raffleInfo={raffleInfo}
             userStats={userStats}
             entryPrice={entryPrice}
@@ -89,8 +84,6 @@ export default function RafflePage() {
                 cooldownMinutes={cooldownMinutes}
                 cooldownSeconds={cooldownSeconds}
                 cooldownProgress={cooldownProgress}
-                contractSyncStatus={contractSyncStatus}
-                contractValidation={contractValidation}
                 raffleInfo={raffleInfo}
                 userStats={userStats}
                 entryPrice={entryPrice}

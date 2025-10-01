@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Winner,
   ContractRaffleInfo,
   ContractUserStats,
-  ContractPrize,
-  ContractCooldownStatus,
+  PrizeEvent,
 } from "../types";
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { usePrivy } from "@privy-io/react-auth";
@@ -28,6 +27,8 @@ export const useRaffleState = () => {
   const [raffleInfo, setRaffleInfo] = useState<ContractRaffleInfo | null>(null);
   const [userStats, setUserStats] = useState<ContractUserStats | null>(null);
   const [entryPrice, setEntryPrice] = useState<bigint | null>(null);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const [latestPrize, setLatestPrize] = useState<PrizeEvent | null>(null);
 
   // Cooldown state
   const [canSpin, setCanSpin] = useState(true);
@@ -37,12 +38,9 @@ export const useRaffleState = () => {
   const [cooldownMinutes, setCooldownMinutes] = useState(0);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [cooldownProgress, setCooldownProgress] = useState(0);
-  const [contractSyncStatus, setContractSyncStatus] = useState<
-    "synced" | "syncing" | "error"
-  >("synced");
-  const [contractValidation, setContractValidation] = useState<
-    "pending" | "valid" | "invalid"
-  >("pending");
+
+  const [isLoadingContractData, setIsLoadingContractData] = useState(false);
+  const lastContractCallRef = useRef<number>(0);
 
   // Contract services
   const {
@@ -55,6 +53,7 @@ export const useRaffleState = () => {
     getUserPrizes,
     getUserCooldownStatus,
     enterRaffle,
+    listenToPrizeEvents,
   } = useRaffleEntry();
 
   // Privy wallet connection
@@ -86,18 +85,21 @@ export const useRaffleState = () => {
 
   const checkCanSpin = useCallback(
     async (address: string) => {
-      if (!address) return;
+      if (!address || isLoadingContractData) return;
+
+      // Throttle contract calls - only allow one call per 2 seconds
+      const now = Date.now();
+      if (now - lastContractCallRef.current < 2000) {
+        return;
+      }
+      lastContractCallRef.current = now;
 
       try {
-        setContractSyncStatus("syncing");
-        setContractValidation("pending");
-
+        setIsLoadingContractData(true);
         // Check if raffle is active
         const raffleInfoData = await getRaffleInfo();
         if (!raffleInfoData.active) {
           setCanSpin(false);
-          setContractSyncStatus("synced");
-          setContractValidation("valid");
           return;
         }
 
@@ -119,39 +121,47 @@ export const useRaffleState = () => {
           setLastSpinTime(Number(cooldownStatus.lastEntryTime) * 1000);
           updateCooldownDisplay(timeRemainingMs, cooldownPeriodMs);
         }
-
-        setContractSyncStatus("synced");
-        setContractValidation("valid");
       } catch (error) {
         console.error("Error checking cooldown:", error);
-        setContractSyncStatus("error");
-        setContractValidation("invalid");
+      } finally {
+        setIsLoadingContractData(false);
       }
     },
-    [getRaffleInfo, getUserCooldownStatus, updateCooldownDisplay]
+    [
+      getRaffleInfo,
+      getUserCooldownStatus,
+      updateCooldownDisplay,
+      isLoadingContractData,
+    ]
   );
 
   // Load contract data
   const loadContractData = useCallback(async () => {
+    if (isLoadingContractData) return;
+
     try {
+      setIsLoadingContractData(true);
       const [raffleInfoData, entryPriceData] = await Promise.all([
         getRaffleInfo(),
         getEntryPrice(),
-        getNFTPoolInfo(),
-        getNFTPoolTokenIds(),
       ]);
 
       setRaffleInfo(raffleInfoData);
       setEntryPrice(entryPriceData);
     } catch (error) {
       console.error("Error loading contract data:", error);
+    } finally {
+      setIsLoadingContractData(false);
     }
-  }, [getRaffleInfo, getEntryPrice, getNFTPoolInfo, getNFTPoolTokenIds]);
+  }, [getRaffleInfo, getEntryPrice, isLoadingContractData]);
 
   // Load user-specific data
   const loadUserData = useCallback(
     async (address: string) => {
+      if (isLoadingContractData) return;
+
       try {
+        setIsLoadingContractData(true);
         const [userStatsData, userPrizesData] = await Promise.all([
           getUserStats(address),
           getUserPrizes(address),
@@ -181,9 +191,11 @@ export const useRaffleState = () => {
         setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
       } catch (error) {
         console.error("Error loading user data:", error);
+      } finally {
+        setIsLoadingContractData(false);
       }
     },
-    [getUserStats, getUserPrizes]
+    [getUserStats, getUserPrizes, isLoadingContractData]
   );
 
   // Ticker animation effect
@@ -206,22 +218,88 @@ export const useRaffleState = () => {
     }
   }, [walletAddress, loadUserData]);
 
-  // Cooldown monitoring effect
+  // Cooldown monitoring effect - only update UI, don't call contract
   useEffect(() => {
-    if (walletAddress && !canSpin) {
+    if (walletAddress && !canSpin && lastSpinTime) {
       const interval = setInterval(() => {
-        checkCanSpin(walletAddress);
+        // Only update the display, don't call the contract
+        const now = Date.now();
+        const timeSinceLastSpin = now - lastSpinTime;
+        const COOLDOWN_PERIOD_MS = 5 * 60 * 1000; // 5 minutes
+
+        if (timeSinceLastSpin >= COOLDOWN_PERIOD_MS) {
+          // Cooldown should be over, check contract once
+          checkCanSpin(walletAddress);
+          clearInterval(interval);
+        } else {
+          // Just update the display
+          updateCooldownDisplay(
+            COOLDOWN_PERIOD_MS - timeSinceLastSpin,
+            COOLDOWN_PERIOD_MS
+          );
+        }
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [walletAddress, canSpin, checkCanSpin]);
+  }, [
+    walletAddress,
+    canSpin,
+    lastSpinTime,
+    checkCanSpin,
+    updateCooldownDisplay,
+  ]);
 
-  // Check cooldown when wallet connects
+  // Check cooldown when wallet connects (debounced)
   useEffect(() => {
     if (walletAddress) {
-      checkCanSpin(walletAddress);
+      const timeoutId = setTimeout(() => {
+        checkCanSpin(walletAddress);
+      }, 500); // Debounce by 500ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [walletAddress, checkCanSpin]);
+
+  // Listen for prize events when wallet is connected
+  useEffect(() => {
+    if (!walletAddress) return;
+
+    let unwatch: (() => void) | null = null;
+
+    const setupEventListeners = async () => {
+      try {
+        const { unwatch: unwatchFn } = await listenToPrizeEvents(
+          walletAddress,
+          (prize: PrizeEvent) => {
+            console.log("🎉 Prize won!", prize);
+            setLatestPrize(prize);
+
+            // Update the win modal with real prize data
+            const ipAmount = formatEther(prize.ipTokenAmount);
+            let prizeName = `${ipAmount} IP`;
+            if (prize.nftTokenId > 0) {
+              prizeName += " + NFT";
+            }
+
+            setSelectedPrize(prizeName);
+            setSelectedPrizeValue(prizeName);
+            setTransactionHash(prize.transactionHash);
+          }
+        );
+        unwatch = unwatchFn;
+      } catch (error) {
+        console.error("Error setting up event listeners:", error);
+      }
+    };
+
+    setupEventListeners();
+
+    return () => {
+      if (unwatch) {
+        unwatch();
+      }
+    };
+  }, [walletAddress, listenToPrizeEvents]);
 
   const handleSpinWheel = useCallback(async () => {
     if (!canSpin || !walletConnected) return;
@@ -230,8 +308,6 @@ export const useRaffleState = () => {
       setIsSpinning(true);
       setIsTransactionPending(true);
       setSelectedPrize(null);
-      setContractSyncStatus("syncing");
-      setContractValidation("pending");
 
       console.log("[Contract] Starting raffle entry process...");
 
@@ -242,15 +318,13 @@ export const useRaffleState = () => {
       }
 
       // Step 2: Execute smart contract transaction
-      setContractValidation("pending");
       const transactionResult = await enterRaffle();
-      setContractSyncStatus("synced");
-      setContractValidation("valid");
 
       console.log("[Contract] Transaction completed:", transactionResult);
 
       setIsTransactionPending(false);
       setCanSpin(false);
+      setTransactionHash(transactionResult.txHash);
 
       // Cooldown is now handled by smart contract
 
@@ -295,8 +369,6 @@ export const useRaffleState = () => {
       console.error("[Contract] Raffle entry failed:", error);
       setIsSpinning(false);
       setIsTransactionPending(false);
-      setContractSyncStatus("error");
-      setContractValidation("invalid");
       alert(`Raffle entry failed: ${error.message}`);
     }
   }, [
@@ -329,8 +401,6 @@ export const useRaffleState = () => {
     cooldownMinutes,
     cooldownSeconds,
     cooldownProgress,
-    contractSyncStatus,
-    contractValidation,
 
     // Wallet state
     walletConnected,
@@ -340,6 +410,8 @@ export const useRaffleState = () => {
     raffleInfo,
     userStats,
     entryPrice,
+    transactionHash,
+    latestPrize,
 
     // Actions
     handleSpinWheel,

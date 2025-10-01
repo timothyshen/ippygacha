@@ -19,8 +19,6 @@ interface PrizeWheelCardProps {
   cooldownMinutes: number
   cooldownSeconds: number
   cooldownProgress: number
-  contractSyncStatus: "synced" | "syncing" | "error"
-  contractValidation: "pending" | "valid" | "invalid"
   raffleInfo: ContractRaffleInfo | null
   userStats: ContractUserStats | null
   entryPrice: bigint | null
@@ -38,8 +36,6 @@ export const PrizeWheelCard = React.memo(({
   cooldownMinutes,
   cooldownSeconds,
   cooldownProgress,
-  contractSyncStatus,
-  contractValidation,
   raffleInfo,
   userStats,
   entryPrice,
@@ -62,22 +58,6 @@ export const PrizeWheelCard = React.memo(({
               ? `Click the button to spin and win! (${entryPriceDisplay} IP entry fee)`
               : `Next spin available in: ${timeRemaining}`}
         </CardDescription>
-
-        {/* Contract Status Indicators */}
-        <div className="flex items-center justify-center gap-4 mt-2">
-          <div className="flex items-center gap-2">
-            <Database className={`h-4 w-4 ${contractSyncStatus === "synced" ? "text-green-500" : contractSyncStatus === "syncing" ? "text-yellow-500" : "text-red-500"}`} />
-            <Badge variant={contractSyncStatus === "synced" ? "default" : contractSyncStatus === "syncing" ? "secondary" : "destructive"}>
-              {contractSyncStatus}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <Shield className={`h-4 w-4 ${contractValidation === "valid" ? "text-green-500" : contractValidation === "pending" ? "text-yellow-500" : "text-red-500"}`} />
-            <Badge variant={contractValidation === "valid" ? "default" : contractValidation === "pending" ? "secondary" : "destructive"}>
-              {contractValidation}
-            </Badge>
-          </div>
-        </div>
 
         {/* User Stats */}
         {walletAddress && userStats && (

@@ -5,16 +5,12 @@ import { ContractRaffleInfo, ContractUserStats } from "../types"
 import { formatEther } from "viem"
 
 interface RaffleHeaderProps {
-  contractSyncStatus: "synced" | "syncing" | "error"
-  contractValidation: "pending" | "valid" | "invalid"
   raffleInfo: ContractRaffleInfo | null
   userStats: ContractUserStats | null
   entryPrice: bigint | null
 }
 
 export const RaffleHeader = React.memo(({
-  contractSyncStatus,
-  contractValidation,
   raffleInfo,
   userStats,
   entryPrice,
@@ -37,21 +33,7 @@ export const RaffleHeader = React.memo(({
         Enter the raffle and win guaranteed returns plus bonus prizes! Entry cost: {entryPriceDisplay} IP per entry.
       </p>
 
-      {/* Contract Status Indicators */}
-      <div className="flex items-center justify-center gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <Database className={`h-4 w-4 ${contractSyncStatus === "synced" ? "text-green-500" : contractSyncStatus === "syncing" ? "text-yellow-500" : "text-red-500"}`} />
-          <span className="text-sm text-muted-foreground">
-            Contract: {contractSyncStatus}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Shield className={`h-4 w-4 ${contractValidation === "valid" ? "text-green-500" : contractValidation === "pending" ? "text-yellow-500" : "text-red-500"}`} />
-          <span className="text-sm text-muted-foreground">
-            Validation: {contractValidation}
-          </span>
-        </div>
-      </div>
+     
 
       {/* Raffle Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">

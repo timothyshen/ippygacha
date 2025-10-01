@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { Crown, Package, Store, User, Home, LogOut, PackageOpen, ShoppingBag } from "lucide-react"
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -11,12 +11,23 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { usePrivy } from "@privy-io/react-auth"
 import { useRouter } from "next/navigation"
-
+import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry"
 
 
 export const Header = React.memo(({ name, subtitle, isDark, isMarketplace }: { name: string, subtitle: string, isDark: boolean, isMarketplace: boolean }) => {
     const { login, logout, user } = usePrivy()
+    const { getUserEntries } = useRaffleEntry()
     const router = useRouter()
+    const [userEntries, setUserEntries] = useState<[]>([])
+
+
+    useEffect(() => {
+        if (user) {
+            getUserEntries(user.wallet?.address || "").then((entries) => {
+                setUserEntries(entries)
+            })
+        }
+    }, [user])
 
     const sliceAddress = (address: string) => {
         return `${address.slice(0, 4)}...${address.slice(-3)}`
@@ -169,29 +180,16 @@ export const Header = React.memo(({ name, subtitle, isDark, isMarketplace }: { n
                                                 Recent Activity
                                             </h3>
                                             <div className="space-y-3">
-                                                {[
-                                                    { game: "Gacha Zone", time: "2h ago", type: "quest" },
-                                                    { game: "Claw Master", time: "5h ago", type: "achievement" },
-                                                    { game: "Lucky Raffle", time: "1d ago", type: "win" }
-                                                ].map((activity, i) => (
+                                                {userEntries.map((entry, i) => (
                                                     <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow duration-200">
-                                                        <div className={`p-2 rounded-full ${activity.type === 'quest' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                                                            activity.type === 'achievement' ? 'bg-green-100 dark:bg-green-900/30' :
-                                                                'bg-purple-100 dark:bg-purple-900/30'
-                                                            }`}>
-                                                            <Clock className={`h-4 w-4 ${activity.type === 'quest' ? 'text-blue-600 dark:text-blue-400' :
-                                                                activity.type === 'achievement' ? 'text-green-600 dark:text-green-400' :
-                                                                    'text-purple-600 dark:text-purple-400'
-                                                                }`} />
+                                                        <div className={`p-2 rounded-full bg-blue-100 dark:bg-blue-900/30`}>
+                                                            <Clock className={`h-4 w-4 text-blue-600 dark:text-blue-400`} />
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                                                {activity.type === 'quest' && 'Completed daily quest in '}
-                                                                {activity.type === 'achievement' && 'Unlocked achievement in '}
-                                                                {activity.type === 'win' && 'Won prize in '}
-                                                                <span className="font-semibold text-blue-600 dark:text-blue-400">{activity.game}</span>
+                                                                <span className="font-semibold text-blue-600 dark:text-blue-400">Raffle Entry</span>
                                                             </div>
-                                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{activity.time}</div>
+                                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{entry.timestamp}</div>
                                                         </div>
                                                     </div>
                                                 ))}

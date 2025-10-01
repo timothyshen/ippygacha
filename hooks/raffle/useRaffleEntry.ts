@@ -1,11 +1,13 @@
 import {
   onchainRaffleAddress,
   onchainRaffleABI,
-  readClient,
   useWalletClient,
 } from "@/lib/contract";
+import { readClient } from "@/lib/contract/client";
+
 import { useNotifications } from "@/contexts/notification-context";
 import { parseEther, formatEther } from "viem";
+import { PrizeEvent } from "@/features/raffle/types";
 
 export const useRaffleEntry = () => {
   const { getWalletClient } = useWalletClient();
@@ -19,7 +21,6 @@ export const useRaffleEntry = () => {
         abi: onchainRaffleABI,
         functionName: "getRaffleInfo",
       })) as [boolean, bigint, bigint, bigint, bigint];
-
       return {
         active: result[0],
         totalEntries: result[1],
@@ -271,6 +272,62 @@ export const useRaffleEntry = () => {
     }
   };
 
+  const listenToPrizeEvents = async (
+    address: string,
+    onPrizeWon: (prize: PrizeEvent) => void
+  ) => {
+    // Listen for guaranteed return (immediate prize)
+    const unwatchPrizeDistributed = readClient.watchContractEvent({
+      address: onchainRaffleAddress,
+      abi: onchainRaffleABI,
+      eventName: "PrizeDistributed",
+      args: { winner: address },
+      onLogs: (logs) => {
+        logs.forEach((log) => {
+          const prize = {
+            type: "guaranteed",
+            tier: 1,
+            ipTokenAmount: log.args.ipTokenAmount,
+            nftTokenId: log.args.nftTokenId,
+            prizeIndex: log.args.prizeIndex,
+            transactionHash: log.transactionHash,
+            blockNumber: log.blockNumber,
+          };
+          onPrizeWon(prize);
+        });
+      },
+    });
+
+    // Listen for bonus prizes (awarded after random number generation)
+    const unwatchPrizeAwarded = readClient.watchContractEvent({
+      address: onchainRaffleAddress,
+      abi: onchainRaffleABI,
+      eventName: "PrizeAwarded",
+      args: { winner: address },
+      onLogs: (logs) => {
+        logs.forEach((log) => {
+          const prize = {
+            type: "bonus",
+            tier: log.args.tier,
+            ipTokenAmount: log.args.ipTokenAmount,
+            nftTokenId: log.args.nftTokenId,
+            prizeIndex: log.args.prizeIndex,
+            transactionHash: log.transactionHash,
+            blockNumber: log.blockNumber,
+          };
+          onPrizeWon(prize);
+        });
+      },
+    });
+
+    return {
+      unwatch: () => {
+        unwatchPrizeDistributed();
+        unwatchPrizeAwarded();
+      },
+    };
+  };
+
   return {
     // Getter functions
     getRaffleInfo,
@@ -283,6 +340,8 @@ export const useRaffleEntry = () => {
     getUserCooldownStatus,
     // Write functions
     enterRaffle,
+    // Event monitoring
+    listenToPrizeEvents,
   };
 };
 

@@ -3,7 +3,7 @@ import { Trophy, Clock, ExternalLink, Shield, Database } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { PRIZES } from "../constants"
-import { ContractRaffleInfo, ContractUserStats } from "../types"
+import { ContractRaffleInfo, ContractUserStats, PrizeEvent } from "../types"
 import { formatEther } from "viem"
 
 interface WinModalProps {
@@ -15,9 +15,8 @@ interface WinModalProps {
   cooldownMinutes: number
   raffleInfo: ContractRaffleInfo | null
   userStats: ContractUserStats | null
-  contractSyncStatus: "synced" | "syncing" | "error"
-  contractValidation: "pending" | "valid" | "invalid"
   transactionHash?: string
+  latestPrize: PrizeEvent | null
 }
 
 export const WinModal = React.memo(({
@@ -27,11 +26,9 @@ export const WinModal = React.memo(({
   selectedPrizeValue,
   cooldownHours,
   cooldownMinutes,
-  raffleInfo,
   userStats,
-  contractSyncStatus,
-  contractValidation,
-  transactionHash
+  transactionHash,
+  latestPrize
 }: WinModalProps) => {
   const totalEntries = userStats ? Number(userStats.totalUserEntries) : 0;
   const totalWinnings = userStats ? formatEther(userStats.totalWinnings) : "0";
@@ -64,21 +61,44 @@ export const WinModal = React.memo(({
             <h3 className="text-xl font-bold text-primary">{selectedPrize}</h3>
             <p className="text-lg font-semibold text-accent">{selectedPrizeValue}</p>
           </div>
-          {/* Contract Status */}
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <div className="flex items-center gap-1">
-              <Database className={`h-4 w-4 ${contractSyncStatus === "synced" ? "text-green-500" : contractSyncStatus === "syncing" ? "text-yellow-500" : "text-red-500"}`} />
-              <Badge variant={contractSyncStatus === "synced" ? "default" : contractSyncStatus === "syncing" ? "secondary" : "destructive"}>
-                {contractSyncStatus}
-              </Badge>
+
+          {/* Real Prize Information from Contract */}
+          {latestPrize && (
+            <div className="bg-gradient-to-r from-green-100 to-blue-100 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Trophy className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <span className="font-semibold text-green-800 dark:text-green-200">
+                  {latestPrize.type === "guaranteed" ? "Guaranteed Return" : "Bonus Prize"} Won!
+                </span>
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Prize Type:</span>
+                  <span className="font-semibold">
+                    {latestPrize.type === "guaranteed" ? "Guaranteed Return" : "Bonus Prize"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tier:</span>
+                  <span className="font-semibold">Tier {latestPrize.tier}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>IP Amount:</span>
+                  <span className="font-semibold text-accent">
+                    {formatEther(latestPrize.ipTokenAmount)} IP
+                  </span>
+                </div>
+                {latestPrize.nftTokenId > 0 && (
+                  <div className="flex justify-between">
+                    <span>NFT:</span>
+                    <span className="font-semibold text-blue-600">
+                      Token ID #{latestPrize.nftTokenId.toString()}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Shield className={`h-4 w-4 ${contractValidation === "valid" ? "text-green-500" : contractValidation === "pending" ? "text-yellow-500" : "text-red-500"}`} />
-              <Badge variant={contractValidation === "valid" ? "default" : contractValidation === "pending" ? "secondary" : "destructive"}>
-                {contractValidation}
-              </Badge>
-            </div>
-          </div>
+          )}
 
           {/* Transaction Hash */}
           {transactionHash && (
@@ -102,7 +122,7 @@ export const WinModal = React.memo(({
                   <div className="text-muted-foreground">Total Entries</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-accent">{totalWinnings} IP</div>
+                  <div className="font-semibold text-black text-accent">{totalWinnings} IP</div>
                   <div className="text-muted-foreground">Total Winnings</div>
                 </div>
               </div>

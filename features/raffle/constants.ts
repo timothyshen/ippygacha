@@ -10,13 +10,15 @@ export const PRIZE_TIERS = {
 // Display prizes based on contract logic
 export const PRIZES: Prize[] = [
   {
-    name: "Guaranteed Return",
+    id: 1,
+    name: "Return",
     icon: Coins,
     color: "text-yellow-500",
     tier: PRIZE_TIERS.GUARANTEED,
     probability: 100, // Always awarded
   },
   {
+    id: 2,
     name: "40% Bonus",
     icon: Coins,
     color: "text-green-500",
@@ -24,18 +26,36 @@ export const PRIZES: Prize[] = [
     probability: 0.7, // 0.7% chance
   },
   {
-    name: "120% Bonus + NFT",
-    icon: ImageIcon,
+    id: 3,
+    name: "100% Bonus",
+    icon: Trophy,
+    color: "text-pink-500",
+    tier: PRIZE_TIERS.BONUS,
+    probability: 0.02, // 0.02% chance
+  },
+  {
+    id: 4,
+    name: "120% Bonus",
+    icon: Trophy,
     color: "text-purple-500",
     tier: PRIZE_TIERS.BONUS,
     probability: 0.18, // 0.18% chance
   },
   {
+    id: 5,
     name: "200% Bonus",
     icon: Trophy,
     color: "text-pink-500",
     tier: PRIZE_TIERS.BONUS,
     probability: 0.02, // 0.02% chance
+  },
+  {
+    id: 6,
+    name: "NFT",
+    icon: ImageIcon,
+    color: "text-purple-500",
+    tier: PRIZE_TIERS.BONUS,
+    probability: 0.18, // 0.18% chance
   },
 ];
 
@@ -59,6 +79,8 @@ export const PRIZE_COLORS = [
   "bg-gradient-to-br from-green-400 to-green-600", // 40% bonus
   "bg-gradient-to-br from-purple-400 to-purple-600", // 120% bonus + NFT
   "bg-gradient-to-br from-pink-400 to-pink-600", // 200% bonus
+  "bg-gradient-to-br from-purple-400 to-purple-600", // NFT
+  "bg-gradient-to-br from-pink-400 to-pink-600", // 100% bonus
 ];
 
 // Contract event names (for listening to events)
