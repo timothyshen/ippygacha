@@ -1,11 +1,13 @@
 import React from "react"
-import { Clock } from "lucide-react"
+import { Clock, Shield, Database } from "lucide-react"
 
 interface CooldownDisplayProps {
   cooldownHours: number
   cooldownMinutes: number
   cooldownSeconds: number
   cooldownProgress: number
+  contractSyncStatus: "synced" | "syncing" | "error"
+  contractValidation: "pending" | "valid" | "invalid"
 }
 
 export const CooldownDisplay = React.memo(({
@@ -13,6 +15,8 @@ export const CooldownDisplay = React.memo(({
   cooldownMinutes,
   cooldownSeconds,
   cooldownProgress,
+  contractSyncStatus,
+  contractValidation,
 }: CooldownDisplayProps) => {
   return (
     <div className="w-full bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/20 dark:to-red-900/20 border-2 border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">
@@ -20,7 +24,7 @@ export const CooldownDisplay = React.memo(({
         <div className="flex items-center justify-center gap-2 mb-3">
           <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
           <h3 className="text-lg font-bold text-orange-800 dark:text-orange-200">
-            Hybrid Cooldown Active
+            Smart Contract Cooldown Active
           </h3>
         </div>
 
@@ -39,8 +43,20 @@ export const CooldownDisplay = React.memo(({
           ></div>
         </div>
         <div className="text-xs text-muted-foreground">{cooldownProgress.toFixed(1)}% complete</div>
+        {/* Contract Status Indicators */}
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <div className="flex items-center gap-1">
+            <Database className={`h-3 w-3 ${contractSyncStatus === "synced" ? "text-green-500" : contractSyncStatus === "syncing" ? "text-yellow-500" : "text-red-500"}`} />
+            <span className="text-xs text-muted-foreground">Sync: {contractSyncStatus}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Shield className={`h-3 w-3 ${contractValidation === "valid" ? "text-green-500" : contractValidation === "pending" ? "text-yellow-500" : "text-red-500"}`} />
+            <span className="text-xs text-muted-foreground">Valid: {contractValidation}</span>
+          </div>
+        </div>
+
         <div className="mt-2 text-xs text-muted-foreground">
-          Validated by both server database and smart contract
+          Secured by smart contract validation
         </div>
       </div>
     </div>

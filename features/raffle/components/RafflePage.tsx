@@ -52,6 +52,12 @@ export default function RafflePage() {
         onClose={() => setShowWinModal(false)}
         selectedPrize={selectedPrize}
         selectedPrizeValue={selectedPrizeValue}
+        cooldownHours={cooldownHours}
+        cooldownMinutes={cooldownMinutes}
+        raffleInfo={raffleInfo}
+        userStats={userStats}
+        contractSyncStatus={contractSyncStatus}
+        contractValidation={contractValidation}
       />
 
       <Header name="Raffle" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
@@ -83,6 +89,11 @@ export default function RafflePage() {
                 cooldownMinutes={cooldownMinutes}
                 cooldownSeconds={cooldownSeconds}
                 cooldownProgress={cooldownProgress}
+                contractSyncStatus={contractSyncStatus}
+                contractValidation={contractValidation}
+                raffleInfo={raffleInfo}
+                userStats={userStats}
+                entryPrice={entryPrice}
                 onSpin={handleSpinWheel}
               />
             </div>

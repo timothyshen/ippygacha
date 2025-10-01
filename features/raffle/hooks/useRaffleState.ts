@@ -148,6 +148,8 @@ export const useRaffleState = () => {
       const [raffleInfoData, entryPriceData] = await Promise.all([
         getRaffleInfo(),
         getEntryPrice(),
+        getNFTPoolInfo(),
+        getNFTPoolTokenIds(),
       ]);
 
       setRaffleInfo(raffleInfoData);
