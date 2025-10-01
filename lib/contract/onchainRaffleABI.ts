@@ -8,7 +8,7 @@ export const onchainRaffleABI = [
       },
       {
         internalType: "address",
-        name: "_nftContract",
+        name: "",
         type: "address",
       },
     ],
@@ -262,6 +262,19 @@ export const onchainRaffleABI = [
   },
   {
     inputs: [],
+    name: "COOLDOWN_PERIOD",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "ENTRY_PRICE",
     outputs: [
       {
@@ -275,77 +288,12 @@ export const onchainRaffleABI = [
   },
   {
     inputs: [],
-    name: "GUARANTEED_RETURN_RATE",
+    name: "ONE_MILLION",
     outputs: [
       {
-        internalType: "uint256",
+        internalType: "uint32",
         name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "RATE_DENOMINATOR",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "TIER_2_PROBABILITY",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "TIER_3_PROBABILITY",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "TIER_4_PROBABILITY",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "TIER_5_PROBABILITY",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
+        type: "uint32",
       },
     ],
     stateMutability: "view",
@@ -455,6 +403,11 @@ export const onchainRaffleABI = [
   {
     inputs: [
       {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+      {
         internalType: "uint256",
         name: "",
         type: "uint256",
@@ -466,6 +419,48 @@ export const onchainRaffleABI = [
         internalType: "bool",
         name: "",
         type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "bonus",
+    outputs: [
+      {
+        internalType: "uint32",
+        name: "payoutPpm",
+        type: "uint32",
+      },
+      {
+        internalType: "uint32",
+        name: "probPpm",
+        type: "uint32",
+      },
+      {
+        internalType: "bool",
+        name: "givesNFT",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "bonusProbSumPpm",
+    outputs: [
+      {
+        internalType: "uint32",
+        name: "",
+        type: "uint32",
       },
     ],
     stateMutability: "view",
@@ -492,6 +487,30 @@ export const onchainRaffleABI = [
   },
   {
     inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "commonNFTPoolContracts",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "nft",
+        type: "address",
+      },
       {
         internalType: "uint256[]",
         name: "tokenIds",
@@ -597,6 +616,40 @@ export const onchainRaffleABI = [
         type: "address",
       },
     ],
+    name: "getUserCooldownStatus",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "canEnter",
+        type: "bool",
+      },
+      {
+        internalType: "uint256",
+        name: "lastEntryTime",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "cooldownEndTime",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "timeRemaining",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+    ],
     name: "getUserStats",
     outputs: [
       {
@@ -612,19 +665,6 @@ export const onchainRaffleABI = [
       {
         internalType: "uint256",
         name: "distributedPrizes",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "houseContribution",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
         type: "uint256",
       },
     ],
@@ -660,19 +700,6 @@ export const onchainRaffleABI = [
     name: "manualRequestDraw",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "nftContract",
-    outputs: [
-      {
-        internalType: "contract IERC721",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
     type: "function",
   },
   {
@@ -778,12 +805,51 @@ export const onchainRaffleABI = [
   },
   {
     inputs: [],
+    name: "prizeReserve",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "raffleActive",
     outputs: [
       {
         internalType: "bool",
         name: "",
         type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "rebatePPM",
+    outputs: [
+      {
+        internalType: "uint32",
+        name: "",
+        type: "uint32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "rebateReserve",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
       },
     ],
     stateMutability: "view",
@@ -886,6 +952,25 @@ export const onchainRaffleABI = [
         name: "",
         type: "address",
       },
+    ],
+    name: "userLastEntryTime",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
       {
         internalType: "uint256",
         name: "",
@@ -942,7 +1027,25 @@ export const onchainRaffleABI = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "vrfReserve",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
+      {
+        internalType: "address",
+        name: "nft",
+        type: "address",
+      },
       {
         internalType: "uint256",
         name: "tokenId",
