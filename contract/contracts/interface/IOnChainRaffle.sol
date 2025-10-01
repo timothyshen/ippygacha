@@ -86,4 +86,16 @@ interface IOnChainRaffle {
     function getNFTPoolInfo() external view returns (uint256 commonPoolSize);
 
     function getNFTPoolTokenIds() external view returns (uint256[] memory);
+
+    function getUserCooldownStatus(
+        address user
+    )
+        external
+        view
+        returns (
+            bool canEnter,
+            uint256 lastEntryTime,
+            uint256 cooldownEndTime,
+            uint256 timeRemaining
+        );
 }

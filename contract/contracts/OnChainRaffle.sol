@@ -20,11 +20,14 @@ contract OnChainRaffle is
 {
     IEntropyV2 public entropy;
 
-
     // Raffle Configuration
     uint256 public constant ENTRY_PRICE = 0.1 ether; // 0.1 native IP tokens
-    uint32  public constant ONE_MILLION = 1_000_000;
-    uint32  public rebatePPM = 5_000; // 0.5%
+    uint32 public constant ONE_MILLION = 1_000_000;
+    uint32 public rebatePPM = 5_000; // 0.5%
+
+    // Cooldown Configuration
+    // TODO: Change to 6 hours
+    uint256 public constant COOLDOWN_PERIOD = 5 minutes; // 5 minutes cooldown between entries
 
     uint256 private constant GUARANTEED_RETURN_RATE = 1000; // 100% (1000/1000)
     uint256 private constant RATE_DENOMINATOR = 1000;
@@ -32,9 +35,9 @@ contract OnChainRaffle is
     uint32 private constant PPM_DENOM = 1_000_000; // 1e6 (parts per million)
 
     // reserves and accounting
-    uint256 public prizeReserve;    // ETH kept for tier payouts
-    uint256 public rebateReserve;   // ETH kept for the 0.5% cash-back
-    uint256 public vrfReserve;      // ETH set aside for VRF fees
+    uint256 public prizeReserve; // ETH kept for tier payouts
+    uint256 public rebateReserve; // ETH kept for the 0.5% cash-back
+    uint256 public vrfReserve; // ETH set aside for VRF fees
     uint256 public totalEntries;
 
     // Raffle State
@@ -44,8 +47,8 @@ contract OnChainRaffle is
     // ---- Single-outcome bonus configuration (Design A) ----
     struct BonusOutcome {
         uint32 payoutPpm; // payout as ppm of entry (e.g., 40_000 = 4%)
-        uint32 probPpm;   // probability in ppm (e.g., 7_000 = 0.7%)
-        bool givesNFT;    // whether this outcome also awards an NFT
+        uint32 probPpm; // probability in ppm (e.g., 7_000 = 0.7%)
+        bool givesNFT; // whether this outcome also awards an NFT
     }
     BonusOutcome[] public bonus;
     uint32 public bonusProbSumPpm; // must be <= PPM_DENOM
@@ -65,13 +68,16 @@ contract OnChainRaffle is
 
     // NFT Pool storage
     // Parallel arrays to support multiple NFT contracts without changing external ABI too much
-    uint256[] public commonNFTPool;            // tokenIds
-    address[] public commonNFTPoolContracts;   // nft contract addresses (same length as commonNFTPool)
+    uint256[] public commonNFTPool; // tokenIds
+    address[] public commonNFTPoolContracts; // nft contract addresses (same length as commonNFTPool)
 
     mapping(address => uint256[]) public userEntryIndices; // user => entry indices
     mapping(address => uint256[]) public userPrizeIndices; // user => prize indices
     mapping(address => uint256) public userTotalWinnings;
     mapping(address => uint256) public userTotalEntries;
+
+    // Cooldown tracking
+    mapping(address => uint256) public userLastEntryTime; // user => last entry timestamp
 
     // Prize pool reserves (native IP tokens)
     uint256 public ipTokenReserve;
@@ -79,7 +85,10 @@ contract OnChainRaffle is
     // NFT management
     mapping(address => mapping(uint256 => bool)) public availableNFTs; // nft => tokenId => available
 
-    constructor(address _entropy, address /*_nftContract*/) Ownable(msg.sender) {
+    constructor(
+        address _entropy,
+        address /*_nftContract*/
+    ) Ownable(msg.sender) {
         entropy = IEntropyV2(_entropy);
         raffleActive = true;
         _initBonusDistribution();
@@ -89,9 +98,15 @@ contract OnChainRaffle is
         delete bonus;
         bonusProbSumPpm = 0;
         // Example distribution: ~0.536% EV of entry (close to 0.5%), adjust as desired.
-        bonus.push(BonusOutcome({ payoutPpm: 400_000, probPpm: 7_000, givesNFT: false }));    // 0.7% chance of +40%
-        bonus.push(BonusOutcome({ payoutPpm: 1_200_000, probPpm: 1_800, givesNFT: true }));   // 0.18% chance of +120% + NFT
-        bonus.push(BonusOutcome({ payoutPpm: 2_000_000, probPpm: 200, givesNFT: false }));    // 0.02% chance of +200%
+        bonus.push(
+            BonusOutcome({payoutPpm: 400_000, probPpm: 7_000, givesNFT: false})
+        ); // 0.7% chance of +40%
+        bonus.push(
+            BonusOutcome({payoutPpm: 1_200_000, probPpm: 1_800, givesNFT: true})
+        ); // 0.18% chance of +120% + NFT
+        bonus.push(
+            BonusOutcome({payoutPpm: 2_000_000, probPpm: 200, givesNFT: false})
+        ); // 0.02% chance of +200%
         bonusProbSumPpm = 7_000 + 1_800 + 200; // 0.9% any-bonus probability
         // NOTE: Expected value ≈ 0.536% of entry; tune (payoutPpm, probPpm) to hit 0.5% exactly if needed.
     }
@@ -109,7 +124,10 @@ contract OnChainRaffle is
     }
 
     // NFT Management Functions
-    function depositNFTs(address nft, uint256[] calldata tokenIds) external onlyOwner {
+    function depositNFTs(
+        address nft,
+        uint256[] calldata tokenIds
+    ) external onlyOwner {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
             require(!availableNFTs[nft][tokenId], "NFT already deposited");
@@ -126,7 +144,11 @@ contract OnChainRaffle is
         }
     }
 
-    function withdrawNFT(address nft, uint256 tokenId, address to) external onlyOwner {
+    function withdrawNFT(
+        address nft,
+        uint256 tokenId,
+        address to
+    ) external onlyOwner {
         require(availableNFTs[nft][tokenId], "NFT not available");
         require(to != address(0), "Invalid address");
 
@@ -141,7 +163,9 @@ contract OnChainRaffle is
         // Remove from both arrays
         uint256 len = commonNFTPool.length;
         for (uint256 i = 0; i < len; i++) {
-            if (commonNFTPool[i] == tokenId && commonNFTPoolContracts[i] == nft) {
+            if (
+                commonNFTPool[i] == tokenId && commonNFTPoolContracts[i] == nft
+            ) {
                 // swap with last and pop both arrays
                 if (i != len - 1) {
                     commonNFTPool[i] = commonNFTPool[len - 1];
@@ -171,6 +195,12 @@ contract OnChainRaffle is
             "Amount must be multiple of entry price"
         );
 
+        // Check cooldown
+        require(
+            block.timestamp >= userLastEntryTime[msg.sender] + COOLDOWN_PERIOD,
+            "Cooldown period not elapsed"
+        );
+
         uint256 entryCount = msg.value / ENTRY_PRICE;
         uint256 ipTokenAmount = msg.value;
 
@@ -190,6 +220,9 @@ contract OnChainRaffle is
         totalEntries += entryCount;
         totalIPTokensCollected += ipTokenAmount;
         userTotalEntries[msg.sender] += entryCount;
+
+        // Update cooldown timestamp
+        userLastEntryTime[msg.sender] = block.timestamp;
 
         // Process guaranteed return immediately
         _processGuaranteedReturn(msg.sender, ipTokenAmount);
@@ -294,10 +327,20 @@ contract OnChainRaffle is
                 uint256 nftTokenId = 0;
                 address nftAddr = address(0);
                 if (bonus[i].givesNFT) {
-                    (nftAddr, nftTokenId) = _selectRandomNFT(commonNFTPool, commonNFTPoolContracts, randomWord, 1337 + i);
+                    (nftAddr, nftTokenId) = _selectRandomNFT(
+                        commonNFTPool,
+                        commonNFTPoolContracts,
+                        randomWord,
+                        1337 + i
+                    );
                 }
 
-                bool distributed = _distributePrizeImmediately(user, payout, nftAddr, nftTokenId);
+                bool distributed = _distributePrizeImmediately(
+                    user,
+                    payout,
+                    nftAddr,
+                    nftTokenId
+                );
 
                 Prize memory prize = Prize({
                     winner: user,
@@ -338,7 +381,8 @@ contract OnChainRaffle is
         if (tokenArray.length == 0) {
             return (address(0), 0); // No NFT available
         }
-        uint256 idx = uint256(randomNumber >> (128 + offset)) % tokenArray.length;
+        uint256 idx = uint256(randomNumber >> (128 + offset)) %
+            tokenArray.length;
         nft = nftArrayAddrs[idx];
         tokenId = tokenArray[idx];
         // Remove selected NFT from pool (swap with last and pop both arrays)
@@ -434,6 +478,37 @@ contract OnChainRaffle is
     // Get NFT pool information
     function getNFTPoolInfo() external view returns (uint256 commonCount) {
         return commonNFTPool.length;
+    }
+
+    // Check user cooldown status
+    function getUserCooldownStatus(
+        address user
+    )
+        external
+        view
+        returns (
+            bool canEnter,
+            uint256 lastEntryTime,
+            uint256 cooldownEndTime,
+            uint256 timeRemaining
+        )
+    {
+        lastEntryTime = userLastEntryTime[user];
+        cooldownEndTime = lastEntryTime + COOLDOWN_PERIOD;
+
+        if (lastEntryTime == 0) {
+            // User has never entered
+            canEnter = true;
+            timeRemaining = 0;
+        } else if (block.timestamp >= cooldownEndTime) {
+            // Cooldown has elapsed
+            canEnter = true;
+            timeRemaining = 0;
+        } else {
+            // Still in cooldown
+            canEnter = false;
+            timeRemaining = cooldownEndTime - block.timestamp;
+        }
     }
 
     // Returns tokenIds. To get their contract addresses, use commonNFTPoolContracts (same indices)

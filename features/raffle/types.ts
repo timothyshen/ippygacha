@@ -96,3 +96,10 @@ export interface CooldownState {
   cooldownSeconds: number;
   cooldownProgress: number;
 }
+
+export interface ContractCooldownStatus {
+  canEnter: boolean;
+  lastEntryTime: bigint;
+  cooldownEndTime: bigint;
+  timeRemaining: bigint;
+}

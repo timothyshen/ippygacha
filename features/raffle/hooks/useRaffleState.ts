@@ -4,6 +4,7 @@ import {
   ContractRaffleInfo,
   ContractUserStats,
   ContractPrize,
+  ContractCooldownStatus,
 } from "../types";
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { usePrivy } from "@privy-io/react-auth";
@@ -52,6 +53,7 @@ export const useRaffleState = () => {
     getEntryPrice,
     getUserEntries,
     getUserPrizes,
+    getUserCooldownStatus,
     enterRaffle,
   } = useRaffleEntry();
 
@@ -99,36 +101,23 @@ export const useRaffleState = () => {
           return;
         }
 
-        // Check local cooldown
-        const lastSpinKey = `last_raffle_spin_${address}`;
-        const lastSpin = localStorage.getItem(lastSpinKey);
-        const now = Date.now();
-        const COOLDOWN_PERIOD = 5 * 60 * 1000; // 5 minutes
+        // Check smart contract cooldown
+        const cooldownStatus = await getUserCooldownStatus(address);
 
-        if (lastSpin) {
-          const timeSinceLastSpin = now - Number.parseInt(lastSpin);
-          if (timeSinceLastSpin < COOLDOWN_PERIOD) {
-            setCanSpin(false);
-            setLastSpinTime(Number.parseInt(lastSpin));
-            updateCooldownDisplay(
-              COOLDOWN_PERIOD - timeSinceLastSpin,
-              COOLDOWN_PERIOD
-            );
-          } else {
-            setCanSpin(true);
-            setLastSpinTime(null);
-            setCooldownHours(0);
-            setCooldownMinutes(0);
-            setCooldownSeconds(0);
-            setCooldownProgress(0);
-          }
-        } else {
+        if (cooldownStatus.canEnter) {
           setCanSpin(true);
           setLastSpinTime(null);
           setCooldownHours(0);
           setCooldownMinutes(0);
           setCooldownSeconds(0);
           setCooldownProgress(0);
+        } else {
+          setCanSpin(false);
+          const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000; // Convert seconds to milliseconds
+          const cooldownPeriodMs = 5 * 60 * 1000; // 5 minutes (matches contract)
+
+          setLastSpinTime(Number(cooldownStatus.lastEntryTime) * 1000);
+          updateCooldownDisplay(timeRemainingMs, cooldownPeriodMs);
         }
 
         setContractSyncStatus("synced");
@@ -139,7 +128,7 @@ export const useRaffleState = () => {
         setContractValidation("invalid");
       }
     },
-    [getRaffleInfo, updateCooldownDisplay]
+    [getRaffleInfo, getUserCooldownStatus, updateCooldownDisplay]
   );
 
   // Load contract data
@@ -157,7 +146,7 @@ export const useRaffleState = () => {
     } catch (error) {
       console.error("Error loading contract data:", error);
     }
-  }, [getRaffleInfo, getEntryPrice]);
+  }, [getRaffleInfo, getEntryPrice, getNFTPoolInfo, getNFTPoolTokenIds]);
 
   // Load user-specific data
   const loadUserData = useCallback(
@@ -263,9 +252,7 @@ export const useRaffleState = () => {
       setIsTransactionPending(false);
       setCanSpin(false);
 
-      // Record spin locally for cooldown tracking
-      const lastSpinKey = `last_raffle_spin_${walletAddress}`;
-      localStorage.setItem(lastSpinKey, Date.now().toString());
+      // Cooldown is now handled by smart contract
 
       // Start spinning animation after transaction is confirmed
       const totalRotations = 5 + Math.random() * 3;

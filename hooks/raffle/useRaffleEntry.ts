@@ -187,6 +187,27 @@ export const useRaffleEntry = () => {
     }
   };
 
+  const getUserCooldownStatus = async (userAddress: string) => {
+    try {
+      const result = (await readClient.readContract({
+        address: onchainRaffleAddress,
+        abi: onchainRaffleABI,
+        functionName: "getUserCooldownStatus",
+        args: [userAddress],
+      })) as [boolean, bigint, bigint, bigint];
+
+      return {
+        canEnter: result[0],
+        lastEntryTime: result[1],
+        cooldownEndTime: result[2],
+        timeRemaining: result[3],
+      };
+    } catch (error) {
+      console.error("Error fetching user cooldown status:", error);
+      throw error;
+    }
+  };
+
   const enterRaffle = async () => {
     try {
       const walletClient = await getWalletClient();
@@ -259,6 +280,7 @@ export const useRaffleEntry = () => {
     getEntryPrice,
     getUserEntries,
     getUserPrizes,
+    getUserCooldownStatus,
     // Write functions
     enterRaffle,
   };

@@ -49,7 +49,9 @@ export const CONTRACT_CONSTANTS = {
 } as const;
 
 // Local cooldown period (5 minutes for demo - contract doesn't enforce cooldown)
-export const LOCAL_COOLDOWN_PERIOD = 5 * 60 * 1000; // 5 minutes in milliseconds
+// Cooldown period (5 minutes - matches smart contract)
+export const COOLDOWN_PERIOD = 5 * 60; // 5 minutes in seconds (matches contract)
+export const COOLDOWN_PERIOD_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 // Prize colors for UI display
 export const PRIZE_COLORS = [
