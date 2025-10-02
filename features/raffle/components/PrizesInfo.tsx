@@ -15,7 +15,6 @@ export const PrizesInfo = React.memo(({ raffleInfo, entryPrice }: PrizesInfoProp
   const totalCollected = raffleInfo ? formatEther(raffleInfo.totalIPTokensCollected) : "0";
 
   const filterPrize = new Set(PRIZES)
-  console.log(filterPrize)
   return (
     <div className="bg-muted p-4 rounded-lg w-full">
       <h4 className="font-semibold text-primary mb-3 flex items-center gap-2 justify-center">

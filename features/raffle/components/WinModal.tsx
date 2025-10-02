@@ -1,7 +1,6 @@
 import React from "react"
-import { Trophy, Clock, ExternalLink, Shield, Database } from "lucide-react"
+import { Trophy, Clock, ExternalLink } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import { PRIZES } from "../constants"
 import { ContractRaffleInfo, ContractUserStats, PrizeEvent } from "../types"
 import { formatEther } from "viem"
@@ -15,7 +14,7 @@ interface WinModalProps {
   cooldownMinutes: number
   raffleInfo: ContractRaffleInfo | null
   userStats: ContractUserStats | null
-  transactionHash?: string
+  transactionHash?: string | null
   latestPrize: PrizeEvent | null
 }
 

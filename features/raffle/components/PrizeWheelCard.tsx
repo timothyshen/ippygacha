@@ -82,8 +82,6 @@ export const PrizeWheelCard = React.memo(({
             cooldownMinutes={cooldownMinutes}
             cooldownSeconds={cooldownSeconds}
             cooldownProgress={cooldownProgress}
-            contractSyncStatus={contractSyncStatus}
-            contractValidation={contractValidation}
           />
         )}
 
@@ -101,7 +99,6 @@ export const PrizeWheelCard = React.memo(({
         <PrizesInfo
           raffleInfo={raffleInfo}
           entryPrice={entryPrice}
-          contractSyncStatus={contractSyncStatus}
         />
       </CardContent>
     </Card>

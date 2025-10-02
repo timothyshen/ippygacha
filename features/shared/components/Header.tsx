@@ -11,23 +11,15 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { usePrivy } from "@privy-io/react-auth"
 import { useRouter } from "next/navigation"
-import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry"
 
 
 export const Header = React.memo(({ name, subtitle, isDark, isMarketplace }: { name: string, subtitle: string, isDark: boolean, isMarketplace: boolean }) => {
     const { login, logout, user } = usePrivy()
-    const { getUserEntries } = useRaffleEntry()
     const router = useRouter()
     const [userEntries, setUserEntries] = useState<[]>([])
 
 
-    useEffect(() => {
-        if (user) {
-            getUserEntries(user.wallet?.address || "").then((entries) => {
-                setUserEntries(entries)
-            })
-        }
-    }, [user])
+
 
     const sliceAddress = (address: string) => {
         return `${address.slice(0, 4)}...${address.slice(-3)}`
@@ -174,7 +166,7 @@ export const Header = React.memo(({ name, subtitle, isDark, isMarketplace }: { n
                                         </section>
 
                                         {/* Recent Activity */}
-                                        <section>
+                                        {/* <section>
                                             <h3 className="text-sm font-semibold mb-4 text-slate-700 dark:text-slate-300 flex items-center gap-2">
                                                 <Clock className="h-4 w-4" />
                                                 Recent Activity
@@ -194,7 +186,7 @@ export const Header = React.memo(({ name, subtitle, isDark, isMarketplace }: { n
                                                     </div>
                                                 ))}
                                             </div>
-                                        </section>
+                                        </section> */}
 
                                         {/* Quick Actions */}
                                         <section>

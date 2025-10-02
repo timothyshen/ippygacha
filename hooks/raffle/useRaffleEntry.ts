@@ -6,8 +6,8 @@ import {
 import { readClient } from "@/lib/contract/client";
 
 import { useNotifications } from "@/contexts/notification-context";
-import { parseEther, formatEther } from "viem";
-import { PrizeEvent } from "@/features/raffle/types";
+import { parseEther } from "viem";
+import { PrizeEvent, ContractPrize } from "@/features/raffle/types";
 
 export const useRaffleEntry = () => {
   const { getWalletClient } = useWalletClient();
@@ -42,7 +42,7 @@ export const useRaffleEntry = () => {
         functionName: "getUserStats",
         args: [userAddress as `0x${string}`],
       })) as [bigint, bigint, bigint];
-
+      console.log("getUserStats", result);
       return {
         totalUserEntries: result[0],
         totalWinnings: result[1],
@@ -101,89 +101,18 @@ export const useRaffleEntry = () => {
     }
   };
 
-  const getUserEntries = async (userAddress: string) => {
+  const getAllPrizeEntries = async () => {
     try {
-      // For now, we'll need to iterate through the indices
-      // This is a simplified version - in practice, you might want to batch these calls
-      const entries = [];
-      for (let i = 0; i < 10; i++) {
-        // Limit to first 10 entries for now
-        try {
-          const entryIndex = (await readClient.readContract({
-            address: onchainRaffleAddress,
-            abi: onchainRaffleABI,
-            functionName: "userEntryIndices",
-            args: [userAddress as `0x${string}`, BigInt(i)],
-          })) as bigint;
+      const result = (await readClient.readContract({
+        address: onchainRaffleAddress,
+        abi: onchainRaffleABI,
+        functionName: "allPrizes",
+      })) as ContractPrize[];
 
-          if (entryIndex > 0) {
-            const entry = (await readClient.readContract({
-              address: onchainRaffleAddress,
-              abi: onchainRaffleABI,
-              functionName: "allEntries",
-              args: [entryIndex],
-            })) as [string, bigint, bigint, bigint];
-
-            entries.push({
-              user: entry[0],
-              entryCount: entry[1],
-              ipTokensSpent: entry[2],
-              timestamp: entry[3],
-            });
-          }
-        } catch {
-          // Entry doesn't exist, break
-          break;
-        }
-      }
-
-      return entries;
+      console.log("getAllPrizeEntries", result);
+      return result;
     } catch (error) {
-      console.error("Error fetching user entries:", error);
-      throw error;
-    }
-  };
-
-  const getUserPrizes = async (userAddress: string) => {
-    try {
-      // Get user prize indices
-      const prizes = [];
-      for (let i = 0; i < 10; i++) {
-        // Limit to first 10 prizes for now
-        try {
-          const prizeIndex = (await readClient.readContract({
-            address: onchainRaffleAddress,
-            abi: onchainRaffleABI,
-            functionName: "userPrizeIndices",
-            args: [userAddress as `0x${string}`, BigInt(i)],
-          })) as bigint;
-
-          if (prizeIndex > 0) {
-            const prize = (await readClient.readContract({
-              address: onchainRaffleAddress,
-              abi: onchainRaffleABI,
-              functionName: "allPrizes",
-              args: [prizeIndex],
-            })) as [string, number, bigint, bigint, boolean, bigint];
-
-            prizes.push({
-              winner: prize[0],
-              tier: prize[1],
-              ipTokenAmount: prize[2],
-              nftTokenId: prize[3],
-              distributed: prize[4],
-              timestamp: prize[5],
-            });
-          }
-        } catch {
-          // Prize doesn't exist, break
-          break;
-        }
-      }
-
-      return prizes;
-    } catch (error) {
-      console.error("Error fetching user prizes:", error);
+      console.error("Error fetching all entries:", error);
       throw error;
     }
   };
@@ -285,13 +214,13 @@ export const useRaffleEntry = () => {
       onLogs: (logs) => {
         logs.forEach((log) => {
           const prize = {
-            type: "guaranteed",
+            type: "guaranteed" as const,
             tier: 1,
-            ipTokenAmount: log.args.ipTokenAmount,
-            nftTokenId: log.args.nftTokenId,
-            prizeIndex: log.args.prizeIndex,
-            transactionHash: log.transactionHash,
-            blockNumber: log.blockNumber,
+            ipTokenAmount: (log as any).args.ipTokenAmount,
+            nftTokenId: (log as any).args.nftTokenId,
+            prizeIndex: (log as any).args.prizeIndex,
+            transactionHash: log.transactionHash || "",
+            blockNumber: log.blockNumber || BigInt(0),
           };
           onPrizeWon(prize);
         });
@@ -307,13 +236,13 @@ export const useRaffleEntry = () => {
       onLogs: (logs) => {
         logs.forEach((log) => {
           const prize = {
-            type: "bonus",
-            tier: log.args.tier,
-            ipTokenAmount: log.args.ipTokenAmount,
-            nftTokenId: log.args.nftTokenId,
-            prizeIndex: log.args.prizeIndex,
-            transactionHash: log.transactionHash,
-            blockNumber: log.blockNumber,
+            type: "bonus" as const,
+            tier: (log as any).args.tier,
+            ipTokenAmount: (log as any).args.ipTokenAmount,
+            nftTokenId: (log as any).args.nftTokenId,
+            prizeIndex: (log as any).args.prizeIndex,
+            transactionHash: log.transactionHash || "",
+            blockNumber: log.blockNumber || BigInt(0),
           };
           onPrizeWon(prize);
         });
@@ -335,8 +264,7 @@ export const useRaffleEntry = () => {
     getNFTPoolInfo,
     getNFTPoolTokenIds,
     getEntryPrice,
-    getUserEntries,
-    getUserPrizes,
+    getAllPrizeEntries,
     getUserCooldownStatus,
     // Write functions
     enterRaffle,

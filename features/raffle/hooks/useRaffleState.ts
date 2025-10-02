@@ -41,6 +41,7 @@ export const useRaffleState = () => {
 
   const [isLoadingContractData, setIsLoadingContractData] = useState(false);
   const lastContractCallRef = useRef<number>(0);
+  const lastUserDataCallRef = useRef<number>(0);
 
   // Contract services
   const {
@@ -49,8 +50,7 @@ export const useRaffleState = () => {
     getNFTPoolInfo,
     getNFTPoolTokenIds,
     getEntryPrice,
-    getUserEntries,
-    getUserPrizes,
+    getAllPrizeEntries,
     getUserCooldownStatus,
     enterRaffle,
     listenToPrizeEvents,
@@ -158,16 +158,24 @@ export const useRaffleState = () => {
   // Load user-specific data
   const loadUserData = useCallback(
     async (address: string) => {
-      if (isLoadingContractData) return;
+      if (!address) return;
+
+      // Throttle user data calls - only allow one call per 3 seconds
+      const now = Date.now();
+      if (now - lastUserDataCallRef.current < 3000) {
+        return;
+      }
+      lastUserDataCallRef.current = now;
 
       try {
         setIsLoadingContractData(true);
         const [userStatsData, userPrizesData] = await Promise.all([
           getUserStats(address),
-          getUserPrizes(address),
+          getAllPrizeEntries(),
         ]);
 
         setUserStats(userStatsData);
+        console.log("userStatsData", userStatsData);
 
         // Convert contract prizes to display format
         const displayWinners: Winner[] = userPrizesData.map((prize, index) => {
@@ -195,7 +203,7 @@ export const useRaffleState = () => {
         setIsLoadingContractData(false);
       }
     },
-    [getUserStats, getUserPrizes, isLoadingContractData]
+    [getUserStats, getAllPrizeEntries]
   );
 
   // Ticker animation effect
@@ -211,10 +219,14 @@ export const useRaffleState = () => {
     loadContractData();
   }, [loadContractData]);
 
-  // Load user data when wallet connects
+  // Load user data when wallet connects (debounced)
   useEffect(() => {
     if (walletAddress) {
-      loadUserData(walletAddress);
+      const timeoutId = setTimeout(() => {
+        loadUserData(walletAddress);
+      }, 300); // Debounce by 300ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [walletAddress, loadUserData]);
 
@@ -360,6 +372,7 @@ export const useRaffleState = () => {
       }, 4000);
 
       // Refresh contract data and cooldown status
+      // Note: loadUserData is throttled, so it won't make redundant calls
       await Promise.all([
         loadContractData(),
         loadUserData(walletAddress),

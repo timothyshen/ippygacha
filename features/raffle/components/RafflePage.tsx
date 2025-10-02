@@ -20,6 +20,7 @@ export default function RafflePage() {
     showWinModal,
     setShowWinModal,
     tickerOffset,
+    latestPrize,
     isTransactionPending,
     recentWinners,
 
@@ -55,6 +56,8 @@ export default function RafflePage() {
         cooldownMinutes={cooldownMinutes}
         userStats={userStats}
         transactionHash={transactionHash}
+        raffleInfo={raffleInfo}
+        latestPrize={latestPrize}
       />
 
       <Header name="Raffle" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
