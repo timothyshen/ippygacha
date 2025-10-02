@@ -1,14 +1,13 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-ignition";
 import "dotenv/config";
 
 const alchemyApiKey = process.env.ALCHEMY_API_KEY;
 const privateKey = process.env.PRIVATE_KEY;
 
-if (!alchemyApiKey || !privateKey) {
-  throw new Error("ALCHEMY_API_KEY and PRIVATE_KEY must be set");
-}
+// if (!alchemyApiKey || !privateKey) {
+//   throw new Error("ALCHEMY_API_KEY and PRIVATE_KEY must be set");
+// }
 
 const config: HardhatUserConfig = {
   solidity: "0.8.28",

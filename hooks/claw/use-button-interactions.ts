@@ -20,7 +20,7 @@ export function useButtonInteractions() {
 
   const startHolding = useCallback(
     (buttonId: string, action: () => void) => {
-      if (heldButtons.has(buttonId)) return
+      if (heldButtons?.has(buttonId)) return
 
       setHeldButtons((prev) => new Set(prev).add(buttonId))
       action()
@@ -42,7 +42,7 @@ export function useButtonInteractions() {
         return newSet
       })
 
-      const interval = holdIntervals.get(buttonId)
+      const interval = holdIntervals?.get(buttonId)
       if (interval) {
         clearInterval(interval)
         setHoldIntervals((prev) => {

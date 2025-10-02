@@ -22,7 +22,7 @@ export function useKeyboardControls({
 
   const startKeyHolding = useCallback(
     (key: string, action: () => void) => {
-      if (heldKeys.has(key)) return
+      if (heldKeys?.has(key)) return
 
       setHeldKeys((prev) => new Set(prev).add(key))
       action()
@@ -44,7 +44,7 @@ export function useKeyboardControls({
         return newSet
       })
 
-      const interval = keyHoldIntervals.get(key)
+      const interval = keyHoldIntervals?.get(key)
       if (interval) {
         clearInterval(interval)
         setKeyHoldIntervals((prev) => {
@@ -67,7 +67,7 @@ export function useKeyboardControls({
         event.preventDefault()
       }
 
-      if (heldKeys.has(key)) return
+      if (heldKeys?.has(key)) return
 
       let action: (() => void) | null = null
 
@@ -108,7 +108,7 @@ export function useKeyboardControls({
     window.addEventListener("keyup", handleKeyUp)
 
     const handleBlur = () => {
-      heldKeys.forEach((key) => stopKeyHolding(key))
+      heldKeys?.forEach((key) => stopKeyHolding(key))
     }
 
     window.addEventListener("blur", handleBlur)

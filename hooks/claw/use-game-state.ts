@@ -300,6 +300,14 @@ export function useGameState() {
     setDroppedPrize(null);
   };
 
+  // Simple grabPrize method for the optimized version
+  const grabPrize = () => {
+    if (!gameActive || isGrabbing) return;
+    setIsGrabbing(true);
+    setGrabPhase("descending");
+    // This is a simplified version - the full logic is in the original ClawMachine
+  };
+
   return {
     clawX,
     clawY,
@@ -340,6 +348,7 @@ export function useGameState() {
     resetGame,
     endGame,
     dismissResult,
+    grabPrize,
   };
 }
 

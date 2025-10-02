@@ -1,44 +1,43 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@pythnetwork/entropy-sdk-solidity/IEntropyV2.sol";
+import "@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "./lib/MetadataLibBlindBox.sol";
 
 interface IIPPYNFT {
     function mint(address to, uint256 tokenId) external;
 }
 
-contract BlindBox is ERC1155, Ownable, ReentrancyGuard {
+contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
     using Strings for uint256;
 
     IIPPYNFT public ippyNFT;
+    IEntropyV2 public entropy;
+
+    string public name = "IPPY Mystery Box";
+    string public symbol = "IPPY_BOX";
 
     // NFT IDs for the 7 different NFTs
-    uint256 public constant HIDDEN_NFT_ID = 0; // Ultra rare hidden NFT
-    uint256 public constant STANDARD_NFT_1 = 1;
-    uint256 public constant STANDARD_NFT_2 = 2;
-    uint256 public constant STANDARD_NFT_3 = 3;
-    uint256 public constant STANDARD_NFT_4 = 4;
-    uint256 public constant STANDARD_NFT_5 = 5;
-    uint256 public constant STANDARD_NFT_6 = 6;
-
-    // Embedded SVG for blind box (no external files needed)
-    string private constant BLIND_BOX_SVG =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="188" height="188" viewBox="0 0 188 188" fill="none"><circle cx="94" cy="94" r="90.5" fill="url(#paint0_linear_66_5)" stroke="#634048" stroke-width="7"/><defs><linearGradient id="paint0_linear_66_5" x1="152.465" y1="2.35098e-06" x2="35.5353" y2="188" gradientUnits="userSpaceOnUse"><stop stop-color="#FEF3EF"/><stop offset="1" stop-color="#F0C0CA"/></linearGradient></defs></svg>';
-
-    // Probability constants
-    uint256 private constant TOTAL_RANGE = 10_000_000; // 10 million for precise probability
-    uint256 private constant HIDDEN_NFT_THRESHOLD = 1; // 1 in 10,000,000 = 0.0001%
-    uint256 private constant STANDARD_NFT_RANGE =
-        (TOTAL_RANGE - HIDDEN_NFT_THRESHOLD) / 6; // ~1,666,666 each
+    uint256 private constant TOTAL_RANGE = 1000000; // 1 million for precise probability
 
     // Pricing and limits
     uint256 public boxPrice = 0.01 ether; // Price per blind box
-    uint256 public maxTotalSupply = 1000000; // Max total boxes
+    uint256 public maxTotalSupply = 666666; // Max total boxes
     uint256 public currentSupply = 0; // Current minted boxes
+
+    // VRF state management - optimized storage packing
+    struct PendingBoxOpen {
+        address user; // 20 bytes
+        uint128 amount; // 16 bytes (sufficient for box amounts)
+        bool processed; // 1 byte
+        // Total: 37 bytes = 2 storage slots instead of 3
+    }
+    mapping(uint64 => PendingBoxOpen) public pendingBoxOpens;
 
     // Events for frontend tracking
     event BlindBoxPurchased(
@@ -54,17 +53,18 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard {
     );
     event PriceUpdated(uint256 newPrice);
     event NFTMinted(address indexed recipient, uint256 nftId);
+    event VRFRequested(
+        address indexed user,
+        uint64 sequenceNumber,
+        uint256 amount
+    );
 
-    constructor(address _ippyNFT) ERC1155("") Ownable(msg.sender) {
+    constructor(
+        address _ippyNFT,
+        address _entropy
+    ) ERC1155("") Ownable(msg.sender) {
         ippyNFT = IIPPYNFT(_ippyNFT);
-    }
-
-    function name() public pure returns (string memory) {
-        return "IPPY Mystery Box";
-    }
-
-    function symbol() public pure returns (string memory) {
-        return "IPPY_BOX";
+        entropy = IEntropyV2(_entropy);
     }
 
     // Purchase blind boxes
@@ -74,7 +74,9 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard {
 
         // Mint boxes to buyer (using token ID 1 for all blind boxes)
         _mint(msg.sender, 1, amount, "");
-        currentSupply += amount;
+        unchecked {
+            currentSupply += amount; // Safe: already checked supply limit above
+        }
 
         emit BlindBoxPurchased(msg.sender, amount, boxPrice * amount);
 
@@ -85,59 +87,81 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard {
     }
 
     // Open blind boxes (previous burn function renamed for clarity)
-    function openBox(uint256 amount) external nonReentrant {
+    function openBox(uint256 amount) external payable nonReentrant {
         require(amount > 0, "Amount must be greater than 0");
         require(balanceOf(msg.sender, 1) >= amount, "Insufficient boxes");
 
+        // Calculate required entropy fee
+        uint256 totalFee = entropy.getFeeV2() * amount;
+        require(msg.value >= totalFee, "Insufficient fee for VRF");
+
         _burn(msg.sender, 1, amount);
 
-        // Open each box individually
+        // Request random number for this batch
+        uint64 sequenceNumber = _requestRandomNumber();
 
-        uint256 selectedNFTId = _generateRandomNFT(1);
-        ippyNFT.mint(msg.sender, selectedNFTId);
+        // Store pending request
+        pendingBoxOpens[sequenceNumber] = PendingBoxOpen({
+            user: msg.sender,
+            amount: uint128(amount), // Safe cast - box amounts won't exceed uint128
+            processed: false
+        });
 
-        bool isHidden = selectedNFTId == HIDDEN_NFT_ID;
-        emit BlindBoxOpened(msg.sender, 1, selectedNFTId, isHidden);
-        emit NFTMinted(msg.sender, selectedNFTId);
+        emit VRFRequested(msg.sender, sequenceNumber, amount);
+
+        // Refund excess payment
+        if (msg.value > totalFee) {
+            payable(msg.sender).transfer(msg.value - totalFee);
+        }
     }
 
-    function _generateRandomNFT(uint256 nonce) private view returns (uint256) {
-        // Generate random number for NFT selection
-        uint256 randomNumber = uint256(
-            keccak256(
-                abi.encodePacked(
-                    block.timestamp,
-                    block.prevrandao,
-                    msg.sender,
-                    block.number,
-                    tx.gasprice,
-                    nonce // Add nonce for multiple boxes in same tx
-                )
-            )
+    function _requestRandomNumber() internal returns (uint64) {
+        uint256 fee = entropy.getFeeV2();
+        require(
+            address(this).balance >= fee,
+            "Insufficient IP for entropy fee"
         );
-
-        uint256 randomIndex = randomNumber % TOTAL_RANGE;
-        return _selectNFTById(randomIndex);
+        return entropy.requestV2{value: fee}();
     }
 
-    function _selectNFTById(
-        uint256 randomIndex
-    ) private pure returns (uint256) {
-        // Hidden NFT: 0.0001% chance (1 in 10,000,000)
-        if (randomIndex < HIDDEN_NFT_THRESHOLD) {
-            return HIDDEN_NFT_ID;
+    function entropyCallback(
+        uint64 sequenceNumber,
+        address /* provider */,
+        bytes32 randomNumber
+    ) internal override {
+        PendingBoxOpen storage pending = pendingBoxOpens[sequenceNumber];
+        require(!pending.processed, "Already processed");
+        require(pending.user != address(0), "Invalid sequence number");
+
+        pending.processed = true;
+
+        // Open multiple boxes with one random seed
+        uint128 amount = pending.amount; // Cache to avoid repeated storage reads
+        for (uint256 i; i < amount; ) {
+            // Remove ++i from condition for unchecked increment
+            // Derive unique random number for each box
+            bytes32 boxRandomNumber = keccak256(
+                abi.encodePacked(randomNumber, i)
+            );
+            uint256 randomIndex = uint256(boxRandomNumber) % TOTAL_RANGE;
+
+            ippyNFT.mint(pending.user, randomIndex);
+            emit BlindBoxOpened(pending.user, 1, randomIndex, false);
+            emit NFTMinted(pending.user, randomIndex);
+
+            unchecked {
+                ++i; // Safe: loop bound is known and reasonable
+            }
         }
+    }
 
-        // Standard NFTs: distribute remaining range equally
-        uint256 adjustedIndex = randomIndex - HIDDEN_NFT_THRESHOLD;
-        uint256 nftGroup = adjustedIndex / STANDARD_NFT_RANGE;
-
-        // Ensure we don't go out of bounds (safety check)
-        if (nftGroup >= 6) {
-            nftGroup = 5; // Assign to the last standard NFT
-        }
-
-        return STANDARD_NFT_1 + nftGroup; // Returns 1-6 for standard NFTs
+    function mapRandomNumber(
+        bytes32 randomNumber,
+        int256 minRange,
+        int256 maxRange
+    ) internal pure returns (int256) {
+        uint256 range = uint256(maxRange - minRange + 1);
+        return minRange + int256(uint256(randomNumber) % range);
     }
 
     // Admin functions
@@ -148,6 +172,18 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard {
 
     function withdrawFunds() external onlyOwner {
         payable(owner()).transfer(address(this).balance);
+    }
+
+    function setEntropy(address _entropy) external onlyOwner {
+        entropy = IEntropyV2(_entropy);
+    }
+
+    function getVRFFee() external view returns (uint256) {
+        return entropy.getFeeV2();
+    }
+
+    function getVRFFeeForBoxes(uint256 amount) external view returns (uint256) {
+        return entropy.getFeeV2() * amount;
     }
 
     // Frontend helper functions
@@ -177,50 +213,14 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard {
      * @dev Override uri function to generate metadata on-chain
      */
     function uri(uint256 tokenId) public pure override returns (string memory) {
-        if (tokenId == 1) {
-            // Generate blind box metadata on-chain
-            return _generateBlindBoxMetadata();
-        }
-        return "";
-    }
-
-    /**
-     * @dev Generate blind box metadata with embedded SVG
-     */
-    function _generateBlindBoxMetadata() private pure returns (string memory) {
-        string memory svg = BLIND_BOX_SVG;
-        string memory svgBase64 = Base64.encode(bytes(svg));
-        string memory imageURI = string(
-            abi.encodePacked("data:image/svg+xml;base64,", svgBase64)
-        );
-
-        string memory json = string(
-            abi.encodePacked(
-                '{"name": "IPPY Mystery Box",',
-                '"description": "A mysterious blind box containing one of 7 possible IPPY NFTs. Each box holds the potential for incredible discoveries!",',
-                '"image": "',
-                imageURI,
-                '",',
-                '"background_color": "F0C0CA",',
-                '"attributes": [',
-                '{"trait_type": "Type", "value": "Mystery Box"},',
-                '{"trait_type": "Status", "value": "Unopened"},',
-                '{"trait_type": "Hidden NFT Chance", "value": "0.0001%"},',
-                '{"trait_type": "Standard NFT Chance", "value": "99.9999%"}',
-                "]}"
-            )
-        );
-
-        return
-            string(
-                abi.encodePacked(
-                    "data:application/json;base64,",
-                    Base64.encode(bytes(json))
-                )
-            );
+        return MetadataLibBlindBox.tokenURI(tokenId);
     }
 
     function getIPPYNFT() external view returns (address) {
         return address(ippyNFT);
+    }
+
+    function getEntropy() internal view override returns (address) {
+        return address(entropy);
     }
 }
