@@ -14,7 +14,6 @@ library MetadataLibIPPYNFT {
     uint8 public constant STANDARD_NFT_4 = 4;
     uint8 public constant STANDARD_NFT_5 = 5;
     uint8 public constant STANDARD_NFT_6 = 6;
-
     struct NFTData {
         string name;
         string description;
@@ -107,7 +106,8 @@ library MetadataLibIPPYNFT {
 
     function tokenURI(
         uint8 nftType,
-        uint256 tokenId
+        uint256 tokenId,
+        bool isRedeemed
     ) internal pure returns (string memory) {
         NFTData memory nftData = _getNFTData(nftType);
         string memory attributes = _attributes(nftType);
@@ -121,6 +121,8 @@ library MetadataLibIPPYNFT {
             nftData.description,
             '","image":"',
             nftData.imageURI,
+            '","status":"',
+            isRedeemed ? "Redeemed" : "Unredeemed",
             '","attributes":[',
             attributes,
             "]}"
@@ -153,7 +155,7 @@ library MetadataLibIPPYNFT {
                 nftData.theme,
                 '"},{"trait_type":"Power","value":"',
                 nftData.power,
-                '"}'
+                "}"
             );
     }
 }
