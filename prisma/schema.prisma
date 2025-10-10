@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ActivityType {
+  GACHA_PULL
+  CLAW_WIN
+  MARKETPLACE_TRADE
+  DAILY_LOGIN
+  FIRST_GACHA_DAILY
+  RARE_NFT_PULL
+  HIDDEN_NFT_PULL
+  RARE_CLAW_WIN
+  MARKETPLACE_LIST
+  MARKETPLACE_SALE
+  MARKETPLACE_PURCHASE
+}
+
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique
+  username      String?
+  avatarUrl     String?
+  totalPoints   Int      @default(0)
+  totalXp       Int      @default(0)
+  currentLevel  Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  activities Activity[]
+
+  @@map("users")
+}
+
+model Activity {
+  id           String       @id @default(cuid())
+  userId       String
+  activityType ActivityType
+  pointsEarned Int
+  xpEarned     Int
+  metadata     Json?        // Additional data like NFT type, amount, etc.
+  createdAt    DateTime     @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
