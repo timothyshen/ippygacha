@@ -11,7 +11,7 @@ interface MarketStatsProps {
 
 export const MarketStats = ({ totalListings, hiddenItems, blindBoxes, averagePrice, featuredItems, limitedItems }: MarketStatsProps) => {
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8 pt-20 sm:pt-24 md:pt-28">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8 pt-10 sm:pt-12 md:pt-14">
             <Card className="bg-white/80 border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
                 <CardContent className="p-4 text-center">
                     <div className="text-2xl md:text-3xl font-bold text-slate-800 mb-1">{totalListings}</div>

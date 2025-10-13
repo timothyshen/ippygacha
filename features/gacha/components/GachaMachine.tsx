@@ -43,7 +43,7 @@ export const GachaMachine = React.memo(() => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-4">
             <div className="max-w-7xl mx-auto">
                 <Header name="Gacha Zone" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
                 <MachineBody

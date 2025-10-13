@@ -100,7 +100,7 @@ export default function Inventory() {
 
                 <Header name="Inventory" subtitle="Premium Collection Experience" isDark={true} isMarketplace={true} />
 
-                <div className="w-full max-w-7xl mx-auto flex-1 pt-20 sm:pt-24 md:pt-28">
+                <div className="w-full max-w-7xl mx-auto flex-1 pt-10 sm:pt-12 md:pt-14">
                     {/* Contract Info Display - Show box price and supply info if available */}
                     {contractInfo && <InventoryStats
                         {...contractInfo}
