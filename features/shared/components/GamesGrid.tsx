@@ -1,3 +1,11 @@
+"use client"
+
+/**
+ * Display grid of games with search, sort, and category filtering.
+ */
+
+import { useMemo, useState } from "react";
+import FilterBar, { defaultCategories } from "./FilterBar";
 import GameCard from "./GameCard";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -33,11 +41,70 @@ const comingSoonGames = Array(4).fill(null).map((_, i) => ({
   comingSoon: true,
 }));
 
+const parsePlayerCount = (players: string) => {
+  const normalized = players.trim().toUpperCase().replace(/\+/g, "");
+  const match = normalized.match(/^([\d.,]+)([KMB]?)$/);
+  if (!match) {
+    return 0;
+  }
+
+  const value = parseFloat(match[1].replace(/,/g, ""));
+  const suffix = match[2];
+
+  const multipliers: Record<string, number> = {
+    K: 1_000,
+    M: 1_000_000,
+    B: 1_000_000_000,
+  };
+
+  return value * (suffix ? multipliers[suffix] ?? 1 : 1);
+};
+
 export default function GamesGrid() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [activeCategory, setActiveCategory] = useState(defaultCategories[0]);
+
+  const filteredGames = useMemo(() => {
+    const normalizedQuery = searchQuery.toLowerCase().trim();
+
+    const matchesSearch = (title: string, description: string) => {
+      if (!normalizedQuery) return true;
+      return (
+        title.toLowerCase().includes(normalizedQuery) ||
+        description.toLowerCase().includes(normalizedQuery)
+      );
+    };
+
+    const matchesCategory = (category: string) => {
+      if (activeCategory === defaultCategories[0]) return true;
+      return category === activeCategory;
+    };
+
+    const sorted = games
+      .filter((game) => matchesCategory(game.category) && matchesSearch(game.title, game.description))
+      .sort((a, b) => {
+        const aPlayers = parsePlayerCount(a.players);
+        const bPlayers = parsePlayerCount(b.players);
+
+        return sortOrder === "asc" ? aPlayers - bPlayers : bPlayers - aPlayers;
+      });
+
+    return sorted;
+  }, [activeCategory, searchQuery, sortOrder]);
+
   return (
     <div>
+      <FilterBar
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        sortOrder={sortOrder}
+        onSortChange={setSortOrder}
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {games.map((game) => (
+        {filteredGames.map((game) => (
           <GameCard key={game.id} {...game} />
         ))}
         {comingSoonGames.map((item) => (
