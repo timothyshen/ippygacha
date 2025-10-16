@@ -1,5 +1,5 @@
 "use client"
-import React from "react"
+import React, { useCallback } from "react"
 import { useGachaMachine } from "@/hooks/gacha/useGachaMachine"
 import { useInventory } from "@/hooks/gacha/useInventory"
 import { Header } from "@/features/shared/components/Header"
@@ -32,15 +32,20 @@ export const GachaMachine = React.memo(() => {
 
     const router = useRouter()
 
-
-    const handlePullGacha = () => {
-        pullGacha()
-    }
-
-    const handleRevealBlindBox = () => {
+    const handleRevealBlindBox = useCallback(() => {
         revealBlindBox()
         refreshInventory()
-    }
+    }, [refreshInventory, revealBlindBox])
+
+    const handleOpenInventory = useCallback(() => {
+        router.push("/inventory")
+    }, [router])
+
+    const handleOpenMarket = useCallback(() => {
+        router.push("/market")
+    }, [router])
+
+    const blindBoxItem = currentBlindBox
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-4">
@@ -55,21 +60,23 @@ export const GachaMachine = React.memo(() => {
                     currentResults={currentResults}
                     leverPulled={leverPulled}
                     coins={coins}
-                    onPullGacha={handlePullGacha}
+                    onPullGacha={pullGacha}
                 />
                 <ControlPanel
                     coins={coins}
                     onAddCoin={addCoin}
-                    onOpenInventory={() => router.push("/inventory")}
-                    onOpenMarket={() => router.push("/market")}
+                    onOpenInventory={handleOpenInventory}
+                    onOpenMarket={handleOpenMarket}
                 />
-                <BlindBoxModal
-                    isOpen={showBlindBoxModal}
-                    onClose={closeModalAndReset}
-                    item={currentBlindBox!}
-                    onReveal={handleRevealBlindBox}
-                    isRevealed={isItemRevealed}
-                />
+                {blindBoxItem && (
+                    <BlindBoxModal
+                        isOpen={showBlindBoxModal}
+                        onClose={closeModalAndReset}
+                        item={blindBoxItem}
+                        onReveal={handleRevealBlindBox}
+                        isRevealed={isItemRevealed}
+                    />
+                )}
                 <AnimationEffects
                     showCelebration={showCelebration}
                 />

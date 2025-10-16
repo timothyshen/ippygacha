@@ -19,7 +19,6 @@ export default function RafflePage() {
     selectedPrizeValue,
     showWinModal,
     setShowWinModal,
-    tickerOffset,
     latestPrize,
     isTransactionPending,
     recentWinners,

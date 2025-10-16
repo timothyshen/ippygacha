@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useReducer } from "react";
 import {
   Winner,
   ContractRaffleInfo,
@@ -8,6 +8,40 @@ import {
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { usePrivy } from "@privy-io/react-auth";
 import { formatEther } from "viem";
+
+interface CooldownDisplayState {
+  hours: number;
+  minutes: number;
+  seconds: number;
+  progress: number;
+  timeRemaining: string;
+}
+
+type CooldownDisplayAction =
+  | { type: "reset" }
+  | { type: "update"; payload: CooldownDisplayState };
+
+const initialCooldownDisplayState: CooldownDisplayState = {
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+  progress: 0,
+  timeRemaining: "0h 0m 0s",
+};
+
+const cooldownDisplayReducer = (
+  state: CooldownDisplayState,
+  action: CooldownDisplayAction
+): CooldownDisplayState => {
+  switch (action.type) {
+    case "reset":
+      return initialCooldownDisplayState;
+    case "update":
+      return action.payload;
+    default:
+      return state;
+  }
+};
 
 export const useRaffleState = () => {
   // Basic raffle state
@@ -19,7 +53,6 @@ export const useRaffleState = () => {
     null
   );
   const [showWinModal, setShowWinModal] = useState(false);
-  const [tickerOffset, setTickerOffset] = useState(0);
   const [isTransactionPending, setIsTransactionPending] = useState(false);
   const [recentWinners, setRecentWinners] = useState<Winner[]>([]);
 
@@ -33,11 +66,11 @@ export const useRaffleState = () => {
   // Cooldown state
   const [canSpin, setCanSpin] = useState(true);
   const [lastSpinTime, setLastSpinTime] = useState<number | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState("");
-  const [cooldownHours, setCooldownHours] = useState(0);
-  const [cooldownMinutes, setCooldownMinutes] = useState(0);
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [cooldownProgress, setCooldownProgress] = useState(0);
+  const [cooldownDisplay, dispatchCooldownDisplay] = useReducer(
+    cooldownDisplayReducer,
+    initialCooldownDisplayState
+  );
+  const { hours: cooldownHours, minutes: cooldownMinutes, seconds: cooldownSeconds, progress: cooldownProgress, timeRemaining } = cooldownDisplay;
 
   const [isLoadingContractData, setIsLoadingContractData] = useState(false);
   const lastContractCallRef = useRef<number>(0);
@@ -47,8 +80,6 @@ export const useRaffleState = () => {
   const {
     getRaffleInfo,
     getUserStats,
-    getNFTPoolInfo,
-    getNFTPoolTokenIds,
     getEntryPrice,
     getAllPrizeEntries,
     getUserCooldownStatus,
@@ -74,13 +105,18 @@ export const useRaffleState = () => {
           ? ((cooldownPeriod - remainingTime) / cooldownPeriod) * 100
           : 0;
 
-      setCooldownHours(hours);
-      setCooldownMinutes(minutes);
-      setCooldownSeconds(seconds);
-      setCooldownProgress(progress);
-      setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+      dispatchCooldownDisplay({
+        type: "update",
+        payload: {
+          hours,
+          minutes,
+          seconds,
+          progress,
+          timeRemaining: `${hours}h ${minutes}m ${seconds}s`,
+        },
+      });
     },
-    []
+    [dispatchCooldownDisplay]
   );
 
   const checkCanSpin = useCallback(
@@ -109,10 +145,7 @@ export const useRaffleState = () => {
         if (cooldownStatus.canEnter) {
           setCanSpin(true);
           setLastSpinTime(null);
-          setCooldownHours(0);
-          setCooldownMinutes(0);
-          setCooldownSeconds(0);
-          setCooldownProgress(0);
+          dispatchCooldownDisplay({ type: "reset" });
         } else {
           setCanSpin(false);
           const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000; // Convert seconds to milliseconds
@@ -132,6 +165,7 @@ export const useRaffleState = () => {
       getUserCooldownStatus,
       updateCooldownDisplay,
       isLoadingContractData,
+      dispatchCooldownDisplay,
     ]
   );
 
@@ -175,7 +209,6 @@ export const useRaffleState = () => {
         ]);
 
         setUserStats(userStatsData);
-        console.log("userStatsData", userStatsData);
 
         // Convert contract prizes to display format
         const displayWinners: Winner[] = userPrizesData.map((prize, index) => {
@@ -205,14 +238,6 @@ export const useRaffleState = () => {
     },
     [getUserStats, getAllPrizeEntries]
   );
-
-  // Ticker animation effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTickerOffset((prev) => (prev + 1) % 100);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
 
   // Load contract data on mount
   useEffect(() => {
@@ -283,7 +308,6 @@ export const useRaffleState = () => {
         const { unwatch: unwatchFn } = await listenToPrizeEvents(
           walletAddress,
           (prize: PrizeEvent) => {
-            console.log("🎉 Prize won!", prize);
             setLatestPrize(prize);
 
             // Update the win modal with real prize data
@@ -321,8 +345,6 @@ export const useRaffleState = () => {
       setIsTransactionPending(true);
       setSelectedPrize(null);
 
-      console.log("[Contract] Starting raffle entry process...");
-
       // Step 1: Double-check cooldown
       await checkCanSpin(walletAddress);
       if (!canSpin) {
@@ -331,8 +353,6 @@ export const useRaffleState = () => {
 
       // Step 2: Execute smart contract transaction
       const transactionResult = await enterRaffle();
-
-      console.log("[Contract] Transaction completed:", transactionResult);
 
       setIsTransactionPending(false);
       setCanSpin(false);
@@ -403,7 +423,6 @@ export const useRaffleState = () => {
     selectedPrizeValue,
     showWinModal,
     setShowWinModal,
-    tickerOffset,
     isTransactionPending,
     recentWinners,
 

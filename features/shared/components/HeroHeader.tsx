@@ -1,6 +1,42 @@
+import type { LucideIcon } from "lucide-react";
+import { Gift, Trophy, Users } from "lucide-react";
 import { Header } from "./Header";
-import { Users, Trophy, Gift } from "lucide-react";
 
+interface HeroStat {
+  title: string;
+  subtitle: string;
+  icon: LucideIcon;
+}
+
+const StatPill = ({ title, subtitle, icon: Icon }: HeroStat) => (
+  <div className="flex items-center gap-2 bg-background/60 backdrop-blur-sm px-5 py-3 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all">
+    <div className="p-2 bg-gradient-primary rounded-full">
+      <Icon className="h-4 w-4 text-primary-foreground" />
+    </div>
+    <div className="text-left">
+      <div className="text-lg font-bold text-primary">{title}</div>
+      <div className="text-xs text-muted-foreground">{subtitle}</div>
+    </div>
+  </div>
+);
+
+const heroStats: HeroStat[] = [
+  {
+    title: "5K+",
+    subtitle: "Players",
+    icon: Users,
+  },
+  {
+    title: "100+",
+    subtitle: "Collectibles",
+    icon: Trophy,
+  },
+  {
+    title: "Daily",
+    subtitle: "Rewards",
+    icon: Gift,
+  },
+];
 
 export default function Hero() {
   return (
@@ -29,33 +65,9 @@ export default function Hero() {
 
         {/* Stats with enhanced styling */}
         <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 animate-slide-up">
-          <div className="flex items-center gap-2 bg-background/60 backdrop-blur-sm px-5 py-3 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all">
-            <div className="p-2 bg-gradient-primary rounded-full">
-              <Users className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <div className="text-left">
-              <div className="text-lg font-bold text-primary">5K+</div>
-              <div className="text-xs text-muted-foreground">Players</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 bg-background/60 backdrop-blur-sm px-5 py-3 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all">
-            <div className="p-2 bg-gradient-primary rounded-full">
-              <Trophy className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <div className="text-left">
-              <div className="text-lg font-bold text-primary">100+</div>
-              <div className="text-xs text-muted-foreground">Collectibles</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 bg-background/60 backdrop-blur-sm px-5 py-3 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all">
-            <div className="p-2 bg-gradient-primary rounded-full">
-              <Gift className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <div className="text-left">
-              <div className="text-lg font-bold text-primary">Daily</div>
-              <div className="text-xs text-muted-foreground">Rewards</div>
-            </div>
-          </div>
+          {heroStats.map((stat) => (
+            <StatPill key={stat.subtitle} {...stat} />
+          ))}
         </div>
       </div>
     </div>
