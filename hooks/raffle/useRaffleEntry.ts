@@ -13,6 +13,18 @@ export const useRaffleEntry = () => {
   const { getWalletClient } = useWalletClient();
   const { addNotification } = useNotifications();
 
+  // Debug contract configuration
+  console.log("🔧 useRaffleEntry: Contract configuration:");
+  console.log("  - onchainRaffleAddress:", onchainRaffleAddress);
+  console.log("  - readClient:", readClient);
+  console.log("  - ABI length:", onchainRaffleABI.length);
+  console.log(
+    "  - ABI functions:",
+    onchainRaffleABI
+      .filter((item) => item.type === "function")
+      .map((f) => f.name)
+  );
+
   // Getter functions for reading contract data
   const getRaffleInfo = async () => {
     try {
@@ -35,21 +47,46 @@ export const useRaffleEntry = () => {
   };
 
   const getUserStats = async (userAddress: string) => {
+    console.log("🔍 getUserStats: Starting with address:", userAddress);
+    console.log("🔍 getUserStats: Contract address:", onchainRaffleAddress);
+    console.log(
+      "🔍 getUserStats: ABI function exists:",
+      onchainRaffleABI.some((item) => item.name === "getUserStats")
+    );
+
     try {
+      console.log("📡 getUserStats: Making contract call...");
       const result = (await readClient.readContract({
         address: onchainRaffleAddress,
         abi: onchainRaffleABI,
         functionName: "getUserStats",
         args: [userAddress as `0x${string}`],
       })) as [bigint, bigint, bigint];
-      console.log("getUserStats", result);
-      return {
+
+      console.log("✅ getUserStats: Raw contract result:", result);
+      console.log("📊 getUserStats: Result breakdown:");
+      console.log("  - totalUserEntries (result[0]):", result[0]);
+      console.log("  - totalWinnings (result[1]):", result[1]);
+      console.log("  - distributedPrizes (result[2]):", result[2]);
+
+      const processedResult = {
         totalUserEntries: result[0],
         totalWinnings: result[1],
         distributedPrizes: result[2],
       };
+
+      console.log("🎯 getUserStats: Processed result:", processedResult);
+      return processedResult;
     } catch (error) {
-      console.error("Error fetching user stats:", error);
+      console.error("❌ getUserStats: Error details:", error);
+      console.error(
+        "❌ getUserStats: Error message:",
+        error instanceof Error ? error.message : "Unknown error"
+      );
+      console.error(
+        "❌ getUserStats: Error stack:",
+        error instanceof Error ? error.stack : "No stack"
+      );
       throw error;
     }
   };
@@ -102,17 +139,68 @@ export const useRaffleEntry = () => {
   };
 
   const getAllPrizeEntries = async () => {
+    console.log("🔍 getAllPrizeEntries: Starting...");
+    console.log(
+      "🔍 getAllPrizeEntries: Contract address:",
+      onchainRaffleAddress
+    );
+    console.log(
+      "🔍 getAllPrizeEntries: ABI function exists:",
+      onchainRaffleABI.some((item) => item.name === "allPrizes")
+    );
+
     try {
-      const result = (await readClient.readContract({
+      const length = await readClient.readContract({
         address: onchainRaffleAddress,
         abi: onchainRaffleABI,
-        functionName: "allPrizes",
-      })) as ContractPrize[];
+        functionName: "totalEntries",
+      });
 
-      console.log("getAllPrizeEntries", result);
+      console.log("📡 getAllPrizeEntries: Making contract call...");
+
+      const result = [];
+      for (let i = 0; i < (length as number); i++) {
+        const prize = await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "allPrizes",
+          args: [i],
+        });
+        result.push(prize);
+      }
+
+      console.log("✅ getAllPrizeEntries: Raw contract result:", result);
+      console.log("📊 getAllPrizeEntries: Result type:", typeof result);
+      console.log(
+        "📊 getAllPrizeEntries: Result length:",
+        Array.isArray(result) ? result.length : "Not an array"
+      );
+
+      if (Array.isArray(result)) {
+        console.log("🏆 getAllPrizeEntries: Prize breakdown:");
+        result.forEach((prize, index) => {
+          console.log(`  Prize ${index}:`, {
+            winner: prize.winner,
+            ipTokenAmount: prize.ipTokenAmount,
+            nftTokenId: prize.nftTokenId,
+            tier: prize.tier,
+            timestamp: prize.timestamp,
+          });
+        });
+      }
+
+      console.log("🎯 getAllPrizeEntries: Returning result:", result);
       return result;
     } catch (error) {
-      console.error("Error fetching all entries:", error);
+      console.error("❌ getAllPrizeEntries: Error details:", error);
+      console.error(
+        "❌ getAllPrizeEntries: Error message:",
+        error instanceof Error ? error.message : "Unknown error"
+      );
+      console.error(
+        "❌ getAllPrizeEntries: Error stack:",
+        error instanceof Error ? error.stack : "No stack"
+      );
       throw error;
     }
   };

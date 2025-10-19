@@ -70,7 +70,13 @@ export const useRaffleState = () => {
     cooldownDisplayReducer,
     initialCooldownDisplayState
   );
-  const { hours: cooldownHours, minutes: cooldownMinutes, seconds: cooldownSeconds, progress: cooldownProgress, timeRemaining } = cooldownDisplay;
+  const {
+    hours: cooldownHours,
+    minutes: cooldownMinutes,
+    seconds: cooldownSeconds,
+    progress: cooldownProgress,
+    timeRemaining,
+  } = cooldownDisplay;
 
   const [isLoadingContractData, setIsLoadingContractData] = useState(false);
   const lastContractCallRef = useRef<number>(0);
@@ -91,6 +97,14 @@ export const useRaffleState = () => {
   const { user, authenticated } = usePrivy();
   const walletConnected = authenticated;
   const walletAddress = user?.wallet?.address || "";
+
+  // Debug wallet connection state
+  console.log("🔗 Wallet state:", {
+    authenticated,
+    walletConnected,
+    walletAddress,
+    user: user ? "connected" : "null",
+  });
 
   // Cooldown management functions
   const updateCooldownDisplay = useCallback(
@@ -192,21 +206,41 @@ export const useRaffleState = () => {
   // Load user-specific data
   const loadUserData = useCallback(
     async (address: string) => {
-      if (!address) return;
+      console.log("🔄 loadUserData called with address:", address);
+
+      if (!address) {
+        console.log("❌ loadUserData: No address provided, returning early");
+        return;
+      }
 
       // Throttle user data calls - only allow one call per 3 seconds
       const now = Date.now();
       if (now - lastUserDataCallRef.current < 3000) {
+        console.log(
+          "⏱️ loadUserData: Throttled, last call was",
+          now - lastUserDataCallRef.current,
+          "ms ago"
+        );
         return;
       }
       lastUserDataCallRef.current = now;
+      console.log("✅ loadUserData: Proceeding with call");
 
       try {
+        console.log(
+          "🔄 loadUserData: Setting loading state and fetching data..."
+        );
         setIsLoadingContractData(true);
         const [userStatsData, userPrizesData] = await Promise.all([
           getUserStats(address),
           getAllPrizeEntries(),
         ]);
+
+        console.log("📊 loadUserData: Received userStatsData:", userStatsData);
+        console.log(
+          "🏆 loadUserData: Received userPrizesData:",
+          userPrizesData
+        );
 
         setUserStats(userStatsData);
 
@@ -229,10 +263,15 @@ export const useRaffleState = () => {
           };
         });
 
+        console.log(
+          "🎯 loadUserData: Setting recentWinners:",
+          displayWinners.slice(0, 10)
+        );
         setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
       } catch (error) {
-        console.error("Error loading user data:", error);
+        console.error("❌ loadUserData: Error loading user data:", error);
       } finally {
+        console.log("✅ loadUserData: Finished, setting loading to false");
         setIsLoadingContractData(false);
       }
     },
@@ -246,12 +285,26 @@ export const useRaffleState = () => {
 
   // Load user data when wallet connects (debounced)
   useEffect(() => {
+    console.log(
+      "🔍 useEffect [walletAddress, loadUserData]: walletAddress =",
+      walletAddress
+    );
+
     if (walletAddress) {
+      console.log(
+        "⏰ useEffect: Setting timeout to call loadUserData in 300ms"
+      );
       const timeoutId = setTimeout(() => {
+        console.log("⏰ useEffect: Timeout triggered, calling loadUserData");
         loadUserData(walletAddress);
       }, 300); // Debounce by 300ms
 
-      return () => clearTimeout(timeoutId);
+      return () => {
+        console.log("🧹 useEffect: Cleaning up timeout");
+        clearTimeout(timeoutId);
+      };
+    } else {
+      console.log("❌ useEffect: No walletAddress, not setting timeout");
     }
   }, [walletAddress, loadUserData]);
 
@@ -393,6 +446,7 @@ export const useRaffleState = () => {
 
       // Refresh contract data and cooldown status
       // Note: loadUserData is throttled, so it won't make redundant calls
+      console.log("🔄 handleSpinWheel: Refreshing data after spin...");
       await Promise.all([
         loadContractData(),
         loadUserData(walletAddress),
