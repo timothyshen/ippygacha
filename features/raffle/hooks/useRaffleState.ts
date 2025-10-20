@@ -4,6 +4,7 @@ import {
   ContractRaffleInfo,
   ContractUserStats,
   PrizeEvent,
+  ContractPrize,
 } from "../types";
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { usePrivy } from "@privy-io/react-auth";
@@ -81,6 +82,9 @@ export const useRaffleState = () => {
   const [isLoadingContractData, setIsLoadingContractData] = useState(false);
   const lastContractCallRef = useRef<number>(0);
   const lastUserDataCallRef = useRef<number>(0);
+  const loadUserDataRef = useRef<((address: string) => Promise<void>) | null>(
+    null
+  );
 
   // Contract services
   const {
@@ -97,14 +101,6 @@ export const useRaffleState = () => {
   const { user, authenticated } = usePrivy();
   const walletConnected = authenticated;
   const walletAddress = user?.wallet?.address || "";
-
-  // Debug wallet connection state
-  console.log("🔗 Wallet state:", {
-    authenticated,
-    walletConnected,
-    walletAddress,
-    user: user ? "connected" : "null",
-  });
 
   // Cooldown management functions
   const updateCooldownDisplay = useCallback(
@@ -174,13 +170,7 @@ export const useRaffleState = () => {
         setIsLoadingContractData(false);
       }
     },
-    [
-      getRaffleInfo,
-      getUserCooldownStatus,
-      updateCooldownDisplay,
-      isLoadingContractData,
-      dispatchCooldownDisplay,
-    ]
+    [updateCooldownDisplay, isLoadingContractData, dispatchCooldownDisplay] // Remove function dependencies to prevent infinite re-creation
   );
 
   // Load contract data
@@ -189,65 +179,18 @@ export const useRaffleState = () => {
 
     try {
       setIsLoadingContractData(true);
-      const [raffleInfoData, entryPriceData] = await Promise.all([
-        getRaffleInfo(),
-        getEntryPrice(),
-      ]);
-
-      setRaffleInfo(raffleInfoData);
-      setEntryPrice(entryPriceData);
-    } catch (error) {
-      console.error("Error loading contract data:", error);
-    } finally {
-      setIsLoadingContractData(false);
-    }
-  }, [getRaffleInfo, getEntryPrice, isLoadingContractData]);
-
-  // Load user-specific data
-  const loadUserData = useCallback(
-    async (address: string) => {
-      console.log("🔄 loadUserData called with address:", address);
-
-      if (!address) {
-        console.log("❌ loadUserData: No address provided, returning early");
-        return;
-      }
-
-      // Throttle user data calls - only allow one call per 3 seconds
-      const now = Date.now();
-      if (now - lastUserDataCallRef.current < 3000) {
-        console.log(
-          "⏱️ loadUserData: Throttled, last call was",
-          now - lastUserDataCallRef.current,
-          "ms ago"
-        );
-        return;
-      }
-      lastUserDataCallRef.current = now;
-      console.log("✅ loadUserData: Proceeding with call");
-
-      try {
-        console.log(
-          "🔄 loadUserData: Setting loading state and fetching data..."
-        );
-        setIsLoadingContractData(true);
-        const [userStatsData, userPrizesData] = await Promise.all([
-          getUserStats(address),
+      const [raffleInfoData, entryPriceData, userPrizesData] =
+        await Promise.all([
+          getRaffleInfo(),
+          getEntryPrice(),
           getAllPrizeEntries(),
         ]);
 
-        console.log("📊 loadUserData: Received userStatsData:", userStatsData);
-        console.log(
-          "🏆 loadUserData: Received userPrizesData:",
-          userPrizesData
-        );
-
-        setUserStats(userStatsData);
-
-        // Convert contract prizes to display format
-        const displayWinners: Winner[] = userPrizesData.map((prize, index) => {
-          const ipAmount = formatEther(prize.ipTokenAmount);
-          const hasNFT = prize.nftTokenId > 0;
+      // Convert contract prizes to display format
+      const displayWinners: Winner[] = (userPrizesData as []).map(
+        (prize, index) => {
+          const ipAmount = formatEther(prize[2]);
+          const hasNFT = prize[3] > 0;
           let prizeName = `${ipAmount} IP`;
           if (hasNFT) {
             prizeName += " + NFT";
@@ -255,28 +198,47 @@ export const useRaffleState = () => {
 
           return {
             id: index + 1,
-            name: `${prize.winner.slice(0, 6)}...${prize.winner.slice(-4)}`,
+            name: `${(prize[0] as string).slice(0, 6)}...${(
+              prize[0] as string
+            ).slice(-4)}`,
             prize: prizeName,
-            date: new Date(Number(prize.timestamp) * 1000).toLocaleString(),
+            date: new Date(Number(prize[5]) * 1000).toLocaleString(),
             value: ipAmount,
-            tier: prize.tier,
+            tier: prize[1] as number,
           };
-        });
+        }
+      );
+      setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
+      setRaffleInfo(raffleInfoData);
+      setEntryPrice(entryPriceData);
+    } catch (error) {
+      console.error("Error loading contract data:", error);
+    } finally {
+      setIsLoadingContractData(false);
+    }
+  }, [isLoadingContractData]); // Remove function dependencies to prevent infinite re-creation
 
-        console.log(
-          "🎯 loadUserData: Setting recentWinners:",
-          displayWinners.slice(0, 10)
-        );
-        setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
+  // Load user-specific data
+  const loadUserData = useCallback(
+    async (address: string) => {
+      if (!address) {
+        return;
+      }
+      try {
+        setIsLoadingContractData(true);
+        const userStatsData = await getUserStats(address);
+        setUserStats(userStatsData);
       } catch (error) {
-        console.error("❌ loadUserData: Error loading user data:", error);
+        console.error("Error loading user data:", error);
       } finally {
-        console.log("✅ loadUserData: Finished, setting loading to false");
         setIsLoadingContractData(false);
       }
     },
-    [getUserStats, getAllPrizeEntries]
+    [] // Remove dependencies to prevent infinite re-creation
   );
+
+  // Store the latest loadUserData function in ref
+  loadUserDataRef.current = loadUserData;
 
   // Load contract data on mount
   useEffect(() => {
@@ -285,28 +247,16 @@ export const useRaffleState = () => {
 
   // Load user data when wallet connects (debounced)
   useEffect(() => {
-    console.log(
-      "🔍 useEffect [walletAddress, loadUserData]: walletAddress =",
-      walletAddress
-    );
-
-    if (walletAddress) {
-      console.log(
-        "⏰ useEffect: Setting timeout to call loadUserData in 300ms"
-      );
+    if (walletAddress && loadUserDataRef.current) {
       const timeoutId = setTimeout(() => {
-        console.log("⏰ useEffect: Timeout triggered, calling loadUserData");
-        loadUserData(walletAddress);
+        loadUserDataRef.current?.(walletAddress);
       }, 300); // Debounce by 300ms
 
       return () => {
-        console.log("🧹 useEffect: Cleaning up timeout");
         clearTimeout(timeoutId);
       };
-    } else {
-      console.log("❌ useEffect: No walletAddress, not setting timeout");
     }
-  }, [walletAddress, loadUserData]);
+  }, [walletAddress]); // Only depend on walletAddress
 
   // Cooldown monitoring effect - only update UI, don't call contract
   useEffect(() => {
@@ -446,7 +396,6 @@ export const useRaffleState = () => {
 
       // Refresh contract data and cooldown status
       // Note: loadUserData is throttled, so it won't make redundant calls
-      console.log("🔄 handleSpinWheel: Refreshing data after spin...");
       await Promise.all([
         loadContractData(),
         loadUserData(walletAddress),
