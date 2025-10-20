@@ -34,7 +34,7 @@ export default function FilterBar({
     return (
         <div className="space-y-4 mb-12">
             {/* Search and Sort Row */}
-            <div className="flex gap-4 items-center">
+            <div className="flex gap-4 items-center justify-between">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input

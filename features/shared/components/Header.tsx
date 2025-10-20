@@ -64,24 +64,22 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                     </div>
                 </div>
 
-                <nav className="flex flex-1 items-center justify-start gap-4 text-sm font-medium sm:justify-center">
-                    <button
-                        type="button"
+
+                <div className="flex flex-1 items-center justify-end gap-3">
+                    <Button
+                        variant="outline"
                         onClick={handleHomeClick}
                         className={cn("transition-colors", navLinkStyles)}
                     >
                         Home
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="outline"
                         onClick={handleInventoryClick}
                         className={cn("transition-colors", navLinkStyles)}
                     >
                         {isMarketplace ? "Marketplace" : "Inventory"}
-                    </button>
-                </nav>
-
-                <div className="flex flex-1 items-center justify-end gap-3">
+                    </Button>
                     {!user && (
                         <Button
                             onClick={login}
