@@ -43,12 +43,16 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
         router.push("/");
     };
 
+    // const handleInventoryClick = () => {
+    //     if (isMarketplace) {
+    //         router.push("/market");
+    //     } else {
+    //         router.push("/inventory");
+    //     }
+    // };
+
     const handleInventoryClick = () => {
-        if (isMarketplace) {
-            router.push("/market");
-        } else {
-            router.push("/inventory");
-        }
+        router.push("/inventory");
     };
 
     return (
@@ -78,7 +82,8 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                         onClick={handleInventoryClick}
                         className={cn("transition-colors", navLinkStyles)}
                     >
-                        {isMarketplace ? "Marketplace" : "Inventory"}
+                        {/* {isMarketplace ? "Marketplace" : "Inventory"} */}
+                        Inventory
                     </Button>
                     {!user && (
                         <Button
