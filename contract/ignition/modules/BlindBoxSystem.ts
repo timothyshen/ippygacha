@@ -8,8 +8,15 @@ export default buildModule("BlindBoxSystem", (m) => {
     "0x5744Cbf430D99456a0A8771208b674F27f8EF0Fb"
   );
 
-  // Deploy BlindBox with IPPYNFT address
-  const blindBox = m.contract("BlindBox", [ippyNFT, entropyAddress]);
+  // Deploy the MetadataLibBlindBox library first
+  const metadataLib = m.library("MetadataLibBlindBox");
+
+  // Deploy BlindBox with IPPYNFT address and link the library
+  const blindBox = m.contract("BlindBox", [ippyNFT, entropyAddress], {
+    libraries: {
+      MetadataLibBlindBox: metadataLib,
+    },
+  });
 
   // Set up the relationship - BlindBox contract address in IPPYNFT
   m.call(ippyNFT, "setBlindBoxContract", [blindBox]);
@@ -17,5 +24,6 @@ export default buildModule("BlindBoxSystem", (m) => {
   return {
     ippyNFT,
     blindBox,
+    metadataLib,
   };
 });
