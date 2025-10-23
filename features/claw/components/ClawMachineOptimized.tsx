@@ -47,7 +47,6 @@ const ClawMachine = React.memo(() => {
     setClawY,
     setIsGrabbing,
     startGame,
-    addCoins,
     resetGame,
     dismissResult,
     grabPrize: originalGrabPrize
@@ -113,7 +112,6 @@ const ClawMachine = React.memo(() => {
             score={score}
             gameActive={gameActive}
             onStartGame={startGame}
-            onAddCoins={addCoins}
             onResetGame={resetGame}
           />
         </div>
@@ -167,7 +165,6 @@ const ClawMachine = React.memo(() => {
       {/* Control Panel */}
       <ClawControlPanel
         coins={coins}
-        onAddCoin={addCoins}
         onOpenInventory={() => router.push("/inventory")}
         onOpenMarket={() => router.push("/market")}
       />

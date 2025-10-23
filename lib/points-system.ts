@@ -3,13 +3,9 @@ import { ActivityType } from "@prisma/client";
 // Points and XP rewards for different activities
 export const ACTIVITY_REWARDS = {
   [ActivityType.GACHA_PULL]: { points: 10, xp: 5 },
-  [ActivityType.CLAW_WIN]: { points: 15, xp: 8 },
+  [ActivityType.BOX_REVEAL]: { points: 15, xp: 8 },
   [ActivityType.MARKETPLACE_TRADE]: { points: 20, xp: 10 },
-  [ActivityType.DAILY_LOGIN]: { points: 25, xp: 15 },
-  [ActivityType.FIRST_GACHA_DAILY]: { points: 15, xp: 10 },
-  [ActivityType.RARE_NFT_PULL]: { points: 50, xp: 25 },
-  [ActivityType.HIDDEN_NFT_PULL]: { points: 200, xp: 100 },
-  [ActivityType.RARE_CLAW_WIN]: { points: 30, xp: 15 },
+  [ActivityType.RAFFLE_DRAW]: { points: 25, xp: 15 },
   [ActivityType.MARKETPLACE_LIST]: { points: 5, xp: 3 },
   [ActivityType.MARKETPLACE_SALE]: { points: 20, xp: 10 },
   [ActivityType.MARKETPLACE_PURCHASE]: { points: 10, xp: 5 },

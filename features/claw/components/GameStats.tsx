@@ -10,7 +10,6 @@ interface GameStatsProps {
   score: number
   gameActive: boolean
   onStartGame: () => void
-  onAddCoins: () => void
   onResetGame: () => void
 }
 
@@ -19,7 +18,6 @@ export function GameStats({
   score,
   gameActive,
   onStartGame,
-  onAddCoins,
   onResetGame,
 }: GameStatsProps) {
   return (
@@ -64,7 +62,6 @@ export function GameStats({
             {gameActive ? "Playing..." : "Start Game (1 Coin)"}
           </Button>
           <Button
-            onClick={onAddCoins}
             variant="outline"
             className="w-full border-yellow-500 text-yellow-300 hover:bg-yellow-500/10"
           >

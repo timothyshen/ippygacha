@@ -10,7 +10,7 @@ import {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { walletAddress, activityType, metadata } = body;
+    const { walletAddress, activityType, metadata, txnHash } = body;
 
     if (!walletAddress || !activityType) {
       return NextResponse.json(
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         pointsEarned: rewards.points,
         xpEarned: rewards.xp,
         metadata: metadata || {},
+        txnHash: txnHash || null,
       },
     });
 

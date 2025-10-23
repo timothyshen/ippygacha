@@ -253,10 +253,6 @@ export function useGameState() {
     }
   };
 
-  const addCoins = () => {
-    setCoins((prev) => prev + 5);
-  };
-
   const resetGame = () => {
     setPrizesInMachine(getInitialPrizes());
     setCollectedPrizes([]);
@@ -344,7 +340,6 @@ export function useGameState() {
     setGameActive, // Keep this setter if needed elsewhere, though endGame/startGame manage it
     setDroppedPrize,
     startGame,
-    addCoins,
     resetGame,
     endGame,
     dismissResult,

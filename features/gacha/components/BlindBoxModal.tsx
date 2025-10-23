@@ -5,6 +5,9 @@ import { COLLECTION_COLORS } from "@/types/gacha"
 import {
     Dialog,
     DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -45,6 +48,12 @@ export const BlindBoxModal = ({
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-lg w-full shadow-2xl transition-all duration-700 border-0 items-center justify-center z-50 p-4 backdrop-blur-lg">
+                <DialogHeader>
+                    <DialogTitle>Mystery Premium Box</DialogTitle>
+                </DialogHeader>
+                <DialogDescription>
+                    What treasures await inside? Open to discover your prize!
+                </DialogDescription>
                 {!isRevealed ? (
                     // Enhanced Blind Box State
                     <div className="my-8 flex flex-col items-center justify-center">

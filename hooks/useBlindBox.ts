@@ -88,7 +88,7 @@ export const useBlindBox = () => {
       const [account] = await walletClient.getAddresses();
 
       // Calculate total cost
-      const totalCost = parseEther("0.01") * BigInt(amount);
+      const totalCost = parseEther("0.1") * BigInt(amount);
 
       // First simulate the contract call to ensure it will succeed
       const { request } = await readClient.simulateContract({

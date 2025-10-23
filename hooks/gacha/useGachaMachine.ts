@@ -1,10 +1,13 @@
 import { useState, useRef } from "react";
+import { usePrivy } from "@privy-io/react-auth";
 import { GachaItem } from "@/types/gacha";
 import { useInventory } from "./useInventory";
 import { useBlindBox } from "../useBlindBox";
 import { useNotifications } from "@/contexts/notification-context";
+import { awardActivityPoints } from "@/lib/auth";
 
 export const useGachaMachine = () => {
+  const { user, authenticated } = usePrivy();
   const { inventory, unrevealedItems, refreshInventory } = useInventory();
   const { purchaseBoxes, openBoxes } = useBlindBox();
   const { addNotification } = useNotifications();
@@ -160,7 +163,21 @@ export const useGachaMachine = () => {
     setAnimationPhase("none");
     setBlinkingCell(null);
     try {
-      const tx = await purchaseBoxes(1);
+      const txHash = await purchaseBoxes(1);
+
+      console.log("txHash", txHash);
+      // Record gacha pull activity
+      if (authenticated && user?.wallet?.address && txHash) {
+        await awardActivityPoints(
+          user.wallet.address,
+          "GACHA_PULL",
+          {
+            timestamp: new Date().toISOString(),
+            amount: 1,
+          },
+          txHash
+        );
+      }
 
       // Refresh balances after purchase
       refreshInventory();
@@ -199,7 +216,21 @@ export const useGachaMachine = () => {
 
   const revealBlindBox = async () => {
     try {
-      await openBoxes(1);
+      const txHash = await openBoxes(1);
+
+      // Record reveal activity with additional metadata
+      if (authenticated && user?.wallet?.address && currentBlindBox) {
+        await awardActivityPoints(
+          user.wallet.address,
+          "BOX_REVEAL",
+          {
+            timestamp: new Date().toISOString(),
+            action: "reveal",
+            amount: 1,
+          },
+          txHash
+        );
+      }
 
       refreshInventory();
       setIsItemRevealed(true);
@@ -215,19 +246,6 @@ export const useGachaMachine = () => {
     setCurrentBlindBox(null);
     setIsItemRevealed(false);
     setIsSpinning(false);
-  };
-
-  const addCoin = () => {
-    setShowCoinAnimation(true);
-    setCoins((prev) => prev + 5);
-
-    addNotification({
-      type: "success",
-      title: "Free Coins!",
-      message: "Added 5 coins to your balance",
-      icon: "🪙",
-      duration: 3000,
-    });
   };
 
   return {
@@ -257,6 +275,5 @@ export const useGachaMachine = () => {
     pullGacha,
     revealBlindBox,
     closeModalAndReset,
-    addCoin,
   };
 };

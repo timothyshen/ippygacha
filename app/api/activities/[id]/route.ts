@@ -4,10 +4,10 @@ import { prisma } from "@/lib/database";
 // GET a single activity by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const activity = await prisma.activity.findUnique({
       where: { id },
@@ -43,10 +43,10 @@ export async function GET(
 // PATCH - Update an activity
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { pointsEarned, xpEarned, metadata, txnHash } = body;
 
@@ -97,10 +97,10 @@ export async function PATCH(
 // DELETE an activity
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if activity exists
     const existingActivity = await prisma.activity.findUnique({

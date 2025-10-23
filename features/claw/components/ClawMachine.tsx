@@ -58,7 +58,6 @@ export default function ClawMachine() {
     setScore,
     setDroppedPrize,
     startGame,
-    addCoins,
     resetGame,
     endGame,
     dismissResult,
@@ -564,7 +563,6 @@ export default function ClawMachine() {
                   score={score}
                   gameActive={gameActive}
                   onStartGame={onStartGame}
-                  onAddCoins={addCoins}
                   onResetGame={resetGame}
                 />
               </div>
@@ -777,7 +775,6 @@ export default function ClawMachine() {
                 score={score}
                 gameActive={gameActive}
                 onStartGame={onStartGame}
-                onAddCoins={addCoins}
                 onResetGame={resetGame}
               />
               <div className="flex flex-col items-center space-y-4 relative">
@@ -969,7 +966,6 @@ export default function ClawMachine() {
         </div>
         <ClawControlPanel
           coins={coins}
-          onAddCoin={addCoins}
           onOpenInventory={() => router.push("/inventory")}
           onOpenMarket={() => router.push("/market")}
         />

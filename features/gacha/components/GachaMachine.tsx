@@ -23,7 +23,6 @@ export const GachaMachine = React.memo(() => {
         showCelebration,
         currentBlindBox,
         pullGacha,
-        addCoin,
         revealBlindBox,
         closeModalAndReset,
     } = useGachaMachine()
@@ -64,7 +63,6 @@ export const GachaMachine = React.memo(() => {
                 />
                 <ControlPanel
                     coins={coins}
-                    onAddCoin={addCoin}
                     onOpenInventory={handleOpenInventory}
                     onOpenMarket={handleOpenMarket}
                 />
