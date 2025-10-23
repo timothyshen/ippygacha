@@ -19,10 +19,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate activity type
-    if (!Object.values(ActivityType).includes(activityType)) {
+    if (!Object.values(ActivityType).includes(activityType as ActivityType)) {
       return NextResponse.json(
-        { error: "Invalid activity type" },
+        {
+          error: "Invalid activity type",
+          received: activityType,
+          validTypes: Object.values(ActivityType),
+        },
         { status: 400 }
       );
     }

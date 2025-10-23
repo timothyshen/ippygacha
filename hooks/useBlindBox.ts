@@ -205,6 +205,7 @@ export const useBlindBox = () => {
         abi: blindBoxABI,
         functionName: "openBox",
         args: [BigInt(amount)],
+        value: parseEther("0.01"),
         account,
       });
 

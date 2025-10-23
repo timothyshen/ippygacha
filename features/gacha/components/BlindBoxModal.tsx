@@ -102,7 +102,7 @@ export const BlindBoxModal = ({
                             <h2
                                 className={cn(
                                     "text-2xl md:text-3xl font-bold mb-3",
-                                    "text-white",
+                                    "text-black",
                                 )}
                             >
                                 {item.name}
@@ -110,7 +110,7 @@ export const BlindBoxModal = ({
                             <p
                                 className={cn(
                                     "mb-4 text-base md:text-lg font-medium",
-                                    "text-slate-300/80"
+                                    "text-black"
                                 )}
                             >
                                 {item.description}

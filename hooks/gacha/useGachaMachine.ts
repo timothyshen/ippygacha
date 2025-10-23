@@ -219,7 +219,7 @@ export const useGachaMachine = () => {
       const txHash = await openBoxes(1);
 
       // Record reveal activity with additional metadata
-      if (authenticated && user?.wallet?.address && currentBlindBox) {
+      if (authenticated && user?.wallet?.address && txHash) {
         await awardActivityPoints(
           user.wallet.address,
           "BOX_REVEAL",

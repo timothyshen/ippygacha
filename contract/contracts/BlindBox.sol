@@ -223,4 +223,8 @@ contract BlindBox is ERC1155, Ownable, ReentrancyGuard, IEntropyConsumer {
     function getEntropy() internal view override returns (address) {
         return address(entropy);
     }
+
+    receive() external payable {
+        // allow payable for entropy fee
+    }
 }
