@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { cn } from "@/lib/utils";
 import { ensureUserExists, getUserActivities, type UserData, type Activity } from "@/lib/auth";
 
-import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Zap, Activity as ActivityIcon, Sparkles } from "lucide-react";
+import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Zap, Activity as ActivityIcon, Sparkles, ExternalLink } from "lucide-react";
 
 type HeaderProps = {
     name: string;
@@ -307,9 +307,9 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                                             key={activity.id}
                                                             className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 transition-colors hover:bg-slate-100"
                                                         >
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-lg">{info.icon}</span>
-                                                                <div className="flex flex-col">
+                                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                <span className="text-lg flex-shrink-0">{info.icon}</span>
+                                                                <div className="flex flex-col min-w-0 flex-1">
                                                                     <span className={cn("text-xs font-medium", info.color)}>
                                                                         {info.label}
                                                                     </span>
@@ -318,11 +318,26 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-xs font-semibold text-amber-600">
-                                                                    +{activity.pointsEarned}
-                                                                </span>
-                                                                <Trophy className="h-3 w-3 text-amber-500" />
+                                                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-xs font-semibold text-amber-600">
+                                                                        +{activity.pointsEarned}
+                                                                    </span>
+                                                                    <Trophy className="h-3 w-3 text-amber-500" />
+                                                                </div>
+                                                                {activity.txnHash && (
+                                                                    <a
+                                                                        href={`https://aeneid.storyscan.io/tx/${activity.txnHash}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="flex items-center gap-0.5 text-xs text-blue-500 hover:text-blue-600 transition-colors"
+                                                                    >
+                                                                        <span className="font-mono">
+                                                                            {activity.txnHash.slice(0, 6)}...
+                                                                        </span>
+                                                                        <ExternalLink className="h-2.5 w-2.5" />
+                                                                    </a>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     );
