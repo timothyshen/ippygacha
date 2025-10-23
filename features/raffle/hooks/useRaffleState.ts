@@ -9,6 +9,7 @@ import {
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { usePrivy } from "@privy-io/react-auth";
 import { formatEther } from "viem";
+import { awardActivityPoints } from "@/lib/auth";
 
 interface CooldownDisplayState {
   hours: number;
@@ -360,6 +361,11 @@ export const useRaffleState = () => {
       setIsTransactionPending(false);
       setCanSpin(false);
       setTransactionHash(transactionResult.txHash);
+
+      await awardActivityPoints(walletAddress, "RAFFLE_DRAW", {
+        timestamp: new Date().toISOString(),
+        amount: entryPrice,
+      }, transactionResult.txHash);
 
       // Cooldown is now handled by smart contract
 

@@ -1,7 +1,6 @@
 import React from "react"
-import { Gift, Database, Shield } from "lucide-react"
+import { Gift } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { CooldownDisplay } from "./CooldownDisplay"
 import { PrizeWheel } from "./PrizeWheel"
 import { PrizesInfo } from "./PrizesInfo"
