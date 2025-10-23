@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum ActivityType {
@@ -49,6 +50,7 @@ model Activity {
   xpEarned     Int
   metadata     Json?        // Additional data like NFT type, amount, etc.
   createdAt    DateTime     @default(now())
+  txnHash      String?
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
