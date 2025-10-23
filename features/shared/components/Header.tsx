@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { ensureUserExists, type UserData } from "@/lib/auth";
+import { ensureUserExists, getUserActivities, type UserData, type Activity } from "@/lib/auth";
 
-import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Zap } from "lucide-react";
+import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Zap, Activity as ActivityIcon, Sparkles } from "lucide-react";
 
 type HeaderProps = {
     name: string;
@@ -21,11 +21,43 @@ type HeaderProps = {
     isMarketplace: boolean;
 };
 
+// Helper function to get activity display info
+const getActivityInfo = (activityType: string) => {
+    const activityMap: Record<string, { label: string; icon: string; color: string }> = {
+        GACHA_PULL: { label: "Gacha Pull", icon: "🎰", color: "text-purple-600" },
+        BOX_REVEAL: { label: "Box Revealed", icon: "🎁", color: "text-amber-600" },
+        RAFFLE_DRAW: { label: "Raffle Entry", icon: "🎟️", color: "text-pink-600" },
+        MARKETPLACE_TRADE: { label: "Trade", icon: "🔄", color: "text-blue-600" },
+        MARKETPLACE_LIST: { label: "Listed Item", icon: "📝", color: "text-green-600" },
+        MARKETPLACE_SALE: { label: "Item Sold", icon: "💰", color: "text-emerald-600" },
+        MARKETPLACE_PURCHASE: { label: "Purchased", icon: "🛒", color: "text-indigo-600" },
+        CLAW_WIN: { label: "Claw Win", icon: "🎮", color: "text-orange-600" },
+        DAILY_LOGIN: { label: "Daily Login", icon: "📅", color: "text-sky-600" },
+        FIRST_GACHA_DAILY: { label: "First Gacha", icon: "⭐", color: "text-yellow-600" },
+        RARE_NFT_PULL: { label: "Rare NFT", icon: "💎", color: "text-violet-600" },
+        HIDDEN_NFT_PULL: { label: "Hidden NFT", icon: "🌟", color: "text-fuchsia-600" },
+        RARE_CLAW_WIN: { label: "Rare Claw Win", icon: "🏆", color: "text-red-600" },
+    };
+    return activityMap[activityType] || { label: activityType, icon: "📌", color: "text-slate-600" };
+};
+
+// Helper function to format time ago
+const getTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
+
+    if (diffInSeconds < 60) return "just now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+};
+
 export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderProps) => {
     const { login, logout, user, authenticated } = usePrivy();
     const router = useRouter();
     const [userData, setUserData] = useState<UserData | null>(null);
     const [isLoadingUser, setIsLoadingUser] = useState(false);
+    const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
 
     // Check/create user in database when user logs in
     useEffect(() => {
@@ -41,6 +73,18 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
         };
 
         initUser();
+    }, [authenticated, user?.wallet?.address]);
+
+    // Fetch user activities separately
+    useEffect(() => {
+        const fetchActivities = async () => {
+            if (authenticated && user?.wallet?.address) {
+                const activities = await getUserActivities(user.wallet.address, 5);
+                setRecentActivities(activities);
+            }
+        };
+
+        fetchActivities();
     }, [authenticated, user?.wallet?.address]);
 
     const sliceAddress = (address: string) => {
@@ -244,18 +288,46 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                     </section>
 
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                        <h3 className="text-sm font-semibold text-slate-800">Weekly snapshot</h3>
-                                        <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-                                            <div className="rounded-xl bg-slate-50 px-3 py-4">
-                                                <Trophy className="mx-auto h-5 w-5 text-amber-500" />
-                                                <span className="mt-2 block text-lg font-semibold text-slate-800">12</span>
-                                                <span className="text-xs text-slate-500">Games played</span>
-                                            </div>
-                                            <div className="rounded-xl bg-slate-50 px-3 py-4">
-                                                <Zap className="mx-auto h-5 w-5 text-sky-500" />
-                                                <span className="mt-2 block text-lg font-semibold text-slate-800">8</span>
-                                                <span className="text-xs text-slate-500">Prizes won</span>
-                                            </div>
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-sm font-semibold text-slate-800">Recent Activity</h3>
+                                            <ActivityIcon className="h-4 w-4 text-slate-400" />
+                                        </div>
+                                        <div className="mt-4 space-y-2">
+                                            {!recentActivities || recentActivities.length === 0 ? (
+                                                <div className="rounded-xl bg-slate-50 px-4 py-6 text-center">
+                                                    <Sparkles className="mx-auto h-8 w-8 text-slate-300" />
+                                                    <p className="mt-2 text-xs text-slate-500">No activity yet</p>
+                                                    <p className="text-xs text-slate-400">Start playing to see your history!</p>
+                                                </div>
+                                            ) : (
+                                                recentActivities.map((activity) => {
+                                                    const info = getActivityInfo(activity.activityType);
+                                                    return (
+                                                        <div
+                                                            key={activity.id}
+                                                            className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 transition-colors hover:bg-slate-100"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-lg">{info.icon}</span>
+                                                                <div className="flex flex-col">
+                                                                    <span className={cn("text-xs font-medium", info.color)}>
+                                                                        {info.label}
+                                                                    </span>
+                                                                    <span className="text-xs text-slate-400">
+                                                                        {getTimeAgo(activity.createdAt)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-xs font-semibold text-amber-600">
+                                                                    +{activity.pointsEarned}
+                                                                </span>
+                                                                <Trophy className="h-3 w-3 text-amber-500" />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </section>
                                 </div>

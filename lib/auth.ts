@@ -2,6 +2,16 @@
  * Authentication helper functions for user management
  */
 
+export interface Activity {
+  id: string;
+  activityType: string;
+  pointsEarned: number;
+  xpEarned: number;
+  metadata?: any;
+  createdAt: Date;
+  txnHash?: string | null;
+}
+
 export interface UserData {
   id: string;
   walletAddress: string;
@@ -63,6 +73,30 @@ export async function getUserData(
   } catch (error) {
     console.error("Error fetching user data:", error);
     return null;
+  }
+}
+
+/**
+ * Fetch recent activities for a user by wallet address
+ */
+export async function getUserActivities(
+  walletAddress: string,
+  limit: number = 5
+): Promise<Activity[]> {
+  try {
+    const response = await fetch(
+      `/api/activities?walletAddress=${walletAddress}&limit=${limit}`
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.activities || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error("Error fetching user activities:", error);
+    return [];
   }
 }
 
