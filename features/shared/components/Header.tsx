@@ -1,5 +1,5 @@
 "use client"
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { ensureUserExists, type UserData } from "@/lib/auth";
 
-import { LogOut, PackageOpen, ShoppingBag, Trophy, Zap } from "lucide-react";
+import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Zap } from "lucide-react";
 
 type HeaderProps = {
     name: string;
@@ -21,8 +22,26 @@ type HeaderProps = {
 };
 
 export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderProps) => {
-    const { login, logout, user } = usePrivy();
+    const { login, logout, user, authenticated } = usePrivy();
     const router = useRouter();
+    const [userData, setUserData] = useState<UserData | null>(null);
+    const [isLoadingUser, setIsLoadingUser] = useState(false);
+
+    // Check/create user in database when user logs in
+    useEffect(() => {
+        const initUser = async () => {
+            if (authenticated && user?.wallet?.address) {
+                setIsLoadingUser(true);
+                const data = await ensureUserExists(user.wallet.address);
+                setUserData(data);
+                setIsLoadingUser(false);
+            } else {
+                setUserData(null);
+            }
+        };
+
+        initUser();
+    }, [authenticated, user?.wallet?.address]);
 
     const sliceAddress = (address: string) => {
         if (!address) return "";
@@ -132,9 +151,9 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                                 <p className="text-lg font-semibold text-slate-900">
                                                     {sliceAddress(user?.wallet?.address || "")}
                                                 </p>
-                                                <p className="mt-1 text-sm text-slate-500">
-                                                    Linked via Privy · Active
-                                                </p>
+                                                <Badge className="rounded-full bg-amber-100 px-3 text-amber-700">
+                                                    Level {userData?.currentLevel || 1}
+                                                </Badge>
                                             </div>
                                             <Button variant="outline" size="sm" onClick={logout}>
                                                 <LogOut className="h-4 w-4" />
@@ -145,23 +164,34 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                 </SheetHeader>
 
                                 <div className="space-y-6 px-6 py-6">
-                                    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h3 className="text-sm font-semibold text-slate-800">Rank</h3>
-                                                <p className="text-xs text-slate-500">Daily progression toward rewards</p>
-                                            </div>
-                                            <Badge className="rounded-full bg-amber-100 px-3 text-amber-700">Diamond III</Badge>
-                                        </div>
-                                        <div className="mt-4 space-y-2">
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>EXP</span>
-                                                <span className="font-medium text-slate-700">3,420 / 5,000</span>
-                                            </div>
-                                            <Progress value={68} className="h-2" />
-                                            <p className="text-xs text-slate-500">1,580 EXP to next tier</p>
-                                        </div>
-                                    </section>
+                                    {isLoadingUser ? (
+                                        <div className="text-center text-sm text-slate-500">Loading user data...</div>
+                                    ) : (
+                                        <>
+                                            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h3 className="text-sm font-semibold text-slate-800">Level & Progress</h3>
+                                                        <p className="text-xs text-slate-500">Keep playing to level up!</p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 space-y-3">
+                                                    <div className="flex justify-between text-xs">
+                                                        <span className="text-slate-500">Total Points</span>
+                                                        <span className="font-semibold text-amber-600">
+                                                            {userData?.totalPoints?.toLocaleString() || 0}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs text-slate-500">
+                                                        <span>Total XP</span>
+                                                        <span className="font-medium text-slate-700">
+                                                            {userData?.totalXp?.toLocaleString() || 0}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        </>
+                                    )}
 
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                                         <h3 className="text-sm font-semibold text-slate-800">Quick actions</h3>
@@ -186,6 +216,28 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                                 </span>
                                                 <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
                                                     Market
+                                                </span>
+                                            </Link>
+                                            <Link
+                                                href="/gacha"
+                                                className="group flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center transition-colors hover:border-amber-300 hover:bg-amber-50"
+                                            >
+                                                <span className="rounded-full bg-amber-100 p-3 text-amber-600">
+                                                    <Box className="h-5 w-5" />
+                                                </span>
+                                                <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
+                                                    Gacha
+                                                </span>
+                                            </Link>
+                                            <Link
+                                                href="/raffle"
+                                                className="group flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center transition-colors hover:border-emerald-300 hover:bg-emerald-50"
+                                            >
+                                                <span className="rounded-full bg-emerald-100 p-3 text-emerald-600">
+                                                    <Gift className="h-5 w-5" />
+                                                </span>
+                                                <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
+                                                    Raffle
                                                 </span>
                                             </Link>
                                         </div>
