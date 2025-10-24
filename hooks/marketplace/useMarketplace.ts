@@ -5,7 +5,6 @@ import {
   useWalletClient,
   NFTMarketplaceABI,
   ippyIPABI,
-  ippyNFTAddress,
 } from "@/lib/contract";
 import { useState, useEffect } from "react";
 import { parseEther, formatEther } from "viem";

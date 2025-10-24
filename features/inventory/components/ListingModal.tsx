@@ -34,20 +34,18 @@ interface ImageCache {
 
 interface ListingModalProps {
     item: GachaItemWithCount
-    key: number
     imageData: ImageCache
 }
 
-export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
+export const ListingModal = ({ item, imageData }: ListingModalProps) => {
     const [isHovered, setIsHovered] = useState(true)
-    const [quantity, setQuantity] = useState(1)
+    const quantity = 1
     const [floorPrice, setFloorPrice] = useState(0)
     const [detailOpen, setDetailOpen] = useState(false)
-    const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
     const { listItem } = useMarketplace();
 
-    const handleImageError = (itemId: string) => {
-        setImageErrors(prev => new Set([...prev, itemId]));
+    const handleImageError = () => {
+        // We could show a fallback image here if desired.
     };
     const rarityInfo = getRarityInfo(item);
     const imageUrl = metadataMapping[item.name.toLowerCase() as keyof typeof metadataMapping]
@@ -130,7 +128,7 @@ export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
                                 src={imageUrl}
                                 alt={getItemDisplayName(item)}
                                 className="w-full h-full object-contain"
-                                onError={() => handleImageError(item.id)}
+                                onError={handleImageError}
                                 width={128}
                                 height={128}
                                 loading="lazy"
@@ -200,7 +198,7 @@ export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
                                                             src={imageUrl}
                                                             alt={getItemDisplayName(item)}
                                                             className="rounded"
-                                                            onError={() => handleImageError(item.id)}
+                                                            onError={handleImageError}
                                                             width={40}
                                                             height={40}
                                                             loading="lazy"

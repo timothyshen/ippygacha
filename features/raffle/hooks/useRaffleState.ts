@@ -4,7 +4,6 @@ import {
   ContractRaffleInfo,
   ContractUserStats,
   PrizeEvent,
-  ContractPrize,
 } from "../types";
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { usePrivy } from "@privy-io/react-auth";
@@ -82,7 +81,6 @@ export const useRaffleState = () => {
 
   const [isLoadingContractData, setIsLoadingContractData] = useState(false);
   const lastContractCallRef = useRef<number>(0);
-  const lastUserDataCallRef = useRef<number>(0);
   const loadUserDataRef = useRef<((address: string) => Promise<void>) | null>(
     null
   );

@@ -26,7 +26,9 @@ export const useSound = () => {
     soundManager.playBoxOpen();
   };
 
-  const playItemReveal = (collection: string) => {
+  const playItemReveal = (
+    collection: Parameters<typeof soundManager.playItemReveal>[0],
+  ) => {
     soundManager.playItemReveal(collection);
   };
 

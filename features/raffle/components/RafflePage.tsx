@@ -61,7 +61,7 @@ export default function RafflePage() {
           latestPrize={latestPrize}
         />
 
-        <Header name="Raffle" subtitle="Premium Collection Experience" isDark={true} isMarketplace={false} />
+        <Header name="Raffle" subtitle="Premium Collection Experience" isDark={true} />
         {recentWinners.length > 0 && (
           <WinnerTicker recentWinners={recentWinners} />
         )}

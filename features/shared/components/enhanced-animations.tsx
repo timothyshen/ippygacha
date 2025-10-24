@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
+type CollectionKey = "toys" | "magic" | "fantasy" | "tech" | "nature" | "space"
+
 // Collection-specific particle effects (renamed from RarityParticles)
 export const RarityParticles = ({
   rarity,
   show,
-  theme,
 }: {
-  rarity: "toys" | "magic" | "fantasy" | "tech" | "nature" | "space"
+  rarity: CollectionKey
   show: boolean
-  theme: any
 }) => {
   if (!show) return null
 
@@ -120,11 +120,9 @@ export const RarityParticles = ({
 export const CollectionParticles = ({
   collection,
   show,
-  theme,
 }: {
-  collection: "toys" | "magic" | "fantasy" | "tech" | "nature" | "space"
+  collection: CollectionKey
   show: boolean
-  theme: any
 }) => {
   if (!show) return null
 
@@ -341,7 +339,7 @@ export const ItemEntranceEffect = ({
   show,
   onComplete,
 }: {
-  item: any
+  item: { collection: CollectionKey; emoji: string }
   show: boolean
   onComplete: () => void
 }) => {

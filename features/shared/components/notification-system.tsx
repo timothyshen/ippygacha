@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, Trophy, AlertTriangle, Info, CheckCircle, XCircle, Zap, Star, Crown } from "lucide-react"
+import { X, AlertTriangle, Info, CheckCircle, XCircle, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"

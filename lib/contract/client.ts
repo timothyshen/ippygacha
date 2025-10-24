@@ -4,7 +4,6 @@ import {
   createWalletClient,
   http,
   custom,
-  Hex,
 } from "viem";
 import "viem/window";
 import { storyAeneid } from "viem/chains";

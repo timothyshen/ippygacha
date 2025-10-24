@@ -7,8 +7,8 @@ import { readClient } from "@/lib/contract/client";
 
 import { useNotifications } from "@/contexts/notification-context";
 import { parseEther } from "viem";
-import { PrizeEvent, ContractPrize } from "@/features/raffle/types";
-import { useEffect, useCallback, useRef } from "react";
+import { PrizeEvent } from "@/features/raffle/types";
+import { useCallback, useRef } from "react";
 
 export const useRaffleEntry = () => {
   const { getWalletClient } = useWalletClient();

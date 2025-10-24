@@ -233,7 +233,7 @@ export function useGameState() {
   const [droppedPrize, setDroppedPrize] = useState<DroppedPrizeType | null>(
     null
   );
-  const { purchaseBoxes, openBoxes } = useBlindBox();
+  const { purchaseBoxes } = useBlindBox();
 
   const totalInitialPrizeCount = INITIAL_PRIZES_CONFIG.length;
 

@@ -98,7 +98,7 @@ export default function Inventory() {
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-4">
             <div className="max-w-7xl mx-auto">
 
-                <Header name="Inventory" subtitle="Premium Collection Experience" isDark={true} isMarketplace={true} />
+                <Header name="Inventory" subtitle="Premium Collection Experience" isDark={true} />
 
                 <div className="w-full max-w-7xl mx-auto flex-1 pt-10 sm:pt-12 md:pt-14">
                     {/* Contract Info Display - Show box price and supply info if available */}

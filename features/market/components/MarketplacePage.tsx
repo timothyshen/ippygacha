@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, Store, Loader2, AlertCircle, Search } from "lucide-react"
+import { Activity, Store, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { MarketplaceBuyingModal } from "./MarketplaceBuyingModal"
@@ -22,24 +22,6 @@ interface GachaItem {
   emoji: string
   description: string
   version: "standard" | "hidden"
-}
-
-interface MarketListing {
-  id: string
-  item?: GachaItem // Make item optional for blind boxes
-  blindBox?: {
-    id: string
-    name: string
-    description: string
-    emoji: string
-  }
-  seller: string
-  price: number
-  quantity: number
-  featured?: boolean
-  limited?: boolean
-  discount?: number
-  isBlindBox?: boolean // Add this flag
 }
 
 interface TradeActivity {
@@ -159,7 +141,7 @@ export const MarketplacePage = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState("")
   const [trades] = useState<TradeActivity[]>(MOCK_ACTIVITY)
   const [selectedCollection, setSelectedCollection] = useState("all")
-  const [selectedVersion, setSelectedVersion] = useState("all")
+  const [selectedVersion] = useState("all")
 
   // Use real marketplace data
   const { listings: marketplaceListings, loading, error, refetch } = useActiveListings()
@@ -229,7 +211,7 @@ export const MarketplacePage = React.memo(() => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={false} />
+        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
 
         {/* Market Stats */}
         <MarketStats totalListings={marketplaceListings.length} hiddenItems={0} blindBoxes={0} averagePrice={0} featuredItems={0} limitedItems={0} />

@@ -4,14 +4,12 @@ import {
   useWalletClient,
   blindBoxAddress,
 } from "@/lib/contract";
-import { useState } from "react";
 import { parseEther, formatEther } from "viem";
 import { useNotifications } from "@/contexts/notification-context";
 import { getContractInfo, getUserBlindBoxBalance } from "./contractRead";
 
 export const useBlindBox = () => {
   const { getWalletClient } = useWalletClient();
-  const [isPurchaseLoading, setIsPurchaseLoading] = useState(false);
   const { addNotification } = useNotifications();
 
   // Helper function to format contract info response
@@ -101,7 +99,6 @@ export const useBlindBox = () => {
       });
 
       // Step 2: Show submitting notification
-      setIsPurchaseLoading(true);
       addNotification({
         title: "Submitting transaction...",
         message: `Sending purchase transaction for ${amount} box${
@@ -123,7 +120,7 @@ export const useBlindBox = () => {
       });
 
       // Step 4: Wait for transaction receipt
-      const tx = await readClient.waitForTransactionReceipt({
+      await readClient.waitForTransactionReceipt({
         hash: txHash,
       });
 
@@ -143,11 +140,9 @@ export const useBlindBox = () => {
         duration: 10000,
       });
 
-      setIsPurchaseLoading(false);
       return txHash;
     } catch (error) {
       console.error("Error purchasing boxes:", error);
-      setIsPurchaseLoading(false);
 
       // Show error notification
       addNotification({
@@ -220,7 +215,7 @@ export const useBlindBox = () => {
       });
 
       // Step 4: Wait for transaction receipt
-      const tx = await readClient.waitForTransactionReceipt({
+      await readClient.waitForTransactionReceipt({
         hash: txHash,
       });
 

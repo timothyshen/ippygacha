@@ -7,7 +7,6 @@ interface UseCablePhysicsProps {
   grabbedPrizeId: number | null;
   prizeWillFall: boolean;
   grabPhase: GrabPhase;
-  clawY: number;
   prizes: Array<{ id: number; weight: number }>;
 }
 
@@ -15,7 +14,6 @@ export function useCablePhysics({
   grabbedPrizeId,
   prizeWillFall,
   grabPhase,
-  clawY,
   prizes,
 }: UseCablePhysicsProps) {
   const [cableSwayAngle, setCableSwayAngle] = useState(0);

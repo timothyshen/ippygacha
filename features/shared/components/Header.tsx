@@ -12,14 +12,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { cn } from "@/lib/utils";
 import { ensureUserExists, getUserActivities, type UserData, type Activity } from "@/lib/auth";
 
-import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Zap, Activity as ActivityIcon, Sparkles, ExternalLink } from "lucide-react";
+import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Activity as ActivityIcon, Sparkles, ExternalLink } from "lucide-react";
 import { LEVEL_CONFIG } from "@/lib/points-system";
 
 type HeaderProps = {
     name: string;
     subtitle: string;
     isDark: boolean;
-    isMarketplace: boolean;
 };
 
 // Helper function to get activity display info
@@ -53,7 +52,7 @@ const getTimeAgo = (date: Date) => {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
-export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderProps) => {
+export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
     const { login, logout, user, authenticated } = usePrivy();
     const router = useRouter();
     const [userData, setUserData] = useState<UserData | null>(null);
@@ -107,14 +106,6 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
         router.push("/");
     };
 
-    // const handleInventoryClick = () => {
-    //     if (isMarketplace) {
-    //         router.push("/market");
-    //     } else {
-    //         router.push("/inventory");
-    //     }
-    // };
-
     const handleInventoryClick = () => {
         router.push("/inventory");
     };
@@ -146,7 +137,6 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                         onClick={handleInventoryClick}
                         className={cn("transition-colors", navLinkStyles)}
                     >
-                        {/* {isMarketplace ? "Marketplace" : "Inventory"} */}
                         Inventory
                     </Button>
                     {!user && (

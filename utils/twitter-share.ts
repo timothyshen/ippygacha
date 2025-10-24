@@ -1,5 +1,3 @@
-import type { GachaItem } from "@/types/gacha";
-
 export function shareToTwitter() {
   // Create the tweet text
   const tweetText = [

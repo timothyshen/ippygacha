@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { List, Loader2 } from "lucide-react"
+import { List } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -18,13 +18,6 @@ import { Separator } from "@/components/ui/separator"
 import { COLLECTION_GLOW } from "@/features/inventory/components/inventory"
 import { cn } from "@/lib/utils"
 import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarketplace"
-
-
-interface ImageCache {
-    imageUrl: string | null;
-    loading: boolean;
-    error: boolean;
-}
 
 interface BuyingModalProps {
     listing: MarketplaceListing

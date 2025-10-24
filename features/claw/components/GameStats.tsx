@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Coins, Gift, Gamepad2, Volume2, VolumeX } from "lucide-react"
+import { Coins, Gift, Gamepad2, VolumeX } from "lucide-react"
 
 interface GameStatsProps {
   coins: number
