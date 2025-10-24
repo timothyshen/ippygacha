@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { ensureUserExists, getUserActivities, type UserData, type Activity } from "@/lib/auth";
 
 import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Zap, Activity as ActivityIcon, Sparkles, ExternalLink } from "lucide-react";
+import { LEVEL_CONFIG } from "@/lib/points-system";
 
 type HeaderProps = {
     name: string;
@@ -168,7 +169,7 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                     )}
                                 >
                                     <Avatar className="h-8 w-8 border border-white/40">
-                                        <AvatarImage src={user?.profile?.pictureUrl || ""} alt="User avatar" />
+                                        <AvatarImage src={""} alt="User avatar" />
                                         <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-xs font-semibold text-white">
                                             {user?.wallet?.address ? user.wallet.address.slice(2, 4).toUpperCase() : "IP"}
                                         </AvatarFallback>
@@ -186,7 +187,7 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                     <SheetTitle>
                                         <div className="flex items-start gap-4">
                                             <Avatar className="h-14 w-14 border border-amber-200">
-                                                <AvatarImage src={user?.profile?.pictureUrl || ""} alt="User avatar" />
+                                                <AvatarImage src={""} alt="User avatar" />
                                                 <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-base font-semibold text-white">
                                                     {user?.wallet?.address ? user.wallet.address.slice(2, 4).toUpperCase() : "IP"}
                                                 </AvatarFallback>
@@ -219,17 +220,28 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                                         <p className="text-xs text-slate-500">Keep playing to level up!</p>
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 space-y-3">
-                                                    <div className="flex justify-between text-xs">
-                                                        <span className="text-slate-500">Total Points</span>
-                                                        <span className="font-semibold text-amber-600">
-                                                            {userData?.totalPoints?.toLocaleString() || 0}
+                                                <div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm font-semibold text-slate-800">
+                                                            {userData?.currentLevel || 1}
+                                                        </span>
+                                                        <span className="text-xs text-slate-500">
+                                                            {userData?.totalXp?.toLocaleString() || 0} / {LEVEL_CONFIG.getXpForLevel(userData?.currentLevel || 1)}
                                                         </span>
                                                     </div>
+                                                    <Progress value={userData?.totalXp || 0} />
+                                                </div>
+                                                <div className="mt-4 space-y-3">
                                                     <div className="flex justify-between text-xs text-slate-500">
                                                         <span>Total XP</span>
                                                         <span className="font-medium text-slate-700">
                                                             {userData?.totalXp?.toLocaleString() || 0}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs">
+                                                        <span className="text-slate-500">Total Points</span>
+                                                        <span className="font-semibold text-amber-600">
+                                                            {userData?.totalPoints?.toLocaleString() || 0}
                                                         </span>
                                                     </div>
                                                 </div>
