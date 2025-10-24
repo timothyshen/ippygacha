@@ -229,7 +229,10 @@ export const Header = memo(({ name, subtitle, isDark, isMarketplace }: HeaderPro
                                                             {userData?.totalXp?.toLocaleString() || 0} / {LEVEL_CONFIG.getXpForLevel(userData?.currentLevel || 1)}
                                                         </span>
                                                     </div>
-                                                    <Progress value={userData?.totalXp || 0} />
+                                                    <Progress
+                                                        value={userData?.totalXp || 0}
+                                                        className="[&>div]:bg-gradient-to-r [&>div]:from-yellow-400 [&>div]:via-orange-500 [&>div]:to-red-500 [&>div]:rounded-l-full"
+                                                    />
                                                 </div>
                                                 <div className="mt-4 space-y-3">
                                                     <div className="flex justify-between text-xs text-slate-500">

@@ -83,9 +83,6 @@ export const BlindBoxModal = ({
                 ) : (
                     // Enhanced Revealed Item State
                     <div className="mb-8">
-                        <div className="box-opening mb-6">
-                            <div className="text-6xl md:text-7xl mb-4 drop-shadow-lg">📦</div>
-                        </div>
                         <div className="item-reveal">
                             <div
                                 className={cn(
