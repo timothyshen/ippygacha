@@ -7,7 +7,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./lib/MetadataLibIPPYNFT.sol";
 
-contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
+interface IERC4906 {
+    event MetadataUpdate(uint256 _tokenId);
+    event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
+}
+
+contract IPPYNFT is ERC721, ERC721Enumerable, Ownable, IERC4906 {
     // Address of the BlindBox contract that can mint NFTs
     address public blindBoxContract;
 
@@ -26,6 +31,7 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
 
     // Storage for actual NFT type per token (crucial for proper URI generation)
     mapping(uint256 => uint256) public tokenIdToNFTType;
+    mapping(uint256 => bool) public isRedeemed;
 
     // Tracking for statistics
     mapping(uint256 => uint256) public nftTypeCounts; // nftType => count minted
@@ -99,6 +105,15 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
         return selectedNFTId;
     }
 
+    function redeem(uint256 tokenId) external onlyOwner {
+        require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        require(!isRedeemed[tokenId], "Already redeemed");
+        isRedeemed[tokenId] = true;
+
+        // Tell marketplaces metadata changed (EIP-4906)
+        emit MetadataUpdate(tokenId);
+    }
+
     /**
      * @dev Override tokenURI to provide proper metadata URLs for different NFT types
      */
@@ -107,8 +122,10 @@ contract IPPYNFT is ERC721, ERC721Enumerable, Ownable {
     ) public view override returns (string memory) {
         _requireOwned(tokenId);
 
+        bool r = isRedeemed[tokenId];
+
         uint256 nftType = tokenIdToNFTType[tokenId];
-        return MetadataLibIPPYNFT.tokenURI(uint8(nftType), tokenId);
+        return MetadataLibIPPYNFT.tokenURI(uint8(nftType), tokenId, r);
     }
 
     /**

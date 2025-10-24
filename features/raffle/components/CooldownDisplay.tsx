@@ -1,5 +1,5 @@
 import React from "react"
-import { Clock, Shield, Database } from "lucide-react"
+import { Clock } from "lucide-react"
 
 interface CooldownDisplayProps {
   cooldownHours: number

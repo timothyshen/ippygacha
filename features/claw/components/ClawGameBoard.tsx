@@ -9,32 +9,24 @@ interface ClawGameBoardProps {
   clawX: number
   clawY: number
   isGrabbing: boolean
-  grabPhase: string
   grabbedPrizeId: number | null
-  clawShaking: boolean
   prizeWillFall: boolean
   clawOpenness: number
   touchingPrize: number | null
   prizesInMachine: Prize[]
   clawTipY: number
-  effectiveClawWidth: number
-  grabPositionYOffset: number
 }
 
 export const ClawGameBoard = React.memo(({
   clawX,
   clawY,
   isGrabbing,
-  grabPhase,
   grabbedPrizeId,
-  clawShaking,
   prizeWillFall,
   clawOpenness,
   touchingPrize,
   prizesInMachine,
   clawTipY,
-  effectiveClawWidth,
-  grabPositionYOffset
 }: ClawGameBoardProps) => {
   return (
     <Card className="relative w-full max-w-3xl mx-auto bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900 border-4 border-yellow-400 shadow-2xl overflow-hidden">

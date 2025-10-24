@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useReducer } from "react";
 import {
   Winner,
   ContractRaffleInfo,
@@ -8,6 +8,41 @@ import {
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { usePrivy } from "@privy-io/react-auth";
 import { formatEther } from "viem";
+import { awardActivityPoints } from "@/lib/auth";
+
+interface CooldownDisplayState {
+  hours: number;
+  minutes: number;
+  seconds: number;
+  progress: number;
+  timeRemaining: string;
+}
+
+type CooldownDisplayAction =
+  | { type: "reset" }
+  | { type: "update"; payload: CooldownDisplayState };
+
+const initialCooldownDisplayState: CooldownDisplayState = {
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+  progress: 0,
+  timeRemaining: "0h 0m 0s",
+};
+
+const cooldownDisplayReducer = (
+  state: CooldownDisplayState,
+  action: CooldownDisplayAction
+): CooldownDisplayState => {
+  switch (action.type) {
+    case "reset":
+      return initialCooldownDisplayState;
+    case "update":
+      return action.payload;
+    default:
+      return state;
+  }
+};
 
 export const useRaffleState = () => {
   // Basic raffle state
@@ -19,7 +54,6 @@ export const useRaffleState = () => {
     null
   );
   const [showWinModal, setShowWinModal] = useState(false);
-  const [tickerOffset, setTickerOffset] = useState(0);
   const [isTransactionPending, setIsTransactionPending] = useState(false);
   const [recentWinners, setRecentWinners] = useState<Winner[]>([]);
 
@@ -33,22 +67,28 @@ export const useRaffleState = () => {
   // Cooldown state
   const [canSpin, setCanSpin] = useState(true);
   const [lastSpinTime, setLastSpinTime] = useState<number | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState("");
-  const [cooldownHours, setCooldownHours] = useState(0);
-  const [cooldownMinutes, setCooldownMinutes] = useState(0);
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [cooldownProgress, setCooldownProgress] = useState(0);
+  const [cooldownDisplay, dispatchCooldownDisplay] = useReducer(
+    cooldownDisplayReducer,
+    initialCooldownDisplayState
+  );
+  const {
+    hours: cooldownHours,
+    minutes: cooldownMinutes,
+    seconds: cooldownSeconds,
+    progress: cooldownProgress,
+    timeRemaining,
+  } = cooldownDisplay;
 
   const [isLoadingContractData, setIsLoadingContractData] = useState(false);
   const lastContractCallRef = useRef<number>(0);
-  const lastUserDataCallRef = useRef<number>(0);
+  const loadUserDataRef = useRef<((address: string) => Promise<void>) | null>(
+    null
+  );
 
   // Contract services
   const {
     getRaffleInfo,
     getUserStats,
-    getNFTPoolInfo,
-    getNFTPoolTokenIds,
     getEntryPrice,
     getAllPrizeEntries,
     getUserCooldownStatus,
@@ -74,13 +114,18 @@ export const useRaffleState = () => {
           ? ((cooldownPeriod - remainingTime) / cooldownPeriod) * 100
           : 0;
 
-      setCooldownHours(hours);
-      setCooldownMinutes(minutes);
-      setCooldownSeconds(seconds);
-      setCooldownProgress(progress);
-      setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+      dispatchCooldownDisplay({
+        type: "update",
+        payload: {
+          hours,
+          minutes,
+          seconds,
+          progress,
+          timeRemaining: `${hours}h ${minutes}m ${seconds}s`,
+        },
+      });
     },
-    []
+    [dispatchCooldownDisplay]
   );
 
   const checkCanSpin = useCallback(
@@ -109,10 +154,7 @@ export const useRaffleState = () => {
         if (cooldownStatus.canEnter) {
           setCanSpin(true);
           setLastSpinTime(null);
-          setCooldownHours(0);
-          setCooldownMinutes(0);
-          setCooldownSeconds(0);
-          setCooldownProgress(0);
+          dispatchCooldownDisplay({ type: "reset" });
         } else {
           setCanSpin(false);
           const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000; // Convert seconds to milliseconds
@@ -127,12 +169,7 @@ export const useRaffleState = () => {
         setIsLoadingContractData(false);
       }
     },
-    [
-      getRaffleInfo,
-      getUserCooldownStatus,
-      updateCooldownDisplay,
-      isLoadingContractData,
-    ]
+    [updateCooldownDisplay, isLoadingContractData, dispatchCooldownDisplay] // Remove function dependencies to prevent infinite re-creation
   );
 
   // Load contract data
@@ -141,46 +178,18 @@ export const useRaffleState = () => {
 
     try {
       setIsLoadingContractData(true);
-      const [raffleInfoData, entryPriceData] = await Promise.all([
-        getRaffleInfo(),
-        getEntryPrice(),
-      ]);
-
-      setRaffleInfo(raffleInfoData);
-      setEntryPrice(entryPriceData);
-    } catch (error) {
-      console.error("Error loading contract data:", error);
-    } finally {
-      setIsLoadingContractData(false);
-    }
-  }, [getRaffleInfo, getEntryPrice, isLoadingContractData]);
-
-  // Load user-specific data
-  const loadUserData = useCallback(
-    async (address: string) => {
-      if (!address) return;
-
-      // Throttle user data calls - only allow one call per 3 seconds
-      const now = Date.now();
-      if (now - lastUserDataCallRef.current < 3000) {
-        return;
-      }
-      lastUserDataCallRef.current = now;
-
-      try {
-        setIsLoadingContractData(true);
-        const [userStatsData, userPrizesData] = await Promise.all([
-          getUserStats(address),
+      const [raffleInfoData, entryPriceData, userPrizesData] =
+        await Promise.all([
+          getRaffleInfo(),
+          getEntryPrice(),
           getAllPrizeEntries(),
         ]);
 
-        setUserStats(userStatsData);
-        console.log("userStatsData", userStatsData);
-
-        // Convert contract prizes to display format
-        const displayWinners: Winner[] = userPrizesData.map((prize, index) => {
-          const ipAmount = formatEther(prize.ipTokenAmount);
-          const hasNFT = prize.nftTokenId > 0;
+      // Convert contract prizes to display format
+      const displayWinners: Winner[] = (userPrizesData as []).map(
+        (prize, index) => {
+          const ipAmount = formatEther(prize[2]);
+          const hasNFT = prize[3] > 0;
           let prizeName = `${ipAmount} IP`;
           if (hasNFT) {
             prizeName += " + NFT";
@@ -188,31 +197,47 @@ export const useRaffleState = () => {
 
           return {
             id: index + 1,
-            name: `${prize.winner.slice(0, 6)}...${prize.winner.slice(-4)}`,
+            name: `${(prize[0] as string).slice(0, 6)}...${(
+              prize[0] as string
+            ).slice(-4)}`,
             prize: prizeName,
-            date: new Date(Number(prize.timestamp) * 1000).toLocaleString(),
+            date: new Date(Number(prize[5]) * 1000).toLocaleString(),
             value: ipAmount,
-            tier: prize.tier,
+            tier: prize[1] as number,
           };
-        });
+        }
+      );
+      setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
+      setRaffleInfo(raffleInfoData);
+      setEntryPrice(entryPriceData);
+    } catch (error) {
+      console.error("Error loading contract data:", error);
+    } finally {
+      setIsLoadingContractData(false);
+    }
+  }, [isLoadingContractData]); // Remove function dependencies to prevent infinite re-creation
 
-        setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
+  // Load user-specific data
+  const loadUserData = useCallback(
+    async (address: string) => {
+      if (!address) {
+        return;
+      }
+      try {
+        setIsLoadingContractData(true);
+        const userStatsData = await getUserStats(address);
+        setUserStats(userStatsData);
       } catch (error) {
         console.error("Error loading user data:", error);
       } finally {
         setIsLoadingContractData(false);
       }
     },
-    [getUserStats, getAllPrizeEntries]
+    [] // Remove dependencies to prevent infinite re-creation
   );
 
-  // Ticker animation effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTickerOffset((prev) => (prev + 1) % 100);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
+  // Store the latest loadUserData function in ref
+  loadUserDataRef.current = loadUserData;
 
   // Load contract data on mount
   useEffect(() => {
@@ -221,14 +246,16 @@ export const useRaffleState = () => {
 
   // Load user data when wallet connects (debounced)
   useEffect(() => {
-    if (walletAddress) {
+    if (walletAddress && loadUserDataRef.current) {
       const timeoutId = setTimeout(() => {
-        loadUserData(walletAddress);
+        loadUserDataRef.current?.(walletAddress);
       }, 300); // Debounce by 300ms
 
-      return () => clearTimeout(timeoutId);
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
-  }, [walletAddress, loadUserData]);
+  }, [walletAddress]); // Only depend on walletAddress
 
   // Cooldown monitoring effect - only update UI, don't call contract
   useEffect(() => {
@@ -283,7 +310,6 @@ export const useRaffleState = () => {
         const { unwatch: unwatchFn } = await listenToPrizeEvents(
           walletAddress,
           (prize: PrizeEvent) => {
-            console.log("🎉 Prize won!", prize);
             setLatestPrize(prize);
 
             // Update the win modal with real prize data
@@ -321,8 +347,6 @@ export const useRaffleState = () => {
       setIsTransactionPending(true);
       setSelectedPrize(null);
 
-      console.log("[Contract] Starting raffle entry process...");
-
       // Step 1: Double-check cooldown
       await checkCanSpin(walletAddress);
       if (!canSpin) {
@@ -332,11 +356,14 @@ export const useRaffleState = () => {
       // Step 2: Execute smart contract transaction
       const transactionResult = await enterRaffle();
 
-      console.log("[Contract] Transaction completed:", transactionResult);
-
       setIsTransactionPending(false);
       setCanSpin(false);
       setTransactionHash(transactionResult.txHash);
+
+      await awardActivityPoints(walletAddress, "RAFFLE_DRAW", {
+        timestamp: new Date().toISOString(),
+        amount: entryPrice,
+      }, transactionResult.txHash);
 
       // Cooldown is now handled by smart contract
 
@@ -403,7 +430,6 @@ export const useRaffleState = () => {
     selectedPrizeValue,
     showWinModal,
     setShowWinModal,
-    tickerOffset,
     isTransactionPending,
     recentWinners,
 

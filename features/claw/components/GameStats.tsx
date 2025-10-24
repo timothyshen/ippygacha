@@ -3,14 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Coins, Gift, Gamepad2, Volume2, VolumeX } from "lucide-react"
+import { Coins, Gift, Gamepad2, VolumeX } from "lucide-react"
 
 interface GameStatsProps {
   coins: number
   score: number
   gameActive: boolean
   onStartGame: () => void
-  onAddCoins: () => void
   onResetGame: () => void
 }
 
@@ -19,7 +18,6 @@ export function GameStats({
   score,
   gameActive,
   onStartGame,
-  onAddCoins,
   onResetGame,
 }: GameStatsProps) {
   return (
@@ -64,7 +62,6 @@ export function GameStats({
             {gameActive ? "Playing..." : "Start Game (1 Coin)"}
           </Button>
           <Button
-            onClick={onAddCoins}
             variant="outline"
             className="w-full border-yellow-500 text-yellow-300 hover:bg-yellow-500/10"
           >

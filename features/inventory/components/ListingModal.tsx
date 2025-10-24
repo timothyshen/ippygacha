@@ -4,14 +4,11 @@ import { useState } from "react"
 import Image from "next/image"
 import { Eye, List, Loader2, Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
     Drawer,
-    DrawerClose,
     DrawerContent,
-    DrawerDescription,
-    DrawerFooter,
     DrawerHeader,
     DrawerTitle,
     DrawerTrigger,
@@ -20,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { GachaItemWithCount, COLLECTION_COLORS, VERSION_STYLES, COLLECTION_GLOW } from "./inventory"
 import { getItemDisplayName, getRarityInfo, hasRichMetadata, getItemDisplayStyle } from "@/types/gacha"
 import { metadataMapping } from "@/lib/metadataMapping"
@@ -37,20 +34,18 @@ interface ImageCache {
 
 interface ListingModalProps {
     item: GachaItemWithCount
-    key: number
     imageData: ImageCache
 }
 
-export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
+export const ListingModal = ({ item, imageData }: ListingModalProps) => {
     const [isHovered, setIsHovered] = useState(true)
-    const [quantity, setQuantity] = useState(1)
+    const quantity = 1
     const [floorPrice, setFloorPrice] = useState(0)
     const [detailOpen, setDetailOpen] = useState(false)
-    const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
     const { listItem } = useMarketplace();
 
-    const handleImageError = (itemId: string) => {
-        setImageErrors(prev => new Set([...prev, itemId]));
+    const handleImageError = () => {
+        // We could show a fallback image here if desired.
     };
     const rarityInfo = getRarityInfo(item);
     const imageUrl = metadataMapping[item.name.toLowerCase() as keyof typeof metadataMapping]
@@ -133,7 +128,7 @@ export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
                                 src={imageUrl}
                                 alt={getItemDisplayName(item)}
                                 className="w-full h-full object-contain"
-                                onError={() => handleImageError(item.id)}
+                                onError={handleImageError}
                                 width={128}
                                 height={128}
                                 loading="lazy"
@@ -203,7 +198,7 @@ export const ListingModal = ({ item, key, imageData }: ListingModalProps) => {
                                                             src={imageUrl}
                                                             alt={getItemDisplayName(item)}
                                                             className="rounded"
-                                                            onError={() => handleImageError(item.id)}
+                                                            onError={handleImageError}
                                                             width={40}
                                                             height={40}
                                                             loading="lazy"

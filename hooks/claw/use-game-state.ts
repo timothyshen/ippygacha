@@ -233,7 +233,7 @@ export function useGameState() {
   const [droppedPrize, setDroppedPrize] = useState<DroppedPrizeType | null>(
     null
   );
-  const { purchaseBoxes, openBoxes } = useBlindBox();
+  const { purchaseBoxes } = useBlindBox();
 
   const totalInitialPrizeCount = INITIAL_PRIZES_CONFIG.length;
 
@@ -251,10 +251,6 @@ export function useGameState() {
       setGrabbedPrizeId(null);
       setPrizeWillFall(false);
     }
-  };
-
-  const addCoins = () => {
-    setCoins((prev) => prev + 5);
   };
 
   const resetGame = () => {
@@ -344,7 +340,6 @@ export function useGameState() {
     setGameActive, // Keep this setter if needed elsewhere, though endGame/startGame manage it
     setDroppedPrize,
     startGame,
-    addCoins,
     resetGame,
     endGame,
     dismissResult,

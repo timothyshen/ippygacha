@@ -58,7 +58,6 @@ export default function ClawMachine() {
     setScore,
     setDroppedPrize,
     startGame,
-    addCoins,
     resetGame,
     endGame,
     dismissResult,
@@ -70,7 +69,7 @@ export default function ClawMachine() {
   const { pressedButtons, heldButtons, handleButtonPress, startHolding, stopHolding, holdIntervals } =
     useButtonInteractions()
   const { cableSwayAngle, setCableSwayAngle, setIsClawMoving, cableStabilizing, setCableStabilizing } = useCablePhysics(
-    { grabbedPrizeId, prizeWillFall, grabPhase, clawY, prizes: prizesInMachine },
+    { grabbedPrizeId, prizeWillFall, grabPhase, prizes: prizesInMachine },
   )
 
   const MACHINE_WIDTH = 400
@@ -547,7 +546,7 @@ export default function ClawMachine() {
     <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900 p-2 sm:p-4">
       <div className="max-w-7xl mx-auto">
 
-        <Header name="Claw Machine" subtitle="Premium Collection Experience" isDark={false} isMarketplace={false} />
+        <Header name="Claw Machine" subtitle="Premium Collection Experience" isDark={false} />
         <div className="w-full max-w-7xl mx-auto mt-[120px]">
           <div className="text-center mb-4 sm:mb-8">
             <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2">🎪 Claw Machine 🎪</h1>
@@ -564,7 +563,6 @@ export default function ClawMachine() {
                   score={score}
                   gameActive={gameActive}
                   onStartGame={onStartGame}
-                  onAddCoins={addCoins}
                   onResetGame={resetGame}
                 />
               </div>
@@ -777,7 +775,6 @@ export default function ClawMachine() {
                 score={score}
                 gameActive={gameActive}
                 onStartGame={onStartGame}
-                onAddCoins={addCoins}
                 onResetGame={resetGame}
               />
               <div className="flex flex-col items-center space-y-4 relative">
@@ -969,7 +966,6 @@ export default function ClawMachine() {
         </div>
         <ClawControlPanel
           coins={coins}
-          onAddCoin={addCoins}
           onOpenInventory={() => router.push("/inventory")}
           onOpenMarket={() => router.push("/market")}
         />

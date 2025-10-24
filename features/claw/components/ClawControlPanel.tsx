@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button"
 
 interface ClawControlPanelProps {
     coins: number
-    onAddCoin: () => void
     onOpenInventory: () => void
     onOpenMarket: () => void
 }
 
 export const ClawControlPanel = ({
     coins,
-    onAddCoin,
     onOpenInventory,
     onOpenMarket,
 }: ClawControlPanelProps) => {
@@ -22,7 +20,6 @@ export const ClawControlPanel = ({
                 <Button
                     variant="ghost"
                     size="sm"
-                    onClick={onAddCoin}
                     className={cn(
                         "flex items-center gap-1 sm:gap-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all duration-300",
                         "bg-white/80 backdrop-blur-md flex-1",

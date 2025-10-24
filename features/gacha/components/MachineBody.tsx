@@ -1,9 +1,8 @@
-import { Coins, Sparkles, Zap } from "lucide-react"
+import { Sparkles, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { GachaItem } from "@/types/gacha"
-import { COLLECTION_COLORS, VERSION_STYLES } from "@/types/gacha"
+import { VERSION_STYLES } from "@/types/gacha"
 import dynamic from "next/dynamic"
-import { Suspense } from "react"
 
 const MachineIdleEffects = dynamic(
     () => import("@/features/shared/components/enhanced-animations").then(mod => ({ default: mod.MachineIdleEffects })),

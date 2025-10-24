@@ -1,19 +1,10 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Package, Loader2, AlertCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { GachaItemWithCount, COLLECTION_COLORS, VERSION_STYLES, COLLECTION_GLOW } from "./inventory"
-import {
-    getItemDisplayName,
-    getRarityInfo,
-    getItemDisplayStyle,
-    hasRichMetadata,
-} from "@/types/gacha"
+import { Card, CardContent } from "@/components/ui/card"
+import { Package, Loader2 } from "lucide-react"
+import { GachaItemWithCount } from "./inventory"
+
 import { useState, useEffect, useRef } from "react"
-import Image from "next/image"
-import { metadataMapping } from "@/lib/metadataMapping"
 import { ListingModal } from "./ListingModal"
 
 interface GridViewProps {
@@ -30,7 +21,6 @@ interface ImageCache {
 }
 
 export function GridView({ items, inventoryLength }: GridViewProps) {
-    const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
     const [imageCache, setImageCache] = useState<ImageCache>({});
     const [isLoading, setIsLoading] = useState(true);
     const imageCacheRef = useRef<ImageCache>({});

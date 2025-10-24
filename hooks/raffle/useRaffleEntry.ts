@@ -7,138 +7,185 @@ import { readClient } from "@/lib/contract/client";
 
 import { useNotifications } from "@/contexts/notification-context";
 import { parseEther } from "viem";
-import { PrizeEvent, ContractPrize } from "@/features/raffle/types";
+import { PrizeEvent } from "@/features/raffle/types";
+import { useCallback, useRef } from "react";
 
 export const useRaffleEntry = () => {
   const { getWalletClient } = useWalletClient();
   const { addNotification } = useNotifications();
 
+  // Request caching system
+  const cacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
+  const CACHE_DURATION = 30000; // 30 seconds
+
+  const getCachedOrFetch = useCallback(async (key: string, fetchFn: () => Promise<any>) => {
+    const cached = cacheRef.current.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+    
+    const data = await fetchFn();
+    cacheRef.current.set(key, { data, timestamp: Date.now() });
+    return data;
+  }, []);
+
+  // Centralized error handler
+  const handleContractError = useCallback((error: unknown, operation: string) => {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`Error in ${operation}:`, error);
+    
+    addNotification({
+      title: "Contract Error",
+      message: `Failed to ${operation}: ${message}`,
+      type: "error",
+      duration: 5000,
+    });
+    
+    throw error;
+  }, [addNotification]);
+
   // Getter functions for reading contract data
-  const getRaffleInfo = async () => {
-    try {
-      const result = (await readClient.readContract({
-        address: onchainRaffleAddress,
-        abi: onchainRaffleABI,
-        functionName: "getRaffleInfo",
-      })) as [boolean, bigint, bigint, bigint, bigint];
-      return {
-        active: result[0],
-        totalEntries: result[1],
-        totalIPTokensCollected: result[2],
-        contractBalance: result[3],
-        nftPoolSize: result[4],
-      };
-    } catch (error) {
-      console.error("Error fetching raffle info:", error);
-      throw error;
-    }
-  };
+  const getRaffleInfo = useCallback(async () => {
+    return getCachedOrFetch("raffleInfo", async () => {
+      try {
+        const result = (await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "getRaffleInfo",
+        })) as [boolean, bigint, bigint, bigint, bigint];
+        return {
+          active: result[0],
+          totalEntries: result[1],
+          totalIPTokensCollected: result[2],
+          contractBalance: result[3],
+          nftPoolSize: result[4],
+        };
+      } catch (error) {
+        handleContractError(error, "fetch raffle info");
+      }
+    });
+  }, [getCachedOrFetch, handleContractError]);
 
-  const getUserStats = async (userAddress: string) => {
-    try {
-      const result = (await readClient.readContract({
-        address: onchainRaffleAddress,
-        abi: onchainRaffleABI,
-        functionName: "getUserStats",
-        args: [userAddress as `0x${string}`],
-      })) as [bigint, bigint, bigint];
-      console.log("getUserStats", result);
-      return {
-        totalUserEntries: result[0],
-        totalWinnings: result[1],
-        distributedPrizes: result[2],
-      };
-    } catch (error) {
-      console.error("Error fetching user stats:", error);
-      throw error;
-    }
-  };
+  const getUserStats = useCallback(async (userAddress: string) => {
+    return getCachedOrFetch(`userStats-${userAddress}`, async () => {
+      try {
+        const result = (await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "getUserStats",
+          args: [userAddress as `0x${string}`],
+        })) as [bigint, bigint, bigint];
 
-  const getNFTPoolInfo = async () => {
-    try {
-      const result = (await readClient.readContract({
-        address: onchainRaffleAddress,
-        abi: onchainRaffleABI,
-        functionName: "getNFTPoolInfo",
-      })) as bigint;
+        return {
+          totalUserEntries: result[0],
+          totalWinnings: result[1],
+          distributedPrizes: result[2],
+        };
+      } catch (error) {
+        handleContractError(error, "fetch user stats");
+      }
+    });
+  }, [getCachedOrFetch, handleContractError]);
 
-      return {
-        commonCount: result,
-      };
-    } catch (error) {
-      console.error("Error fetching NFT pool info:", error);
-      throw error;
-    }
-  };
+  const getNFTPoolInfo = useCallback(async () => {
+    return getCachedOrFetch("nftPoolInfo", async () => {
+      try {
+        const result = (await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "getNFTPoolInfo",
+        })) as bigint;
 
-  const getNFTPoolTokenIds = async () => {
-    try {
-      const result = (await readClient.readContract({
-        address: onchainRaffleAddress,
-        abi: onchainRaffleABI,
-        functionName: "getNFTPoolTokenIds",
-      })) as bigint[];
+        return {
+          commonCount: result,
+        };
+      } catch (error) {
+        handleContractError(error, "fetch NFT pool info");
+      }
+    });
+  }, [getCachedOrFetch, handleContractError]);
 
-      return result;
-    } catch (error) {
-      console.error("Error fetching NFT pool token IDs:", error);
-      throw error;
-    }
-  };
+  const getNFTPoolTokenIds = useCallback(async () => {
+    return getCachedOrFetch("nftPoolTokenIds", async () => {
+      try {
+        const result = (await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "getNFTPoolTokenIds",
+        })) as bigint[];
 
-  const getEntryPrice = async () => {
-    try {
-      const result = (await readClient.readContract({
-        address: onchainRaffleAddress,
-        abi: onchainRaffleABI,
-        functionName: "ENTRY_PRICE",
-      })) as bigint;
+        return result;
+      } catch (error) {
+        handleContractError(error, "fetch NFT pool token IDs");
+      }
+    });
+  }, [getCachedOrFetch, handleContractError]);
 
-      return result;
-    } catch (error) {
-      console.error("Error fetching entry price:", error);
-      throw error;
-    }
-  };
+  const getEntryPrice = useCallback(async () => {
+    return getCachedOrFetch("entryPrice", async () => {
+      try {
+        const result = (await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "ENTRY_PRICE",
+        })) as bigint;
 
-  const getAllPrizeEntries = async () => {
-    try {
-      const result = (await readClient.readContract({
-        address: onchainRaffleAddress,
-        abi: onchainRaffleABI,
-        functionName: "allPrizes",
-      })) as ContractPrize[];
+        return result;
+      } catch (error) {
+        handleContractError(error, "fetch entry price");
+      }
+    });
+  }, [getCachedOrFetch, handleContractError]);
 
-      console.log("getAllPrizeEntries", result);
-      return result;
-    } catch (error) {
-      console.error("Error fetching all entries:", error);
-      throw error;
-    }
-  };
+  const getAllPrizeEntries = useCallback(async () => {
+    return getCachedOrFetch("allPrizeEntries", async () => {
+      try {
+        const length = await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "totalEntries",
+        });
 
-  const getUserCooldownStatus = async (userAddress: string) => {
-    try {
-      const result = (await readClient.readContract({
-        address: onchainRaffleAddress,
-        abi: onchainRaffleABI,
-        functionName: "getUserCooldownStatus",
-        args: [userAddress],
-      })) as [boolean, bigint, bigint, bigint];
+        // Use Promise.all for parallel requests instead of sequential loop
+        const promises = Array.from({ length: Number(length) }, (_, i) =>
+          readClient.readContract({
+            address: onchainRaffleAddress,
+            abi: onchainRaffleABI,
+            functionName: "allPrizes",
+            args: [i],
+          })
+        );
 
-      return {
-        canEnter: result[0],
-        lastEntryTime: result[1],
-        cooldownEndTime: result[2],
-        timeRemaining: result[3],
-      };
-    } catch (error) {
-      console.error("Error fetching user cooldown status:", error);
-      throw error;
-    }
-  };
+        return await Promise.all(promises);
+      } catch (error) {
+        handleContractError(error, "fetch all prize entries");
+      }
+    });
+  }, [getCachedOrFetch, handleContractError]);
 
-  const enterRaffle = async () => {
+  const getUserCooldownStatus = useCallback(async (userAddress: string) => {
+    return getCachedOrFetch(`cooldownStatus-${userAddress}`, async () => {
+      try {
+        const result = (await readClient.readContract({
+          address: onchainRaffleAddress,
+          abi: onchainRaffleABI,
+          functionName: "getUserCooldownStatus",
+          args: [userAddress],
+        })) as [boolean, bigint, bigint, bigint];
+
+        return {
+          canEnter: result[0],
+          lastEntryTime: result[1],
+          cooldownEndTime: result[2],
+          timeRemaining: result[3],
+        };
+      } catch (error) {
+        handleContractError(error, "fetch user cooldown status");
+      }
+    });
+  }, [getCachedOrFetch, handleContractError]);
+
+  const enterRaffle = useCallback(async () => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
@@ -199,9 +246,9 @@ export const useRaffleEntry = () => {
       });
       throw error;
     }
-  };
+  }, [getWalletClient, addNotification]);
 
-  const listenToPrizeEvents = async (
+  const listenToPrizeEvents = useCallback(async (
     address: string,
     onPrizeWon: (prize: PrizeEvent) => void
   ) => {
@@ -255,7 +302,7 @@ export const useRaffleEntry = () => {
         unwatchPrizeAwarded();
       },
     };
-  };
+  }, []);
 
   return {
     // Getter functions

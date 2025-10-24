@@ -5,6 +5,9 @@ import { COLLECTION_COLORS } from "@/types/gacha"
 import {
     Dialog,
     DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -45,6 +48,12 @@ export const BlindBoxModal = ({
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-lg w-full shadow-2xl transition-all duration-700 border-0 items-center justify-center z-50 p-4 backdrop-blur-lg">
+                <DialogHeader>
+                    <DialogTitle>Mystery Premium Box</DialogTitle>
+                </DialogHeader>
+                <DialogDescription>
+                    What treasures await inside? Open to discover your prize!
+                </DialogDescription>
                 {!isRevealed ? (
                     // Enhanced Blind Box State
                     <div className="my-8 flex flex-col items-center justify-center">
@@ -74,9 +83,6 @@ export const BlindBoxModal = ({
                 ) : (
                     // Enhanced Revealed Item State
                     <div className="mb-8">
-                        <div className="box-opening mb-6">
-                            <div className="text-6xl md:text-7xl mb-4 drop-shadow-lg">📦</div>
-                        </div>
                         <div className="item-reveal">
                             <div
                                 className={cn(
@@ -93,7 +99,7 @@ export const BlindBoxModal = ({
                             <h2
                                 className={cn(
                                     "text-2xl md:text-3xl font-bold mb-3",
-                                    "text-white",
+                                    "text-black",
                                 )}
                             >
                                 {item.name}
@@ -101,7 +107,7 @@ export const BlindBoxModal = ({
                             <p
                                 className={cn(
                                     "mb-4 text-base md:text-lg font-medium",
-                                    "text-slate-300/80"
+                                    "text-black"
                                 )}
                             >
                                 {item.description}

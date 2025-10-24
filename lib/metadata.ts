@@ -234,20 +234,6 @@ class MetadataService {
     }
   }
 
-  // Helper to get theme name from NFT type
-  private getThemeFromNFTType(nftType: number): string {
-    const themes = {
-      0: "Hidden",
-      1: "Nature",
-      2: "Tech",
-      3: "Art",
-      4: "Music",
-      5: "Sports",
-      6: "Gaming",
-    };
-    return themes[nftType as keyof typeof themes] || "Unknown";
-  }
-
   // Batch fetch multiple NFT metadata
   async batchGetIPPYMetadata(
     nfts: Array<{ tokenId: number; tokenURI: string; nftType: number }>

@@ -60,7 +60,6 @@ export interface RaffleState {
   selectedPrize: string | null;
   selectedPrizeValue: string | null;
   showWinModal: boolean;
-  tickerOffset: number;
   lastSpinTime: number | null;
   canSpin: boolean;
   timeRemaining: string;

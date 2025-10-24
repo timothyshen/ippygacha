@@ -1,4 +1,4 @@
-import { Coins, ImageIcon, Heart, Trophy } from "lucide-react";
+import { Coins, ImageIcon, Trophy } from "lucide-react";
 import { Prize } from "./types";
 
 // Contract-based prize tiers (matching OnChainRaffle.sol)

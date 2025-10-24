@@ -56,7 +56,6 @@ const SOUND_URLS = {
 class SoundManager {
   private sounds: Record<string, HTMLAudioElement> = {}
   private ambientSound: HTMLAudioElement | null = null
-  private musicSound: HTMLAudioElement | null = null
   private isMuted = false
   private isInitialized = false
   private blinkInterval: NodeJS.Timeout | null = null

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, Store, Loader2, AlertCircle, Search } from "lucide-react"
+import { Activity, Store, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { MarketplaceBuyingModal } from "./MarketplaceBuyingModal"
@@ -22,24 +22,6 @@ interface GachaItem {
   emoji: string
   description: string
   version: "standard" | "hidden"
-}
-
-interface MarketListing {
-  id: string
-  item?: GachaItem // Make item optional for blind boxes
-  blindBox?: {
-    id: string
-    name: string
-    description: string
-    emoji: string
-  }
-  seller: string
-  price: number
-  quantity: number
-  featured?: boolean
-  limited?: boolean
-  discount?: number
-  isBlindBox?: boolean // Add this flag
 }
 
 interface TradeActivity {
@@ -159,7 +141,7 @@ export const MarketplacePage = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState("")
   const [trades] = useState<TradeActivity[]>(MOCK_ACTIVITY)
   const [selectedCollection, setSelectedCollection] = useState("all")
-  const [selectedVersion, setSelectedVersion] = useState("all")
+  const [selectedVersion] = useState("all")
 
   // Use real marketplace data
   const { listings: marketplaceListings, loading, error, refetch } = useActiveListings()
@@ -191,16 +173,14 @@ export const MarketplacePage = React.memo(() => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
         <div className="max-w-7xl mx-auto">
-          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={true} />
-          <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
-            <CardContent className="p-16 text-center">
-              <Loader2 className="w-20 h-20 text-blue-500 mx-auto mb-6 animate-spin" />
-              <h3 className="text-2xl font-bold text-slate-700 mb-3">Loading Marketplace</h3>
-              <p className="text-slate-500 text-lg">Fetching active listings from the blockchain...</p>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-slate-600">Loading the marketplace...</p>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -208,19 +188,21 @@ export const MarketplacePage = React.memo(() => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
         <div className="max-w-7xl mx-auto">
-          <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={true} />
-          <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
-            <CardContent className="p-16 text-center">
-              <AlertCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
-              <h3 className="text-2xl font-bold text-slate-700 mb-3">Failed to Load Marketplace</h3>
-              <p className="text-slate-500 text-lg mb-6">{error}</p>
-              <Button onClick={refetch} className="bg-blue-600 hover:bg-blue-700">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Unable to load marketplace</h2>
+              <p className="text-slate-600 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 Try Again
-              </Button>
-            </CardContent>
-          </Card>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -229,7 +211,7 @@ export const MarketplacePage = React.memo(() => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} isMarketplace={false} />
+        <Header name="NFT Marketplace" subtitle="Buy & Sell Premium NFTs" isDark={true} />
 
         {/* Market Stats */}
         <MarketStats totalListings={marketplaceListings.length} hiddenItems={0} blindBoxes={0} averagePrice={0} featuredItems={0} limitedItems={0} />

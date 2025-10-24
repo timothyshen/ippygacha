@@ -1,6 +1,5 @@
 import React from "react"
-import { Sparkles, Wallet, Database, Shield, Users, Coins } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Sparkles, Wallet, Shield, Users, Coins } from "lucide-react"
 import { ContractRaffleInfo, ContractUserStats } from "../types"
 import { formatEther } from "viem"
 
@@ -20,7 +19,6 @@ export const RaffleHeader = React.memo(({
   const totalCollected = raffleInfo ? formatEther(raffleInfo.totalIPTokensCollected) : "0";
   const nftPoolSize = raffleInfo ? Number(raffleInfo.nftPoolSize) : 0;
   const userEntries = userStats ? Number(userStats.totalUserEntries) : 0;
-  const userWinnings = userStats ? formatEther(userStats.totalWinnings) : "0";
 
   return (
     <div className="text-center mb-12">

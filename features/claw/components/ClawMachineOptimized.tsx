@@ -15,11 +15,6 @@ import { useClawAnimation } from "../hooks/useClawAnimation"
 import { useClawControls } from "../hooks/useClawControls"
 import { useRouter } from "next/navigation"
 
-// Constants for claw behavior
-const CLAW_TIP_Y_OFFSET = 35
-const CLAW_EFFECTIVE_WIDTH_FOR_GRAB = 30
-const CLAW_GRAB_POSITION_Y_OFFSET = 35
-
 const ClawMachine = React.memo(() => {
   const [isMounted, setIsMounted] = useState(false)
 
@@ -47,7 +42,6 @@ const ClawMachine = React.memo(() => {
     setClawY,
     setIsGrabbing,
     startGame,
-    addCoins,
     resetGame,
     dismissResult,
     grabPrize: originalGrabPrize
@@ -57,7 +51,7 @@ const ClawMachine = React.memo(() => {
   const isMobile = useMobileDetection()
 
   // Use our optimized animation hook - MUST be called before any conditional returns
-  const { clawShaking, clawOpenness, clawTipY } = useClawAnimation({
+  const { clawOpenness, clawTipY } = useClawAnimation({
     clawX,
     clawY,
     isGrabbing,
@@ -102,7 +96,6 @@ const ClawMachine = React.memo(() => {
         name="Claw Machine"
         subtitle="Premium Collection Experience"
         isDark={false}
-        isMarketplace={true}
       />
 
       <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -113,7 +106,6 @@ const ClawMachine = React.memo(() => {
             score={score}
             gameActive={gameActive}
             onStartGame={startGame}
-            onAddCoins={addCoins}
             onResetGame={resetGame}
           />
         </div>
@@ -124,16 +116,12 @@ const ClawMachine = React.memo(() => {
             clawX={clawX}
             clawY={clawY}
             isGrabbing={isGrabbing}
-            grabPhase={grabPhase}
             grabbedPrizeId={grabbedPrizeId}
-            clawShaking={clawShaking}
             prizeWillFall={prizeWillFall}
             clawOpenness={clawOpenness}
             touchingPrize={touchingPrize}
             prizesInMachine={prizesInMachine}
             clawTipY={clawTipY}
-            effectiveClawWidth={CLAW_EFFECTIVE_WIDTH_FOR_GRAB}
-            grabPositionYOffset={CLAW_GRAB_POSITION_Y_OFFSET}
           />
 
           {/* Controls */}
@@ -167,7 +155,6 @@ const ClawMachine = React.memo(() => {
       {/* Control Panel */}
       <ClawControlPanel
         coins={coins}
-        onAddCoin={addCoins}
         onOpenInventory={() => router.push("/inventory")}
         onOpenMarket={() => router.push("/market")}
       />

@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String     @id @default(cuid())
+  walletAddress String     @unique
+  username      String?
+  avatarUrl     String?
+  totalPoints   Int        @default(0)
+  totalXp       Int        @default(0)
+  currentLevel  Int        @default(1)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  activities    Activity[]
+
+  @@map("users")
+}
+
+model Activity {
+  id           String       @id @default(cuid())
+  userId       String
+  activityType ActivityType
+  pointsEarned Int
+  xpEarned     Int
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  txnHash      String?
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+enum ActivityType {
+  GACHA_PULL
+  BOX_REVEAL
+  RAFFLE_DRAW
+  MARKETPLACE_TRADE
+  MARKETPLACE_LIST
+  MARKETPLACE_SALE
+  MARKETPLACE_PURCHASE
+}
