@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import { LEVEL_CONFIG } from "@/lib/points-system";
 
 export async function GET(
@@ -7,6 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ address: string }> }
 ) {
   try {
+    const supabase = getSupabaseAdmin();
     const { address } = await params;
 
     if (!address) {
@@ -16,45 +17,117 @@ export async function GET(
       );
     }
 
-    // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { walletAddress: address.toLowerCase() },
-      include: {
-        activities: {
-          orderBy: { createdAt: "desc" },
-          take: 10, // Recent activities
-        },
-      },
-    });
+    const normalizedAddress = address.toLowerCase();
+
+    const { data: existingUser, error: existingUserError } = await supabase
+      .from("users")
+      .select(
+        `
+          id,
+          walletAddress,
+          username,
+          avatarUrl,
+          totalPoints,
+          totalXp,
+          currentLevel,
+          createdAt,
+          updatedAt
+        `
+      )
+      .eq("walletAddress", normalizedAddress)
+      .maybeSingle();
+
+    if (existingUserError) {
+      throw existingUserError;
+    }
+
+    const now = new Date().toISOString();
+    let user = existingUser;
 
     if (!user) {
-      // Create new user if doesn't exist
-      user = await prisma.user.create({
-        data: {
-          walletAddress: address.toLowerCase(),
+      const { data: createdUser, error: createUserError } = await supabase
+        .from("users")
+        .insert({
+          walletAddress: normalizedAddress,
           totalPoints: 0,
           totalXp: 0,
           currentLevel: 1,
-        },
-        include: {
-          activities: {
-            orderBy: { createdAt: "desc" },
-            take: 10,
-          },
-        },
-      });
+          createdAt: now,
+          updatedAt: now,
+        })
+        .select(
+          `
+            id,
+            walletAddress,
+            username,
+            avatarUrl,
+            totalPoints,
+            totalXp,
+            currentLevel,
+            createdAt,
+            updatedAt
+          `
+        )
+        .single();
+
+      if (createUserError) {
+        throw createUserError;
+      }
+
+      user = createdUser;
     }
 
-    // Calculate level info
+    const { data: recentActivities, error: activitiesError } = await supabase
+      .from("activities")
+      .select(
+        `
+          id,
+          activityType,
+          pointsEarned,
+          xpEarned,
+          metadata,
+          txnHash,
+          createdAt
+        `
+      )
+      .eq("userId", user.id)
+      .order("createdAt", { ascending: false })
+      .limit(10);
+
+    if (activitiesError) {
+      throw activitiesError;
+    }
+
     const levelInfo = LEVEL_CONFIG.getLevelFromXp(user.totalXp);
 
-    // Update user level if it changed
     if (user.currentLevel !== levelInfo.level) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { currentLevel: levelInfo.level },
-      });
-      user.currentLevel = levelInfo.level;
+      const { data: updatedUser, error: levelUpdateError } = await supabase
+        .from("users")
+        .update({
+          currentLevel: levelInfo.level,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq("id", user.id)
+        .select(
+          `
+            id,
+            walletAddress,
+            username,
+            avatarUrl,
+            totalPoints,
+            totalXp,
+            currentLevel,
+            createdAt,
+            updatedAt
+          `
+        )
+        .single();
+
+      if (levelUpdateError) {
+        throw levelUpdateError;
+      }
+
+      user = updatedUser;
     }
 
     return NextResponse.json({
@@ -70,7 +143,7 @@ export async function GET(
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
-      recentActivities: user.activities,
+      recentActivities: recentActivities ?? [],
     });
   } catch (error) {
     console.error("Error fetching user points:", error);

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
-import { ActivityType } from "@prisma/client";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import {
   getActivityRewards,
   checkLevelUp,
   LEVEL_CONFIG,
 } from "@/lib/points-system";
+import { ACTIVITY_TYPES, isActivityType } from "@/lib/activity-types";
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseAdmin();
     const body = await request.json();
     const { walletAddress, activityType, metadata, txnHash } = body;
 
@@ -19,12 +20,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Object.values(ActivityType).includes(activityType as ActivityType)) {
+    if (!isActivityType(activityType)) {
       return NextResponse.json(
         {
           error: "Invalid activity type",
           received: activityType,
-          validTypes: Object.values(ActivityType),
+          validTypes: ACTIVITY_TYPES,
         },
         { status: 400 }
       );
@@ -32,50 +33,125 @@ export async function POST(request: NextRequest) {
 
     // Get rewards for this activity
     const rewards = getActivityRewards(activityType);
+    const normalizedWallet = walletAddress.toLowerCase();
 
-    // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { walletAddress: walletAddress.toLowerCase() },
-    });
+    const { data: existingUser, error: existingUserError } = await supabase
+      .from("users")
+      .select(
+        `
+          id,
+          walletAddress,
+          username,
+          avatarUrl,
+          totalPoints,
+          totalXp,
+          currentLevel,
+          createdAt,
+          updatedAt
+        `
+      )
+      .eq("walletAddress", normalizedWallet)
+      .maybeSingle();
+
+    if (existingUserError) {
+      throw existingUserError;
+    }
+
+    const timestamp = new Date().toISOString();
+    let user = existingUser;
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          walletAddress: walletAddress.toLowerCase(),
+      const { data: createdUser, error: createError } = await supabase
+        .from("users")
+        .insert({
+          walletAddress: normalizedWallet,
           totalPoints: 0,
           totalXp: 0,
           currentLevel: 1,
-        },
-      });
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        })
+        .select(
+          `
+            id,
+            walletAddress,
+            username,
+            avatarUrl,
+            totalPoints,
+            totalXp,
+            currentLevel,
+            createdAt,
+            updatedAt
+          `
+        )
+        .single();
+
+      if (createError) {
+        throw createError;
+      }
+
+      user = createdUser;
     }
 
-    // Check if user leveled up
     const oldXp = user.totalXp;
     const newXp = user.totalXp + rewards.xp;
+    const newPoints = user.totalPoints + rewards.points;
     const leveledUp = checkLevelUp(oldXp, newXp);
     const newLevelInfo = LEVEL_CONFIG.getLevelFromXp(newXp);
 
-    // Update user points and XP
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        totalPoints: user.totalPoints + rewards.points,
+    const { data: updatedUser, error: updateError } = await supabase
+      .from("users")
+      .update({
+        totalPoints: newPoints,
         totalXp: newXp,
         currentLevel: newLevelInfo.level,
-      },
-    });
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", user.id)
+      .select(
+        `
+          id,
+          walletAddress,
+          username,
+          avatarUrl,
+          totalPoints,
+          totalXp,
+          currentLevel,
+          createdAt,
+          updatedAt
+        `
+      )
+      .single();
 
-    // Log the activity
-    const activity = await prisma.activity.create({
-      data: {
+    if (updateError) {
+      throw updateError;
+    }
+
+    const { data: activity, error: activityError } = await supabase
+      .from("activities")
+      .insert({
         userId: user.id,
         activityType,
         pointsEarned: rewards.points,
         xpEarned: rewards.xp,
-        metadata: metadata || {},
-        txnHash: txnHash || null,
-      },
-    });
+        metadata: metadata ?? {},
+        txnHash: txnHash ?? null,
+        createdAt: timestamp,
+      })
+      .select(
+        `
+          id,
+          activityType,
+          pointsEarned,
+          xpEarned,
+          createdAt
+        `
+      )
+      .single();
+
+    if (activityError) {
+      throw activityError;
+    }
 
     return NextResponse.json({
       success: true,
@@ -87,13 +163,7 @@ export async function POST(request: NextRequest) {
         currentLevel: updatedUser.currentLevel,
         levelInfo: newLevelInfo,
       },
-      activity: {
-        id: activity.id,
-        activityType: activity.activityType,
-        pointsEarned: activity.pointsEarned,
-        xpEarned: activity.xpEarned,
-        createdAt: activity.createdAt,
-      },
+      activity,
       leveledUp,
       rewards,
     });
