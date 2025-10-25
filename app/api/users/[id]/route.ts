@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 // GET a single user by ID
 export async function GET(
@@ -7,17 +7,39 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseAdmin();
     const { id } = await params;
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-      include: {
-        activities: {
-          orderBy: { createdAt: "desc" },
-          take: 20,
-        },
-      },
-    });
+    const { data: user, error } = await supabase
+      .from("users")
+      .select(
+        `
+          id,
+          walletAddress,
+          username,
+          avatarUrl,
+          totalPoints,
+          totalXp,
+          currentLevel,
+          createdAt,
+          updatedAt,
+          activities:activities(limit:20, order:createdAt.desc) (
+            id,
+            activityType,
+            pointsEarned,
+            xpEarned,
+            metadata,
+            txnHash,
+            createdAt
+          )
+        `
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -42,21 +64,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseAdmin();
     const { id } = await params;
     const body = await request.json();
     const { username, avatarUrl, totalPoints, totalXp, currentLevel } = body;
-
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!existingUser) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
 
     // Build update data object
     const updateData: any = {};
@@ -66,10 +77,44 @@ export async function PATCH(
     if (totalXp !== undefined) updateData.totalXp = totalXp;
     if (currentLevel !== undefined) updateData.currentLevel = currentLevel;
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-    });
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: "No fields provided to update" },
+        { status: 400 }
+      );
+    }
+
+    updateData.updatedAt = new Date().toISOString();
+
+    const { data: user, error } = await supabase
+      .from("users")
+      .update(updateData)
+      .eq("id", id)
+      .select(
+        `
+          id,
+          walletAddress,
+          username,
+          avatarUrl,
+          totalPoints,
+          totalXp,
+          currentLevel,
+          createdAt,
+          updatedAt
+        `
+      )
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ user });
   } catch (error) {
@@ -87,23 +132,26 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseAdmin();
     const { id } = await params;
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id },
-    });
+    const { data: deletedUser, error } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
 
-    if (!existingUser) {
+    if (error) {
+      throw error;
+    }
+
+    if (!deletedUser) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       );
     }
-
-    await prisma.user.delete({
-      where: { id },
-    });
 
     return NextResponse.json(
       { message: "User deleted successfully" },

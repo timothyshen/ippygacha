@@ -1,15 +1,15 @@
-import { ActivityType } from "@prisma/client";
+import { ActivityType } from "./activity-types";
 
 // Points and XP rewards for different activities
-export const ACTIVITY_REWARDS = {
-  [ActivityType.GACHA_PULL]: { points: 10, xp: 5 },
-  [ActivityType.BOX_REVEAL]: { points: 15, xp: 8 },
-  [ActivityType.MARKETPLACE_TRADE]: { points: 20, xp: 10 },
-  [ActivityType.RAFFLE_DRAW]: { points: 25, xp: 15 },
-  [ActivityType.MARKETPLACE_LIST]: { points: 5, xp: 3 },
-  [ActivityType.MARKETPLACE_SALE]: { points: 20, xp: 10 },
-  [ActivityType.MARKETPLACE_PURCHASE]: { points: 10, xp: 5 },
-} as const;
+export const ACTIVITY_REWARDS: Record<ActivityType, { points: number; xp: number }> = {
+  GACHA_PULL: { points: 10, xp: 5 },
+  BOX_REVEAL: { points: 15, xp: 8 },
+  MARKETPLACE_TRADE: { points: 20, xp: 10 },
+  RAFFLE_DRAW: { points: 25, xp: 15 },
+  MARKETPLACE_LIST: { points: 5, xp: 3 },
+  MARKETPLACE_SALE: { points: 20, xp: 10 },
+  MARKETPLACE_PURCHASE: { points: 10, xp: 5 },
+};
 
 // Level system configuration
 export const LEVEL_CONFIG = {

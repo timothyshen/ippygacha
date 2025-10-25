@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "points"; // 'points' or 'xp'
     const limit = parseInt(searchParams.get("limit") || "10");
@@ -14,28 +15,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const orderBy =
-      type === "points"
-        ? { totalPoints: "desc" as const }
-        : { totalXp: "desc" as const };
+    const orderColumn = type === "points" ? "totalPoints" : "totalXp";
 
-    const users = await prisma.user.findMany({
-      orderBy,
-      take: limit,
-      select: {
-        id: true,
-        walletAddress: true,
-        username: true,
-        avatarUrl: true,
-        totalPoints: true,
-        totalXp: true,
-        currentLevel: true,
-        createdAt: true,
-      },
-    });
+    const { data: users, error } = await supabase
+      .from("users")
+      .select(
+        `
+          id,
+          walletAddress,
+          username,
+          avatarUrl,
+          totalPoints,
+          totalXp,
+          currentLevel,
+          createdAt
+        `
+      )
+      .order(orderColumn, { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw error;
+    }
 
     // Format leaderboard data
-    const leaderboard = users.map((user, index) => ({
+    const leaderboard = (users ?? []).map((user, index) => ({
       rank: index + 1,
       walletAddress: user.walletAddress,
       username: user.username,

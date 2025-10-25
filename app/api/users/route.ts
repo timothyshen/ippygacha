@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 // GET all users with optional filtering
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
@@ -11,36 +12,43 @@ export async function GET(request: NextRequest) {
     const order = searchParams.get("order") || "desc";
 
     const validSortFields = ["createdAt", "totalPoints", "totalXp", "currentLevel"];
-    const orderBy = validSortFields.includes(sortBy)
-      ? { [sortBy]: order as "asc" | "desc" }
-      : { createdAt: "desc" as const };
+    const orderField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+    const ascending = order === "asc";
 
-    const users = await prisma.user.findMany({
-      skip: offset,
-      take: limit,
-      orderBy,
-      select: {
-        id: true,
-        walletAddress: true,
-        username: true,
-        avatarUrl: true,
-        totalPoints: true,
-        totalXp: true,
-        currentLevel: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const {
+      data: users,
+      error,
+      count,
+    } = await supabase
+      .from("users")
+      .select(
+        `
+        id,
+        walletAddress,
+        username,
+        avatarUrl,
+        totalPoints,
+        totalXp,
+        currentLevel,
+        createdAt,
+        updatedAt
+      `,
+        { count: "exact" }
+      )
+      .order(orderField, { ascending })
+      .range(offset, offset + limit - 1);
 
-    const total = await prisma.user.count();
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
-      users,
+      users: users ?? [],
       pagination: {
-        total,
+        total: count ?? 0,
         limit,
         offset,
-        hasMore: offset + limit < total,
+        hasMore: offset + limit < (count ?? 0),
       },
     });
   } catch (error) {
@@ -55,6 +63,7 @@ export async function GET(request: NextRequest) {
 // POST - Create a new user
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseAdmin();
     const body = await request.json();
     const { walletAddress, username, avatarUrl } = body;
 
@@ -65,10 +74,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedWallet = walletAddress.toLowerCase();
+
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { walletAddress: walletAddress.toLowerCase() },
-    });
+    const { data: existingUser, error: existingUserError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("walletAddress", normalizedWallet)
+      .maybeSingle();
+
+    if (existingUserError) {
+      throw existingUserError;
+    }
 
     if (existingUser) {
       return NextResponse.json(
@@ -77,16 +94,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.create({
-      data: {
-        walletAddress: walletAddress.toLowerCase(),
-        username: username || null,
-        avatarUrl: avatarUrl || null,
+    const { data: user, error } = await supabase
+      .from("users")
+      .insert({
+        walletAddress: normalizedWallet,
+        username: username ?? null,
+        avatarUrl: avatarUrl ?? null,
         totalPoints: 0,
         totalXp: 0,
         currentLevel: 1,
-      },
-    });
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .select(
+        `
+        id,
+        walletAddress,
+        username,
+        avatarUrl,
+        totalPoints,
+        totalXp,
+        currentLevel,
+        createdAt,
+        updatedAt
+      `
+      )
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {

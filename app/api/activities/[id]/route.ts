@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 // GET a single activity by ID
 export async function GET(
@@ -7,21 +7,35 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseAdmin();
     const { id } = await params;
 
-    const activity = await prisma.activity.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            walletAddress: true,
-            username: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
+    const { data: activity, error } = await supabase
+      .from("activities")
+      .select(
+        `
+          id,
+          userId,
+          activityType,
+          pointsEarned,
+          xpEarned,
+          metadata,
+          txnHash,
+          createdAt,
+          user:userId (
+            id,
+            walletAddress,
+            username,
+            avatarUrl
+          )
+        `
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
 
     if (!activity) {
       return NextResponse.json(
@@ -46,21 +60,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseAdmin();
     const { id } = await params;
     const body = await request.json();
     const { pointsEarned, xpEarned, metadata, txnHash } = body;
-
-    // Check if activity exists
-    const existingActivity = await prisma.activity.findUnique({
-      where: { id },
-    });
-
-    if (!existingActivity) {
-      return NextResponse.json(
-        { error: "Activity not found" },
-        { status: 404 }
-      );
-    }
 
     // Build update data object
     const updateData: any = {};
@@ -69,20 +72,47 @@ export async function PATCH(
     if (metadata !== undefined) updateData.metadata = metadata;
     if (txnHash !== undefined) updateData.txnHash = txnHash;
 
-    const activity = await prisma.activity.update({
-      where: { id },
-      data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            walletAddress: true,
-            username: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: "No fields provided to update" },
+        { status: 400 }
+      );
+    }
+
+    const { data: activity, error } = await supabase
+      .from("activities")
+      .update(updateData)
+      .eq("id", id)
+      .select(
+        `
+          id,
+          userId,
+          activityType,
+          pointsEarned,
+          xpEarned,
+          metadata,
+          txnHash,
+          createdAt,
+          user:userId (
+            id,
+            walletAddress,
+            username,
+            avatarUrl
+          )
+        `
+      )
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!activity) {
+      return NextResponse.json(
+        { error: "Activity not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ activity });
   } catch (error) {
@@ -100,23 +130,26 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseAdmin();
     const { id } = await params;
 
-    // Check if activity exists
-    const existingActivity = await prisma.activity.findUnique({
-      where: { id },
-    });
+    const { data: deletedActivity, error } = await supabase
+      .from("activities")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
 
-    if (!existingActivity) {
+    if (error) {
+      throw error;
+    }
+
+    if (!deletedActivity) {
       return NextResponse.json(
         { error: "Activity not found" },
         { status: 404 }
       );
     }
-
-    await prisma.activity.delete({
-      where: { id },
-    });
 
     return NextResponse.json(
       { message: "Activity deleted successfully" },

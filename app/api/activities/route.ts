@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database";
-import { ActivityType } from "@prisma/client";
+import { getSupabaseAdmin } from "@/lib/supabase";
+import { isActivityType } from "@/lib/activity-types";
 
 // GET all activities with optional filtering
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
@@ -12,58 +13,83 @@ export async function GET(request: NextRequest) {
     const activityType = searchParams.get("activityType");
     const walletAddress = searchParams.get("walletAddress");
 
-    // Build filter object
-    const where: any = {};
-
-    if (userId) {
-      where.userId = userId;
+    if (activityType && !isActivityType(activityType)) {
+      return NextResponse.json(
+        { error: "Invalid activity type" },
+        { status: 400 }
+      );
     }
 
+    let resolvedUserId = userId;
+
     if (walletAddress) {
-      // Find user by wallet address first
-      const user = await prisma.user.findUnique({
-        where: { walletAddress: walletAddress.toLowerCase() },
-      });
-      if (user) {
-        where.userId = user.id;
-      } else {
+      const { data: walletUser, error: walletUserError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("walletAddress", walletAddress.toLowerCase())
+        .maybeSingle();
+
+      if (walletUserError) {
+        throw walletUserError;
+      }
+
+      if (!walletUser) {
         return NextResponse.json({
           activities: [],
           pagination: { total: 0, limit, offset, hasMore: false },
         });
       }
+
+      resolvedUserId = walletUser.id;
     }
 
-    if (activityType && Object.values(ActivityType).includes(activityType as ActivityType)) {
-      where.activityType = activityType;
+    let query = supabase
+      .from("activities")
+      .select(
+        `
+          id,
+          userId,
+          activityType,
+          pointsEarned,
+          xpEarned,
+          metadata,
+          txnHash,
+          createdAt,
+          user:userId (
+            id,
+            walletAddress,
+            username,
+            avatarUrl
+          )
+        `,
+        { count: "exact" }
+      )
+      .order("createdAt", { ascending: false });
+
+    if (resolvedUserId) {
+      query = query.eq("userId", resolvedUserId);
     }
 
-    const activities = await prisma.activity.findMany({
-      where,
-      skip: offset,
-      take: limit,
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: {
-            id: true,
-            walletAddress: true,
-            username: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
+    if (activityType) {
+      query = query.eq("activityType", activityType);
+    }
 
-    const total = await prisma.activity.count({ where });
+    const { data: activities, error, count } = await query.range(
+      offset,
+      offset + limit - 1
+    );
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
       activities,
       pagination: {
-        total,
+        total: count ?? 0,
         limit,
         offset,
-        hasMore: offset + limit < total,
+        hasMore: offset + limit < (count ?? 0),
       },
     });
   } catch (error) {
@@ -78,6 +104,7 @@ export async function GET(request: NextRequest) {
 // POST - Create a new activity
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseAdmin();
     const body = await request.json();
     const { userId, activityType, pointsEarned, xpEarned, metadata, txnHash } = body;
 
@@ -89,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate activity type
-    if (!Object.values(ActivityType).includes(activityType)) {
+    if (!isActivityType(activityType)) {
       return NextResponse.json(
         { error: "Invalid activity type" },
         { status: 400 }
@@ -97,9 +124,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (userError) {
+      throw userError;
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -108,26 +141,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const activity = await prisma.activity.create({
-      data: {
+    const { data: activity, error: activityError } = await supabase
+      .from("activities")
+      .insert({
         userId,
         activityType,
-        pointsEarned: pointsEarned || 0,
-        xpEarned: xpEarned || 0,
-        metadata: metadata || {},
-        txnHash: txnHash || null,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            walletAddress: true,
-            username: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
+        pointsEarned: pointsEarned ?? 0,
+        xpEarned: xpEarned ?? 0,
+        metadata: metadata ?? {},
+        txnHash: txnHash ?? null,
+      })
+      .select(
+        `
+          id,
+          userId,
+          activityType,
+          pointsEarned,
+          xpEarned,
+          metadata,
+          txnHash,
+          createdAt,
+          user:userId (
+            id,
+            walletAddress,
+            username,
+            avatarUrl
+          )
+        `
+      )
+      .single();
+
+    if (activityError) {
+      throw activityError;
+    }
 
     return NextResponse.json({ activity }, { status: 201 });
   } catch (error) {
