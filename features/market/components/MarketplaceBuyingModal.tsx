@@ -59,7 +59,6 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
         emoji: "🎁",
         version: "standard" as const,
     }
-    console.log(nft)
 
     return (
         <div className="max-w-md mx-auto">

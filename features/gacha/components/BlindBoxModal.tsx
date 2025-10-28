@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Share } from "lucide-react"
 import { shareToTwitter } from "@/utils/twitter-share"
 import { useNotifications } from "@/contexts/notification-context"
+import { useRouter } from "next/navigation"
 
 interface BlindBoxModalProps {
     isOpen: boolean
@@ -31,6 +32,7 @@ export const BlindBoxModal = ({
     isRevealed,
 }: BlindBoxModalProps) => {
     const { addNotification } = useNotifications();
+    const router = useRouter();
     const handleShare = () => {
         if (item) {
             // Play button click sound
@@ -44,6 +46,11 @@ export const BlindBoxModal = ({
                 duration: 3000,
             })
         }
+    }
+
+    const handleClose = () => {
+        onClose();
+        router.push("/inventory");
     }
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -128,12 +135,18 @@ export const BlindBoxModal = ({
                 )}
 
                 <div className="space-y-4">
-                    {!isRevealed && <Button
+                    {!isRevealed ? <Button
                         onClick={onReveal}
                         size="lg"
                         className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                         🎁 Open Box
+                    </Button> : <Button
+                        onClick={handleClose}
+                        size="lg"
+                        className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                        To Inventory
                     </Button>}
 
                     {/* Enhanced Share Button */}

@@ -110,13 +110,6 @@ export async function awardActivityPoints(
   metadata?: any,
   txnHash?: string
 ): Promise<UserData | null> {
-  console.log(
-    "awardActivityPoints",
-    walletAddress,
-    activityType,
-    metadata,
-    txnHash
-  );
   try {
     const response = await fetch("/api/points/award", {
       method: "POST",

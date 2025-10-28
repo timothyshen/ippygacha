@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { GachaItem } from "@/types/gacha";
 import { useInventory } from "./useInventory";
 import { useBlindBox } from "../useBlindBox";
 import { useNotifications } from "@/contexts/notification-context";
 import { awardActivityPoints } from "@/lib/auth";
-import { blindBoxABI } from "@/lib/contract/blindboxABI";
-import { blindBoxAddress } from "@/lib/contract/contractAddress";
+import { ippyIPABI } from "@/lib/contract/ippyIPABI";
+import { ippyNFTAddress } from "@/lib/contract/contractAddress";
 import { readClient } from "@/lib/contract/client";
 
 export const useGachaMachine = () => {
@@ -15,6 +15,8 @@ export const useGachaMachine = () => {
   const { purchaseBoxes, openBoxes } = useBlindBox();
   const { addNotification } = useNotifications();
   const [coins, setCoins] = useState(10);
+
+  const walletAddress = user?.wallet?.address;
 
   const [isSpinning, setIsSpinning] = useState(false);
   const [leverPulled, setLeverPulled] = useState(false);
@@ -31,6 +33,7 @@ export const useGachaMachine = () => {
   const [animationPhase, setAnimationPhase] = useState<
     "fast" | "slowing" | "landing" | "none"
   >("none");
+  const revealWatcherRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
@@ -40,6 +43,39 @@ export const useGachaMachine = () => {
       }
     };
   }, []);
+
+  const stopRevealWatcher = useCallback(() => {
+    if (revealWatcherRef.current) {
+      revealWatcherRef.current();
+      revealWatcherRef.current = null;
+    }
+  }, []);
+
+  const startRevealWatcher = useCallback(() => {
+    if (!walletAddress) return;
+
+    stopRevealWatcher();
+
+    revealWatcherRef.current = readClient.watchContractEvent({
+      address: ippyNFTAddress,
+      abi: ippyIPABI,
+      eventName: "NFTMinted",
+      args: { to: walletAddress as `0x${string}` },
+      poll: true,
+      pollingInterval: 2000,
+      onLogs: (logs) => {
+        logs.forEach((log) => {
+          console.log("NFTMinted log", log);
+        });
+
+        void refreshInventory().then(() => {
+          setIsItemRevealed(true);
+        });
+
+        stopRevealWatcher();
+      },
+    });
+  }, [walletAddress, refreshInventory, stopRevealWatcher]);
 
   // Contract handles randomness - this is just a placeholder for the UI
   const getPlaceholderItem = (): GachaItem => {
@@ -193,6 +229,8 @@ export const useGachaMachine = () => {
 
   const revealBlindBox = async () => {
     try {
+      startRevealWatcher();
+
       const txHash = await openBoxes(1);
 
       // Record reveal activity with additional metadata
@@ -209,9 +247,9 @@ export const useGachaMachine = () => {
         );
       }
 
-      refreshInventory();
-      setIsItemRevealed(true);
+      await refreshInventory();
     } catch (error) {
+      stopRevealWatcher();
       console.error("Error opening box:", error);
     }
   };
@@ -224,6 +262,12 @@ export const useGachaMachine = () => {
     setIsItemRevealed(false);
     setIsSpinning(false);
   };
+
+  useEffect(() => {
+    return () => {
+      stopRevealWatcher();
+    };
+  }, [stopRevealWatcher]);
 
   return {
     // State

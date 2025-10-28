@@ -31,6 +31,8 @@ export const GachaMachine = React.memo(() => {
 
     const handleRevealBlindBox = useCallback(() => {
         revealBlindBox()
+
+        
         refreshInventory()
     }, [refreshInventory, revealBlindBox])
 
