@@ -79,11 +79,13 @@ export const useRaffleState = () => {
     timeRemaining,
   } = cooldownDisplay;
 
-  const [isLoadingContractData, setIsLoadingContractData] = useState(false);
   const lastContractCallRef = useRef<number>(0);
   const loadUserDataRef = useRef<((address: string) => Promise<void>) | null>(
     null
   );
+  const contractLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const userLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const cooldownCheckPromiseRef = useRef<Promise<void> | null>(null);
 
   // Contract services
   const {
@@ -130,110 +132,133 @@ export const useRaffleState = () => {
 
   const checkCanSpin = useCallback(
     async (address: string) => {
-      if (!address || isLoadingContractData) return;
+      if (!address) return Promise.resolve();
+
+      if (cooldownCheckPromiseRef.current) {
+        return cooldownCheckPromiseRef.current;
+      }
 
       // Throttle contract calls - only allow one call per 2 seconds
       const now = Date.now();
       if (now - lastContractCallRef.current < 2000) {
-        return;
+        return Promise.resolve();
       }
       lastContractCallRef.current = now;
 
-      try {
-        setIsLoadingContractData(true);
-        // Check if raffle is active
-        const raffleInfoData = await getRaffleInfo();
-        if (!raffleInfoData.active) {
-          setCanSpin(false);
-          return;
+      const promise = (async () => {
+        try {
+          // Check if raffle is active
+          const raffleInfoData = await getRaffleInfo();
+          if (!raffleInfoData.active) {
+            setCanSpin(false);
+            return;
+          }
+
+          // Check smart contract cooldown
+          const cooldownStatus = await getUserCooldownStatus(address);
+
+          if (cooldownStatus.canEnter) {
+            setCanSpin(true);
+            setLastSpinTime(null);
+            dispatchCooldownDisplay({ type: "reset" });
+          } else {
+            setCanSpin(false);
+            const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000; // Convert seconds to milliseconds
+            const cooldownPeriodMs = 5 * 60 * 1000; // 5 minutes (matches contract)
+
+            setLastSpinTime(Number(cooldownStatus.lastEntryTime) * 1000);
+            updateCooldownDisplay(timeRemainingMs, cooldownPeriodMs);
+          }
+        } catch (error) {
+          console.error("Error checking cooldown:", error);
+        } finally {
+          cooldownCheckPromiseRef.current = null;
         }
+      })();
 
-        // Check smart contract cooldown
-        const cooldownStatus = await getUserCooldownStatus(address);
-
-        if (cooldownStatus.canEnter) {
-          setCanSpin(true);
-          setLastSpinTime(null);
-          dispatchCooldownDisplay({ type: "reset" });
-        } else {
-          setCanSpin(false);
-          const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000; // Convert seconds to milliseconds
-          const cooldownPeriodMs = 5 * 60 * 1000; // 5 minutes (matches contract)
-
-          setLastSpinTime(Number(cooldownStatus.lastEntryTime) * 1000);
-          updateCooldownDisplay(timeRemainingMs, cooldownPeriodMs);
-        }
-      } catch (error) {
-        console.error("Error checking cooldown:", error);
-      } finally {
-        setIsLoadingContractData(false);
-      }
+      cooldownCheckPromiseRef.current = promise;
+      return promise;
     },
-    [updateCooldownDisplay, isLoadingContractData, dispatchCooldownDisplay] // Remove function dependencies to prevent infinite re-creation
+    [getRaffleInfo, getUserCooldownStatus, updateCooldownDisplay]
   );
 
   // Load contract data
   const loadContractData = useCallback(async () => {
-    if (isLoadingContractData) return;
-
-    try {
-      setIsLoadingContractData(true);
-      const [raffleInfoData, entryPriceData, userPrizesData] =
-        await Promise.all([
-          getRaffleInfo(),
-          getEntryPrice(),
-          getAllPrizeEntries(),
-        ]);
-
-      // Convert contract prizes to display format
-      const displayWinners: Winner[] = (userPrizesData as []).map(
-        (prize, index) => {
-          const ipAmount = formatEther(prize[2]);
-          const hasNFT = prize[3] > 0;
-          let prizeName = `${ipAmount} IP`;
-          if (hasNFT) {
-            prizeName += " + NFT";
-          }
-
-          return {
-            id: index + 1,
-            name: `${(prize[0] as string).slice(0, 6)}...${(
-              prize[0] as string
-            ).slice(-4)}`,
-            prize: prizeName,
-            date: new Date(Number(prize[5]) * 1000).toLocaleString(),
-            value: ipAmount,
-            tier: prize[1] as number,
-          };
-        }
-      );
-      setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
-      setRaffleInfo(raffleInfoData);
-      setEntryPrice(entryPriceData);
-    } catch (error) {
-      console.error("Error loading contract data:", error);
-    } finally {
-      setIsLoadingContractData(false);
+    if (contractLoadPromiseRef.current) {
+      return contractLoadPromiseRef.current;
     }
-  }, [isLoadingContractData]); // Remove function dependencies to prevent infinite re-creation
+
+    const promise = (async () => {
+      try {
+        const [raffleInfoData, entryPriceData, userPrizesData] =
+          await Promise.all([
+            getRaffleInfo(),
+            getEntryPrice(),
+            getAllPrizeEntries(10),
+          ]);
+
+        // Convert contract prizes to display format
+        const displayWinners: Winner[] = (userPrizesData as []).map(
+          (prize, index) => {
+            const ipAmount = formatEther(prize[2]);
+            const hasNFT = prize[3] > 0;
+            let prizeName = `${ipAmount} IP`;
+            if (hasNFT) {
+              prizeName += " + NFT";
+            }
+
+            return {
+              id: index + 1,
+              name: `${(prize[0] as string).slice(0, 6)}...${(
+                prize[0] as string
+              ).slice(-4)}`,
+              prize: prizeName,
+              date: new Date(Number(prize[5]) * 1000).toLocaleString(),
+              value: ipAmount,
+              tier: prize[1] as number,
+            };
+          }
+        );
+        setRecentWinners(displayWinners.slice(0, 10)); // Show last 10
+        setRaffleInfo(raffleInfoData);
+        setEntryPrice(entryPriceData);
+      } catch (error) {
+        console.error("Error loading contract data:", error);
+      } finally {
+        contractLoadPromiseRef.current = null;
+      }
+    })();
+
+    contractLoadPromiseRef.current = promise;
+    return promise;
+  }, [getAllPrizeEntries, getEntryPrice, getRaffleInfo]);
 
   // Load user-specific data
   const loadUserData = useCallback(
     async (address: string) => {
       if (!address) {
-        return;
+        return Promise.resolve();
       }
-      try {
-        setIsLoadingContractData(true);
-        const userStatsData = await getUserStats(address);
-        setUserStats(userStatsData);
-      } catch (error) {
-        console.error("Error loading user data:", error);
-      } finally {
-        setIsLoadingContractData(false);
+
+      if (userLoadPromiseRef.current) {
+        return userLoadPromiseRef.current;
       }
+
+      const promise = (async () => {
+        try {
+          const userStatsData = await getUserStats(address);
+          setUserStats(userStatsData);
+        } catch (error) {
+          console.error("Error loading user data:", error);
+        } finally {
+          userLoadPromiseRef.current = null;
+        }
+      })();
+
+      userLoadPromiseRef.current = promise;
+      return promise;
     },
-    [] // Remove dependencies to prevent infinite re-creation
+    [getUserStats]
   );
 
   // Store the latest loadUserData function in ref

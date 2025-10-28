@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { GachaItem } from "@/types/gacha";
 import {
@@ -31,6 +31,8 @@ export const useInventory = () => {
 
   // Track metadata loading state
   const [metadataLoading, setMetadataLoading] = useState(false);
+  const blindBoxMetadataRef = useRef<BlindBoxMetadata | null | undefined>(undefined);
+  const blindBoxMetadataPromiseRef = useRef<Promise<BlindBoxMetadata | null> | null>(null);
 
   // Convert contract NFT data to GachaItem format
   const mapContractNFTToGachaItem = useCallback(
@@ -62,48 +64,45 @@ export const useInventory = () => {
     []
   );
 
+  const ensureBlindBoxMetadata = useCallback(async (): Promise<BlindBoxMetadata | null> => {
+    if (blindBoxMetadataRef.current !== undefined) {
+      return blindBoxMetadataRef.current;
+    }
+
+    if (!blindBoxMetadataPromiseRef.current) {
+      blindBoxMetadataPromiseRef.current = (async () => {
+        try {
+          const blindBoxURI = (await readClient.readContract({
+            address: blindBoxAddress,
+            abi: blindBoxABI,
+            functionName: "uri",
+            args: [BigInt(1)],
+          })) as string;
+
+          const metadata = await metadataService.getBlindBoxMetadata(blindBoxURI);
+          blindBoxMetadataRef.current = metadata ?? null;
+          return blindBoxMetadataRef.current;
+        } catch (error) {
+          console.error("Error fetching blind box metadata:", error);
+          blindBoxMetadataRef.current = null;
+          return null;
+        } finally {
+          blindBoxMetadataPromiseRef.current = null;
+        }
+      })();
+    }
+
+    return blindBoxMetadataPromiseRef.current;
+  }, []);
+
   // Create unrevealed box items
   const createUnrevealedItems = useCallback(
     async (count: number): Promise<GachaItem[]> => {
       if (count === 0) return [];
 
-      try {
-        // Get blind box metadata from contract
-        const blindBoxURI = (await readClient.readContract({
-          address: blindBoxAddress,
-          abi: blindBoxABI,
-          functionName: "uri",
-          args: [BigInt(1)], // Blind box token ID is 1
-        })) as string;
+      const blindBoxMetadata = await ensureBlindBoxMetadata();
 
-        // Fetch metadata
-        const blindBoxMetadata = await metadataService.getBlindBoxMetadata(
-          blindBoxURI
-        );
-
-        return Array.from(
-          { length: count },
-          (_, index) =>
-            ({
-              id: `unrevealed-${index}`,
-              name: blindBoxMetadata?.name || "IPPY Mystery Box",
-              description:
-                blindBoxMetadata?.description ||
-                "Unopened blind box containing a mystery IPPY NFT. Open to reveal your prize!",
-              emoji: "📦",
-              collection: "ippy" as const,
-              version: "standard" as const,
-              metadata: blindBoxMetadata || undefined,
-              image: blindBoxMetadata?.image,
-              isBlindBox: true,
-              svg: (blindBoxMetadata as BlindBoxMetadata)?.svg,
-              metadataLoading: false,
-            } as GachaItem)
-        );
-      } catch (error) {
-        console.error("Error fetching blind box metadata:", error);
-
-        // Fallback to basic items
+      if (!blindBoxMetadata) {
         return Array.from({ length: count }, (_, index) => ({
           id: `unrevealed-${index}`,
           name: "IPPY Mystery Box",
@@ -115,13 +114,38 @@ export const useInventory = () => {
           metadataError: "Failed to load metadata",
         }));
       }
+
+      return Array.from(
+        { length: count },
+        (_, index) =>
+          ({
+            id: `unrevealed-${index}`,
+            name: blindBoxMetadata.name || "IPPY Mystery Box",
+            description:
+              blindBoxMetadata.description ||
+              "Unopened blind box containing a mystery IPPY NFT. Open to reveal your prize!",
+            emoji: "📦",
+            collection: "ippy" as const,
+            version: "standard" as const,
+            metadata: blindBoxMetadata,
+            image: blindBoxMetadata.image,
+            isBlindBox: true,
+            svg: blindBoxMetadata.svg,
+            metadataLoading: false,
+          } as GachaItem)
+      );
     },
-    []
+    [ensureBlindBoxMetadata]
   );
 
   // Fetch metadata for NFT items
   const fetchMetadataForItems = useCallback(
     async (items: GachaItem[]): Promise<GachaItem[]> => {
+      if (items.length === 0) {
+        setMetadataLoading(false);
+        return items;
+      }
+
       setMetadataLoading(true);
 
       try {
@@ -264,23 +288,19 @@ export const useInventory = () => {
         remainingBoxes,
       });
 
-      // Update basic inventory first
-      setInventory(contractInventory);
+      const inventoryWithMetadata =
+        contractInventory.length > 0
+          ? await fetchMetadataForItems(contractInventory)
+          : contractInventory;
+
+      setInventory(inventoryWithMetadata);
       setUnrevealedItems(unrevealed);
       setStats({
-        totalNFTs: contractInventory.length,
+        totalNFTs: inventoryWithMetadata.length,
         unrevealedBoxes: unrevealedCount,
         hiddenNFTs: hiddenCount,
         nftTypeCounts: nftTypeCountsObj,
       });
-
-      // Fetch metadata for NFT items asynchronously
-      if (contractInventory.length > 0) {
-        const itemsWithMetadata = await fetchMetadataForItems(
-          contractInventory
-        );
-        setInventory(itemsWithMetadata);
-      }
     } catch (err) {
       console.error("Error fetching inventory:", err);
       setError(
@@ -314,20 +334,8 @@ export const useInventory = () => {
   // Get blind box metadata directly
   const getBlindBoxMetadata =
     useCallback(async (): Promise<BlindBoxMetadata | null> => {
-      try {
-        const blindBoxURI = (await readClient.readContract({
-          address: blindBoxAddress,
-          abi: blindBoxABI,
-          functionName: "uri",
-          args: [BigInt(1)],
-        })) as string;
-
-        return await metadataService.getBlindBoxMetadata(blindBoxURI);
-      } catch (error) {
-        console.error("Error fetching blind box metadata:", error);
-        return null;
-      }
-    }, []);
+      return ensureBlindBoxMetadata();
+    }, [ensureBlindBoxMetadata]);
 
   return {
     // Core inventory data

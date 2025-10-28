@@ -137,8 +137,8 @@ export const useRaffleEntry = () => {
     });
   }, [getCachedOrFetch, handleContractError]);
 
-  const getAllPrizeEntries = useCallback(async () => {
-    return getCachedOrFetch("allPrizeEntries", async () => {
+  const getAllPrizeEntries = useCallback(async (limit = 10) => {
+    return getCachedOrFetch(`allPrizeEntries-${limit}`, async () => {
       try {
         const length = await readClient.readContract({
           address: onchainRaffleAddress,
@@ -146,8 +146,18 @@ export const useRaffleEntry = () => {
           functionName: "totalEntries",
         });
 
+        const totalEntries = Number(length);
+        if (totalEntries === 0) {
+          return [];
+        }
+
+        const effectiveLimit = Math.max(1, Math.min(limit, totalEntries));
+        const startIndex = Math.max(0, totalEntries - effectiveLimit);
+
+        const indices = Array.from({ length: effectiveLimit }, (_, idx) => startIndex + idx);
+
         // Use Promise.all for parallel requests instead of sequential loop
-        const promises = Array.from({ length: Number(length) }, (_, i) =>
+        const promises = indices.map((i) =>
           readClient.readContract({
             address: onchainRaffleAddress,
             abi: onchainRaffleABI,

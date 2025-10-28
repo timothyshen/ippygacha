@@ -1,10 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { GachaItem } from "@/types/gacha";
 import { useInventory } from "./useInventory";
 import { useBlindBox } from "../useBlindBox";
 import { useNotifications } from "@/contexts/notification-context";
 import { awardActivityPoints } from "@/lib/auth";
+import { blindBoxABI } from "@/lib/contract/blindboxABI";
+import { blindBoxAddress } from "@/lib/contract/contractAddress";
+import { readClient } from "@/lib/contract/client";
 
 export const useGachaMachine = () => {
   const { user, authenticated } = usePrivy();
@@ -22,23 +25,21 @@ export const useGachaMachine = () => {
     null
   );
 
-  const [isNewItem, setIsNewItem] = useState(false);
   const [isItemRevealed, setIsItemRevealed] = useState(false);
   const [blinkingCell, setBlinkingCell] = useState<number | null>(null);
-  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const blinkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [animationPhase, setAnimationPhase] = useState<
     "fast" | "slowing" | "landing" | "none"
   >("none");
-  const [animationTimeoutId, setAnimationTimeoutId] =
-    useState<NodeJS.Timeout | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [showScreenShake, setShowScreenShake] = useState(false);
-  const [showCoinAnimation, setShowCoinAnimation] = useState(false);
-  const [showItemEntrance, setShowItemEntrance] = useState(false);
-  const [entranceItem, setEntranceItem] = useState<GachaItem | null>(null);
-  const [showRarityParticles, setShowRarityParticles] = useState(false);
-  const [collectionParticleType, setCollectionParticleType] =
-    useState<"ippy">("ippy");
+
+  useEffect(() => {
+    return () => {
+      if (blinkTimeoutRef.current) {
+        clearTimeout(blinkTimeoutRef.current);
+        blinkTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Contract handles randomness - this is just a placeholder for the UI
   const getPlaceholderItem = (): GachaItem => {
@@ -55,24 +56,21 @@ export const useGachaMachine = () => {
   const pullGacha = async () => {
     if (coins < 1 || isSpinning || showBlindBoxModal) return;
 
-    setShowCoinAnimation(true);
     setCoins((prev) => prev - 1);
     setIsSpinning(true);
     setLeverPulled(true);
     setShowResults(false);
     setCurrentResults([]);
     setAnimationPhase("fast");
-    setShowCelebration(false);
-    setShowScreenShake(false);
     setIsItemRevealed(false);
-    setShowRarityParticles(false);
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     setLeverPulled(false);
 
-    if (animationIntervalRef.current)
-      clearInterval(animationIntervalRef.current);
-    if (animationTimeoutId) clearTimeout(animationTimeoutId);
+    if (blinkTimeoutRef.current) {
+      clearTimeout(blinkTimeoutRef.current);
+      blinkTimeoutRef.current = null;
+    }
 
     startBlinkingAnimation();
 
@@ -96,18 +94,17 @@ export const useGachaMachine = () => {
     let currentInterval = initialBlinkInterval;
 
     const scheduleNextBlink = () => {
+      blinkTimeoutRef.current = null;
       const elapsedTime = Date.now() - startTime;
       const totalAnimationTime =
         fastPhaseDuration + slowingPhaseDuration + landingPhaseDuration;
 
       if (elapsedTime < fastPhaseDuration) {
-        setAnimationPhase("fast");
+        setAnimationPhase((prev) => (prev === "fast" ? prev : "fast"));
         setBlinkingCell(Math.floor(Math.random() * 9));
         currentInterval = initialBlinkInterval;
       } else if (elapsedTime < fastPhaseDuration + slowingPhaseDuration) {
-        if (animationPhase !== "slowing") {
-          setAnimationPhase("slowing");
-        }
+        setAnimationPhase((prev) => (prev === "slowing" ? prev : "slowing"));
 
         setBlinkingCell(Math.floor(Math.random() * 9));
         const slowingProgress =
@@ -116,9 +113,7 @@ export const useGachaMachine = () => {
           initialBlinkInterval +
           (maxBlinkInterval - initialBlinkInterval) * slowingProgress;
       } else if (elapsedTime < totalAnimationTime) {
-        if (animationPhase !== "landing") {
-          setAnimationPhase("landing");
-        }
+        setAnimationPhase((prev) => (prev === "landing" ? prev : "landing"));
 
         const remainingTime = totalAnimationTime - elapsedTime;
         const remainingBlinks = Math.max(
@@ -152,21 +147,18 @@ export const useGachaMachine = () => {
         return;
       }
 
-      const timeoutId = setTimeout(scheduleNextBlink, currentInterval);
-      setAnimationTimeoutId(timeoutId);
+      blinkTimeoutRef.current = setTimeout(scheduleNextBlink, currentInterval);
     };
 
     scheduleNextBlink();
   };
 
   const finishAnimation = async () => {
-    setAnimationPhase("none");
-    setBlinkingCell(null);
     try {
       const txHash = await purchaseBoxes(1);
 
       console.log("txHash", txHash);
-      // Record gacha pull activity
+      // // Record gacha pull activity
       if (authenticated && user?.wallet?.address && txHash) {
         await awardActivityPoints(
           user.wallet.address,
@@ -180,37 +172,22 @@ export const useGachaMachine = () => {
       }
 
       // Refresh balances after purchase
-      refreshInventory();
+      await refreshInventory();
     } catch (error) {
       console.error("Error purchasing boxes:", error);
     } finally {
       setIsSpinning(false);
-
       // Use placeholder item for UI - actual item comes from contract
       const result = getPlaceholderItem();
 
-      const existingItem = inventory.find(
-        (item) => item.id === result.id && item.version === result.version
-      );
-      setIsNewItem(!existingItem);
+      setAnimationPhase("none");
+      setBlinkingCell(null);
 
       // Since we're using contract data, these functions now trigger refreshes
       setCurrentBlindBox(result);
 
-      setCollectionParticleType(result.collection);
-      setShowRarityParticles(true);
-      setEntranceItem(result);
-      setShowItemEntrance(true);
-
-      // No collection-specific celebration since we only have IPPY
-      setShowCelebration(true);
-      setShowScreenShake(true);
-      setTimeout(() => setShowCelebration(false), 4000);
-      setTimeout(() => setShowScreenShake(false), 2000);
-
       setShowBlindBoxModal(true);
       setIsSpinning(false);
-      setShowRarityParticles(false);
     }
   };
 
@@ -257,17 +234,9 @@ export const useGachaMachine = () => {
     showResults,
     showBlindBoxModal,
     currentBlindBox,
-    isNewItem,
     isItemRevealed,
     blinkingCell,
     animationPhase,
-    showCelebration,
-    showScreenShake,
-    showCoinAnimation,
-    showItemEntrance,
-    entranceItem,
-    showRarityParticles,
-    collectionParticleType,
     inventory,
     unrevealedItems,
 

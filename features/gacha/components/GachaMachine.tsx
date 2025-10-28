@@ -6,7 +6,6 @@ import { Header } from "@/features/shared/components/Header"
 import { MachineBody } from "./MachineBody"
 import { ControlPanel } from "./ControlPanel"
 import { BlindBoxModal } from "./BlindBoxModal"
-import { AnimationEffects } from "./AnimationEffects"
 import { useRouter } from "next/navigation"
 
 export const GachaMachine = React.memo(() => {
@@ -20,7 +19,6 @@ export const GachaMachine = React.memo(() => {
         isItemRevealed,
         showResults,
         leverPulled,
-        showCelebration,
         currentBlindBox,
         pullGacha,
         revealBlindBox,
@@ -75,9 +73,6 @@ export const GachaMachine = React.memo(() => {
                         isRevealed={isItemRevealed}
                     />
                 )}
-                <AnimationEffects
-                    showCelebration={showCelebration}
-                />
             </div>
         </div>
     )
