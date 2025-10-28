@@ -8,6 +8,7 @@ import { awardActivityPoints } from "@/lib/auth";
 import { ippyIPABI } from "@/lib/contract/ippyIPABI";
 import { ippyNFTAddress } from "@/lib/contract/contractAddress";
 import { readClient } from "@/lib/contract/client";
+import { metadataService } from "@/lib/metadata";
 
 export const useGachaMachine = () => {
   const { user, authenticated } = usePrivy();
@@ -34,6 +35,19 @@ export const useGachaMachine = () => {
     "fast" | "slowing" | "landing" | "none"
   >("none");
   const revealWatcherRef = useRef<(() => void) | null>(null);
+
+  const getEmojiForNFTType = useCallback((type: number) => {
+    const emojiMap: Record<number, string> = {
+      0: "🌟",
+      1: "🌿",
+      2: "🤖",
+      3: "🎨",
+      4: "🎵",
+      5: "🏆",
+      6: "🎮",
+    };
+    return emojiMap[type] || "🎁";
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -64,18 +78,69 @@ export const useGachaMachine = () => {
       poll: true,
       pollingInterval: 2000,
       onLogs: (logs) => {
-        logs.forEach((log) => {
-          console.log("NFTMinted log", log);
-        });
+        const processLogs = async () => {
+          for (const log of logs) {
+            const { tokenId, nftType, isHidden } = log.args as {
+              tokenId: bigint;
+              nftType: bigint;
+              isHidden: boolean;
+            };
 
-        void refreshInventory().then(() => {
-          setIsItemRevealed(true);
-        });
+            const tokenIdNumber = Number(tokenId);
+            const nftTypeNumber = Number(nftType);
 
-        stopRevealWatcher();
+            const tokenURI = await readClient.readContract({
+              address: ippyNFTAddress,
+              abi: ippyIPABI,
+              functionName: "tokenURI",
+              args: [tokenId],
+            });
+
+            const metadata = await metadataService.getIPPYMetadata(
+              tokenIdNumber,
+              tokenURI,
+              nftTypeNumber
+            );
+
+            const mintedItem: GachaItem = {
+              id: `nft-${tokenIdNumber}`,
+              name: metadata?.name || `IPPY #${tokenIdNumber}`,
+              description:
+                metadata?.description || "Freshly minted IPPY collectible",
+              emoji:
+                (metadata?.attributes?.find(
+                  (attr) => attr.trait_type === "Emoji"
+                )?.value as string) || getEmojiForNFTType(nftTypeNumber),
+              collection: "ippy",
+              version: isHidden ? "hidden" : "standard",
+              tokenId: tokenIdNumber,
+              nftType: nftTypeNumber,
+              tokenURI,
+              metadata: metadata || undefined,
+              metadataLoading: false,
+              metadataError: metadata ? undefined : "Failed to load metadata",
+              image: metadata?.image,
+              attributes: metadata?.attributes,
+              rarity: metadata?.rarity || (isHidden ? "hidden" : "standard"),
+              theme: metadata?.theme,
+              background_color: metadata?.background_color,
+            };
+
+            setCurrentBlindBox(mintedItem);
+            setIsItemRevealed(true);
+            setShowBlindBoxModal(true);
+          }
+
+          await refreshInventory();
+          stopRevealWatcher();
+        };
+
+        processLogs().catch((error) => {
+          console.error("Failed to process NFTMinted logs:", error);
+        });
       },
     });
-  }, [walletAddress, refreshInventory, stopRevealWatcher]);
+  }, [walletAddress, refreshInventory, stopRevealWatcher, getEmojiForNFTType]);
 
   // Contract handles randomness - this is just a placeholder for the UI
   const getPlaceholderItem = (): GachaItem => {
