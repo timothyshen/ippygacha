@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
     const { data: activity, error: activityError } = await supabase
       .from("activities")
       .insert({
+        id: crypto.randomUUID(),
         userId: user.id,
         activityType,
         pointsEarned: rewards.points,

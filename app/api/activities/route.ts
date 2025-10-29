@@ -74,10 +74,11 @@ export async function GET(request: NextRequest) {
       query = query.eq("activityType", activityType);
     }
 
-    const { data: activities, error, count } = await query.range(
-      offset,
-      offset + limit - 1
-    );
+    const {
+      data: activities,
+      error,
+      count,
+    } = await query.range(offset, offset + limit - 1);
 
     if (error) {
       throw error;
@@ -106,7 +107,8 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseAdmin();
     const body = await request.json();
-    const { userId, activityType, pointsEarned, xpEarned, metadata, txnHash } = body;
+    const { userId, activityType, pointsEarned, xpEarned, metadata, txnHash } =
+      body;
 
     if (!userId || !activityType) {
       return NextResponse.json(
@@ -135,15 +137,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const { data: activity, error: activityError } = await supabase
       .from("activities")
       .insert({
+        id: crypto.randomUUID(),
         userId,
         activityType,
         pointsEarned: pointsEarned ?? 0,

@@ -34,6 +34,21 @@ export interface MetadataCache {
 const CACHE_DURATION = 60 * 60 * 1000;
 const CACHE_KEY = "ippy_metadata_cache";
 
+const decodeBase64String = (value: string): string => {
+  if (typeof atob === "function") {
+    return atob(value);
+  }
+
+  const nodeBuffer = (globalThis as typeof globalThis & { Buffer?: any })
+    .Buffer;
+
+  if (nodeBuffer) {
+    return nodeBuffer.from(value, "base64").toString("utf-8");
+  }
+
+  throw new Error("Base64 decoding not supported in this environment");
+};
+
 class MetadataService {
   private cache: MetadataCache = {};
 
@@ -108,14 +123,18 @@ class MetadataService {
       }
 
       // Decode base64
-      const jsonString = atob(base64Match[1]);
+      let jsonString = decodeBase64String(base64Match[1]);
+
+      // Fix common JSON issues
+      jsonString = fixMalformedJson(jsonString);
+
       const metadata = JSON.parse(jsonString) as NFTMetadata;
 
       // Extract SVG if it's a data URI
       let svg: string | undefined;
       if (metadata.image?.startsWith("data:image/svg+xml;base64,")) {
         const svgBase64 = metadata.image.split(",")[1];
-        svg = atob(svgBase64);
+        svg = decodeBase64String(svgBase64);
       }
 
       return {
@@ -167,47 +186,17 @@ class MetadataService {
   // Main function to get NFT metadata
   async getIPPYMetadata(
     tokenId: number,
-    tokenURI: string,
-    nftType: number
+    ippyNFTAddress: string
   ): Promise<NFTMetadata | null> {
-    const cacheKey = `ippy_${tokenId}_${tokenURI}`;
-
-    // Check cache first
-    const cached = this.getFromCache(cacheKey);
-    if (cached) {
-      return { ...cached, tokenId, nftType };
-    }
-
-    try {
-      let metadata: NFTMetadata | null = null;
-
-      if (tokenURI.startsWith("data:")) {
-        // Handle on-chain/base64 encoded metadata
-        metadata = this.parseBase64Metadata(tokenURI);
-      } else {
-        // Handle URL-based metadata (IPFS, HTTP, etc.)
-        metadata = await this.fetchJsonMetadata(tokenURI);
-      }
-
-      if (metadata) {
-        // Enhance with contract data
-        const enhancedMetadata = {
-          ...metadata,
-          tokenId,
-          nftType,
-          rarity: nftType === 0 ? "hidden" : "standard",
-        };
-
-        // Cache the result
-        this.setCache(cacheKey, enhancedMetadata);
-        return enhancedMetadata;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error fetching IPPY metadata:", error);
-      return null;
-    }
+    console.log(
+      "process.env.NEXT_PUBLIC_ALCHEMY_API_KEY",
+      process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+    );
+    const url = `https://story-aeneid.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}/getNFTMetadata?contractAddress=${ippyNFTAddress}&tokenId=${tokenId}`;
+    const options = { method: "GET" };
+    const response = await fetch(url, options);
+    const data = await response.json();
+    return data as NFTMetadata;
   }
 
   // Get blind box metadata (always on-chain)
@@ -236,7 +225,7 @@ class MetadataService {
 
   // Batch fetch multiple NFT metadata
   async batchGetIPPYMetadata(
-    nfts: Array<{ tokenId: number; tokenURI: string; nftType: number }>
+    nfts: Array<{ tokenId: number; ippyNFTAddress: string }>
   ): Promise<Array<NFTMetadata | null>> {
     // Process in parallel with concurrency limit
     const BATCH_SIZE = 5;
@@ -245,7 +234,7 @@ class MetadataService {
     for (let i = 0; i < nfts.length; i += BATCH_SIZE) {
       const batch = nfts.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map((nft) =>
-        this.getIPPYMetadata(nft.tokenId, nft.tokenURI, nft.nftType)
+        this.getIPPYMetadata(nft.tokenId, nft.ippyNFTAddress)
       );
 
       const batchResults = await Promise.allSettled(batchPromises);
@@ -313,4 +302,37 @@ export const getRarityColor = (rarity?: string): string => {
     standard: "from-gray-400 to-gray-500",
   };
   return colors[rarity as keyof typeof colors] || colors.standard;
+};
+
+// Utility function to manually decode base64 metadata (for debugging)
+export const decodeBase64Metadata = (dataUri: string): NFTMetadata | null => {
+  try {
+    // Extract base64 part from data URI
+    const base64Match = dataUri.match(/data:application\/json;base64,(.+)/);
+    if (!base64Match) {
+      throw new Error("Invalid data URI format");
+    }
+
+    // Decode base64
+    let jsonString = decodeBase64String(base64Match[1]);
+
+    // Fix common JSON issues
+    jsonString = fixMalformedJson(jsonString);
+
+    const metadata = JSON.parse(jsonString) as NFTMetadata;
+
+    return metadata;
+  } catch (error) {
+    console.error("Failed to decode base64 metadata:", error);
+    return null;
+  }
+};
+
+// Helper function to fix common JSON malformation issues
+const fixMalformedJson = (jsonString: string): string => {
+  // Fix the specific issue: missing closing quote before ]}
+  // Pattern: "Arcade Surge}]} -> "Arcade Surge"}]}
+  jsonString = jsonString.replace(/([^"]*)"\]\}/g, '$1"}]}');
+
+  return jsonString;
 };

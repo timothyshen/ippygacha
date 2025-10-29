@@ -36,19 +36,6 @@ export const useGachaMachine = () => {
   >("none");
   const revealWatcherRef = useRef<(() => void) | null>(null);
 
-  const getEmojiForNFTType = useCallback((type: number) => {
-    const emojiMap: Record<number, string> = {
-      0: "🌟",
-      1: "🌿",
-      2: "🤖",
-      3: "🎨",
-      4: "🎵",
-      5: "🏆",
-      6: "🎮",
-    };
-    return emojiMap[type] || "🎁";
-  }, []);
-
   useEffect(() => {
     return () => {
       if (blinkTimeoutRef.current) {
@@ -89,6 +76,10 @@ export const useGachaMachine = () => {
             const tokenIdNumber = Number(tokenId);
             const nftTypeNumber = Number(nftType);
 
+            console.log("tokenId", tokenId);
+            console.log("nftType", nftType);
+            console.log("isHidden", isHidden);
+
             const tokenURI = await readClient.readContract({
               address: ippyNFTAddress,
               abi: ippyIPABI,
@@ -96,34 +87,32 @@ export const useGachaMachine = () => {
               args: [tokenId],
             });
 
+            console.log("tokenURI", tokenURI);
+
             const metadata = await metadataService.getIPPYMetadata(
               tokenIdNumber,
-              tokenURI,
-              nftTypeNumber
+              ippyNFTAddress
             );
+
+            console.log("metadata", metadata);
 
             const mintedItem: GachaItem = {
               id: `nft-${tokenIdNumber}`,
-              name: metadata?.name || `IPPY #${tokenIdNumber}`,
-              description:
-                metadata?.description || "Freshly minted IPPY collectible",
-              emoji:
-                (metadata?.attributes?.find(
-                  (attr) => attr.trait_type === "Emoji"
-                )?.value as string) || getEmojiForNFTType(nftTypeNumber),
+              name: metadata?.name || "",
+              description: metadata?.description || "",
+              emoji: "🎁",
               collection: "ippy",
               version: isHidden ? "hidden" : "standard",
               tokenId: tokenIdNumber,
               nftType: nftTypeNumber,
-              tokenURI,
               metadata: metadata || undefined,
               metadataLoading: false,
               metadataError: metadata ? undefined : "Failed to load metadata",
-              image: metadata?.image,
+              image: metadata?.image
+                ? "https://ipfs.io/ipfs/" +
+                  metadata.image.replace(/^ipfs:\/\//, "")
+                : undefined,
               attributes: metadata?.attributes,
-              rarity: metadata?.rarity || (isHidden ? "hidden" : "standard"),
-              theme: metadata?.theme,
-              background_color: metadata?.background_color,
             };
 
             setCurrentBlindBox(mintedItem);
@@ -140,7 +129,7 @@ export const useGachaMachine = () => {
         });
       },
     });
-  }, [walletAddress, refreshInventory, stopRevealWatcher, getEmojiForNFTType]);
+  }, [walletAddress, refreshInventory, stopRevealWatcher]);
 
   // Contract handles randomness - this is just a placeholder for the UI
   const getPlaceholderItem = (): GachaItem => {

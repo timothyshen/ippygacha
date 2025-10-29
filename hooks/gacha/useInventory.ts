@@ -7,7 +7,7 @@ import {
   getUserBlindBoxBalance,
   getContractInfo,
 } from "../contractRead";
-import { blindBoxABI, blindBoxAddress } from "@/lib/contract";
+import { blindBoxABI, blindBoxAddress, ippyNFTAddress } from "@/lib/contract";
 import { metadataService, NFTMetadata, BlindBoxMetadata } from "@/lib/metadata";
 import { readClient } from "@/lib/contract";
 import { NFT_TYPE_MAPPING, ContractInfo } from "@/types/inventory";
@@ -31,8 +31,11 @@ export const useInventory = () => {
 
   // Track metadata loading state
   const [metadataLoading, setMetadataLoading] = useState(false);
-  const blindBoxMetadataRef = useRef<BlindBoxMetadata | null | undefined>(undefined);
-  const blindBoxMetadataPromiseRef = useRef<Promise<BlindBoxMetadata | null> | null>(null);
+  const blindBoxMetadataRef = useRef<BlindBoxMetadata | null | undefined>(
+    undefined
+  );
+  const blindBoxMetadataPromiseRef =
+    useRef<Promise<BlindBoxMetadata | null> | null>(null);
 
   // Convert contract NFT data to GachaItem format
   const mapContractNFTToGachaItem = useCallback(
@@ -64,36 +67,39 @@ export const useInventory = () => {
     []
   );
 
-  const ensureBlindBoxMetadata = useCallback(async (): Promise<BlindBoxMetadata | null> => {
-    if (blindBoxMetadataRef.current !== undefined) {
-      return blindBoxMetadataRef.current;
-    }
+  const ensureBlindBoxMetadata =
+    useCallback(async (): Promise<BlindBoxMetadata | null> => {
+      if (blindBoxMetadataRef.current !== undefined) {
+        return blindBoxMetadataRef.current;
+      }
 
-    if (!blindBoxMetadataPromiseRef.current) {
-      blindBoxMetadataPromiseRef.current = (async () => {
-        try {
-          const blindBoxURI = (await readClient.readContract({
-            address: blindBoxAddress,
-            abi: blindBoxABI,
-            functionName: "uri",
-            args: [BigInt(1)],
-          })) as string;
+      if (!blindBoxMetadataPromiseRef.current) {
+        blindBoxMetadataPromiseRef.current = (async () => {
+          try {
+            const blindBoxURI = (await readClient.readContract({
+              address: blindBoxAddress,
+              abi: blindBoxABI,
+              functionName: "uri",
+              args: [BigInt(1)],
+            })) as string;
 
-          const metadata = await metadataService.getBlindBoxMetadata(blindBoxURI);
-          blindBoxMetadataRef.current = metadata ?? null;
-          return blindBoxMetadataRef.current;
-        } catch (error) {
-          console.error("Error fetching blind box metadata:", error);
-          blindBoxMetadataRef.current = null;
-          return null;
-        } finally {
-          blindBoxMetadataPromiseRef.current = null;
-        }
-      })();
-    }
+            const metadata = await metadataService.getBlindBoxMetadata(
+              blindBoxURI
+            );
+            blindBoxMetadataRef.current = metadata ?? null;
+            return blindBoxMetadataRef.current;
+          } catch (error) {
+            console.error("Error fetching blind box metadata:", error);
+            blindBoxMetadataRef.current = null;
+            return null;
+          } finally {
+            blindBoxMetadataPromiseRef.current = null;
+          }
+        })();
+      }
 
-    return blindBoxMetadataPromiseRef.current;
-  }, []);
+      return blindBoxMetadataPromiseRef.current;
+    }, []);
 
   // Create unrevealed box items
   const createUnrevealedItems = useCallback(
@@ -157,6 +163,7 @@ export const useInventory = () => {
           tokenId: item.tokenId!,
           tokenURI: item.tokenURI!,
           nftType: item.nftType!,
+          ippyNFTAddress: ippyNFTAddress,
         }));
 
         // Batch fetch metadata
