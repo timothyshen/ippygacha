@@ -6,6 +6,11 @@ export const blindBoxABI = [
         name: "_ippyNFT",
         type: "address",
       },
+      {
+        internalType: "address",
+        name: "_entropy",
+        type: "address",
+      },
     ],
     stateMutability: "nonpayable",
     type: "constructor",
@@ -365,120 +370,51 @@ export const blindBoxABI = [
     type: "event",
   },
   {
-    inputs: [],
-    name: "HIDDEN_NFT_ID",
-    outputs: [
+    anonymous: false,
+    inputs: [
       {
+        indexed: true,
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint64",
+        name: "sequenceNumber",
+        type: "uint64",
+      },
+      {
+        indexed: false,
         internalType: "uint256",
-        name: "",
+        name: "amount",
         type: "uint256",
       },
     ],
-    stateMutability: "view",
-    type: "function",
+    name: "VRFRequested",
+    type: "event",
   },
   {
-    inputs: [],
-    name: "NAME",
-    outputs: [
+    inputs: [
       {
-        internalType: "string",
-        name: "",
-        type: "string",
+        internalType: "uint64",
+        name: "sequence",
+        type: "uint64",
+      },
+      {
+        internalType: "address",
+        name: "provider",
+        type: "address",
+      },
+      {
+        internalType: "bytes32",
+        name: "randomNumber",
+        type: "bytes32",
       },
     ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "STANDARD_NFT_1",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "STANDARD_NFT_2",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "STANDARD_NFT_3",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "STANDARD_NFT_4",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "STANDARD_NFT_5",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "STANDARD_NFT_6",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "SYMBOL",
-    outputs: [
-      {
-        internalType: "string",
-        name: "",
-        type: "string",
-      },
-    ],
-    stateMutability: "view",
+    name: "_entropyCallback",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -557,6 +493,19 @@ export const blindBoxABI = [
   },
   {
     inputs: [],
+    name: "entropy",
+    outputs: [
+      {
+        internalType: "contract IEntropyV2",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "getContractInfo",
     outputs: [
       {
@@ -605,6 +554,38 @@ export const blindBoxABI = [
       },
     ],
     name: "getUserBoxBalance",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getVRFFee",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "getVRFFeeForBoxes",
     outputs: [
       {
         internalType: "uint256",
@@ -666,6 +647,19 @@ export const blindBoxABI = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "name",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       {
         internalType: "uint256",
@@ -675,7 +669,7 @@ export const blindBoxABI = [
     ],
     name: "openBox",
     outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
     type: "function",
   },
   {
@@ -686,6 +680,35 @@ export const blindBoxABI = [
         internalType: "address",
         name: "",
         type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint64",
+        name: "",
+        type: "uint64",
+      },
+    ],
+    name: "pendingBoxOpens",
+    outputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        internalType: "uint128",
+        name: "amount",
+        type: "uint128",
+      },
+      {
+        internalType: "bool",
+        name: "processed",
+        type: "bool",
       },
     ],
     stateMutability: "view",
@@ -811,6 +834,19 @@ export const blindBoxABI = [
   {
     inputs: [
       {
+        internalType: "address",
+        name: "_entropy",
+        type: "address",
+      },
+    ],
+    name: "setEntropy",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "bytes4",
         name: "interfaceId",
         type: "bytes4",
@@ -822,6 +858,19 @@ export const blindBoxABI = [
         internalType: "bool",
         name: "",
         type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
       },
     ],
     stateMutability: "view",
@@ -865,5 +914,9 @@ export const blindBoxABI = [
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
+  },
+  {
+    stateMutability: "payable",
+    type: "receive",
   },
 ];

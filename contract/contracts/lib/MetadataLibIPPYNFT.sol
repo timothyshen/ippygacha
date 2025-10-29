@@ -146,7 +146,7 @@ library MetadataLibIPPYNFT {
 
         if (nftType == HIDDEN_NFT_ID) {
             return
-                '{"trait_type":"Tier","value":"Hidden"},{"trait_type":"Affinity","value":"Mystery"},{"trait_type":"Power","value":"Legendary"}';
+                '{"trait_type":"Tier","value":"Hidden"},{"trait_type":"Affinity","value":"Mystery"},{"trait_type":"Power","value":"Legendary Beam"}';
         }
 
         return
@@ -155,7 +155,7 @@ library MetadataLibIPPYNFT {
                 nftData.theme,
                 '"},{"trait_type":"Power","value":"',
                 nftData.power,
-                "}"
+                '"}'
             );
     }
 }

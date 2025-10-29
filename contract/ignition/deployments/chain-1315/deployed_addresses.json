@@ -1,7 +1,5 @@
 {
-  "BlindBoxSystem#IPPYNFT": "0x521BCA78EC37dCC83136E3a9f18546d5eEe4DF0E",
-  "BlindBoxSystem#MetadataLibBlindBox": "0x340DC12008D4BE88613DDd3Fd4BC7de8231D389C",
-  "BlindBoxSystem#BlindBox": "0x1eaf783208B6A9ae6Cef877dd74DBd953A169Cc7",
-  "NFTMarketplace#NFTMarketplace": "0xd1dE3E378868e89A3291E0b17BA6577B17cf827E",
-  "RaffleSystem#OnChainRaffle": "0x8Af8C2e8915d9Bc924D50b7e57b1395e36207797"
+  "BlindBoxSystem#IPPYNFT": "0xe5805729d43B47cdC9daa8c0C182bf57D046Dda0",
+  "BlindBoxSystem#MetadataLibBlindBox": "0xd8A6B933a4E64820e7065fE8C5BB9741B06cc967",
+  "BlindBoxSystem#BlindBox": "0x41bDf3F1F12976DbE138a0743Ce95fefC0Ae569D"
 }

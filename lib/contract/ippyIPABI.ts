@@ -204,19 +204,19 @@ export const ippyIPABI = [
     anonymous: false,
     inputs: [
       {
-        indexed: true,
+        indexed: false,
         internalType: "uint256",
-        name: "nftType",
+        name: "_fromTokenId",
         type: "uint256",
       },
       {
         indexed: false,
-        internalType: "string",
-        name: "newURI",
-        type: "string",
+        internalType: "uint256",
+        name: "_toTokenId",
+        type: "uint256",
       },
     ],
-    name: "BaseURIUpdated",
+    name: "BatchMetadataUpdate",
     type: "event",
   },
   {
@@ -224,12 +224,12 @@ export const ippyIPABI = [
     inputs: [
       {
         indexed: false,
-        internalType: "string",
-        name: "newURI",
-        type: "string",
+        internalType: "uint256",
+        name: "_tokenId",
+        type: "uint256",
       },
     ],
-    name: "DefaultBaseURIUpdated",
+    name: "MetadataUpdate",
     type: "event",
   },
   {
@@ -647,29 +647,17 @@ export const ippyIPABI = [
   {
     inputs: [
       {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
         internalType: "uint256",
-        name: "nftType",
+        name: "",
         type: "uint256",
       },
     ],
-    name: "mint",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "name",
+    name: "isRedeemed",
     outputs: [
       {
-        internalType: "string",
+        internalType: "bool",
         name: "",
-        type: "string",
+        type: "bool",
       },
     ],
     stateMutability: "view",
@@ -678,12 +666,30 @@ export const ippyIPABI = [
   {
     inputs: [
       {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "randomIndex",
+        type: "uint256",
+      },
+    ],
+    name: "mint",
+    outputs: [
+      {
         internalType: "uint256",
         name: "",
         type: "uint256",
       },
     ],
-    name: "nftTypeBaseURIs",
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "name",
     outputs: [
       {
         internalType: "string",
@@ -743,6 +749,19 @@ export const ippyIPABI = [
       },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+    ],
+    name: "redeem",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -830,37 +849,6 @@ export const ippyIPABI = [
       },
     ],
     name: "setBlindBoxContract",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "_baseURI",
-        type: "string",
-      },
-    ],
-    name: "setDefaultBaseURI",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "nftType",
-        type: "uint256",
-      },
-      {
-        internalType: "string",
-        name: "_baseURI",
-        type: "string",
-      },
-    ],
-    name: "setNFTTypeBaseURI",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
