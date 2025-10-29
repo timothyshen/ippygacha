@@ -90,7 +90,7 @@ export const BlindBoxModal = ({
                 ) : (
                     // Enhanced Revealed Item State
                     <div className="mb-8">
-                        <div className="item-reveal">
+                        <div className="item-reveal text-center">
                             <div
                                 className={cn(
                                     "mx-auto w-32 h-32 md:w-40 md:h-40 rounded-2xl border-4 p-6 md:p-8 flex flex-col items-center justify-center mb-6 transition-all duration-500 shadow-xl",
@@ -98,7 +98,9 @@ export const BlindBoxModal = ({
                                     item.collection === "ippy" && "legendary-glow",
                                 )}
                             >
-                                <div className="text-4xl md:text-5xl mb-2 drop-shadow-lg">{item.emoji}</div>
+                                <div className="text-4xl md:text-5xl mb-2 drop-shadow-lg">
+                                    <img src={item.image} alt={item.name} width={100} height={100} />
+                                </div>
                                 <div className="text-xs md:text-sm font-bold text-center leading-tight">
                                     {item.name}
                                 </div>
@@ -129,6 +131,13 @@ export const BlindBoxModal = ({
                                 >
                                     {item.version.toUpperCase()}
                                 </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {item.attributes?.map((attribute) => (
+                                    <Badge variant="outline" className="text-sm font-bold px-3 py-1">
+                                        {attribute.trait_type}: {attribute.value}
+                                    </Badge>
+                                ))}
                             </div>
                         </div>
                     </div>

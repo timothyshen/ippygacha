@@ -187,7 +187,7 @@ class MetadataService {
   async getIPPYMetadata(
     tokenId: number,
     ippyNFTAddress: string
-  ): Promise<NFTMetadata | null> {
+  ): Promise<{ metadata: NFTMetadata; cachedUrl: string } | null> {
     console.log(
       "process.env.NEXT_PUBLIC_ALCHEMY_API_KEY",
       process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
@@ -196,7 +196,10 @@ class MetadataService {
     const options = { method: "GET" };
     const response = await fetch(url, options);
     const data = await response.json();
-    return data as NFTMetadata;
+    return {
+      metadata: data.raw.metadata,
+      cachedUrl: data.image.cachedUrl,
+    };
   }
 
   // Get blind box metadata (always on-chain)

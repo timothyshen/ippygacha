@@ -98,21 +98,13 @@ export const useGachaMachine = () => {
 
             const mintedItem: GachaItem = {
               id: `nft-${tokenIdNumber}`,
-              name: metadata?.name || "",
-              description: metadata?.description || "",
+              name: metadata?.metadata.name || "",
+              description: metadata?.metadata.description || "",
               emoji: "🎁",
               collection: "ippy",
               version: isHidden ? "hidden" : "standard",
-              tokenId: tokenIdNumber,
-              nftType: nftTypeNumber,
-              metadata: metadata || undefined,
-              metadataLoading: false,
-              metadataError: metadata ? undefined : "Failed to load metadata",
-              image: metadata?.image
-                ? "https://ipfs.io/ipfs/" +
-                  metadata.image.replace(/^ipfs:\/\//, "")
-                : undefined,
-              attributes: metadata?.attributes,
+              image: metadata?.cachedUrl,
+              attributes: metadata?.metadata.attributes,
             };
 
             setCurrentBlindBox(mintedItem);
