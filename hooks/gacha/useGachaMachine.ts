@@ -76,10 +76,6 @@ export const useGachaMachine = () => {
             const tokenIdNumber = Number(tokenId);
             const nftTypeNumber = Number(nftType);
 
-            console.log("tokenId", tokenId);
-            console.log("nftType", nftType);
-            console.log("isHidden", isHidden);
-
             const tokenURI = await readClient.readContract({
               address: ippyNFTAddress,
               abi: ippyIPABI,
@@ -87,14 +83,10 @@ export const useGachaMachine = () => {
               args: [tokenId],
             });
 
-            console.log("tokenURI", tokenURI);
-
             const metadata = await metadataService.getIPPYMetadata(
               tokenIdNumber,
               ippyNFTAddress
             );
-
-            console.log("metadata", metadata);
 
             const mintedItem: GachaItem = {
               id: `nft-${tokenIdNumber}`,
@@ -239,8 +231,7 @@ export const useGachaMachine = () => {
     try {
       const txHash = await purchaseBoxes(1);
 
-      console.log("txHash", txHash);
-      // // Record gacha pull activity
+      // Record gacha pull activity
       if (authenticated && user?.wallet?.address && txHash) {
         await awardActivityPoints(
           user.wallet.address,

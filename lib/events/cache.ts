@@ -34,7 +34,6 @@ export class MarketplaceEventCacheManager {
 
       // Version check
       if (parsed.version !== CACHE_VERSION) {
-        console.log('Cache version mismatch, clearing cache');
         this.clearCache();
         return null;
       }
@@ -42,7 +41,6 @@ export class MarketplaceEventCacheManager {
       // Expiry check
       const age = Date.now() - parsed.updatedAt;
       if (age > CACHE_EXPIRY_MS) {
-        console.log('Cache expired, clearing');
         this.clearCache();
         return null;
       }

@@ -89,7 +89,6 @@ export const useMarketplace = () => {
       // Step 1: Load or initialize cache
       let cache = marketplaceCache.loadCache();
       if (!cache) {
-        console.log('No cache found, initializing empty cache');
         cache = marketplaceCache.initEmptyCache();
       }
 
@@ -100,11 +99,6 @@ export const useMarketplace = () => {
       const fromBlock = cache.lastScannedBlock === BigInt(0)
         ? "earliest"
         : cache.lastScannedBlock + BigInt(1);
-
-      console.log(
-        `Scanning marketplace events from block ${fromBlock} to ${latestBlock} ` +
-        `(cache has ${cache.activeListings.size} active listings)`
-      );
 
       // Step 4: Fetch only NEW events since last scan (INCREMENTAL!)
       const [rawListedEvents, rawBoughtEvents, rawCanceledEvents] = await Promise.all([
@@ -135,12 +129,6 @@ export const useMarketplace = () => {
       const listedEvents = rawListedEvents as unknown as ItemListedEvent[];
       const boughtEvents = rawBoughtEvents as unknown as ItemBoughtEvent[];
       const canceledEvents = rawCanceledEvents as unknown as ItemCanceledEvent[];
-
-      console.log(
-        `Found ${listedEvents.length} listed, ` +
-        `${boughtEvents.length} bought, ` +
-        `${canceledEvents.length} canceled events`
-      );
 
       // Step 5: Update cache with new events
 
@@ -228,22 +216,12 @@ export const useMarketplace = () => {
 
           activeListings.push(marketplaceListing);
         } catch (error) {
-          console.log(`Failed to verify listing ${key}:`, error);
           // Keep in cache for next attempt
           continue;
         }
       }
 
-      // Step 9: Log cache stats
-      const stats = marketplaceCache.getCacheStats();
-      if (stats) {
-        console.log(
-          `Cache stats: ${stats.activeListings} active, ` +
-          `${stats.soldItems} sold, ${stats.canceledItems} canceled, ` +
-          `size: ${stats.cacheSizeKB}KB, age: ${Math.round(stats.cacheAge / 1000)}s`
-        );
-      }
-
+      // Return active listings
       return activeListings;
     } catch (error) {
       console.error("Error fetching active listings:", error);
@@ -544,7 +522,6 @@ export const useMarketplace = () => {
 
   // Force refresh: clear cache and fetch fresh data
   const forceRefresh = async (): Promise<MarketplaceListing[]> => {
-    console.log('Force refreshing marketplace cache...');
     marketplaceCache.clearCache();
     return await getAllActiveListings();
   };
