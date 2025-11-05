@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  rateLimiter,
+  RATE_LIMITS,
+  getClientIdentifier,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 // GET all users with optional filtering
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting: 100 requests per minute per IP
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.GENERAL.limit,
+      RATE_LIMITS.GENERAL.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -42,15 +64,23 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    return NextResponse.json({
-      users: users ?? [],
-      pagination: {
-        total: count ?? 0,
-        limit,
-        offset,
-        hasMore: offset + limit < (count ?? 0),
+    return NextResponse.json(
+      {
+        users: users ?? [],
+        pagination: {
+          total: count ?? 0,
+          limit,
+          offset,
+          hasMore: offset + limit < (count ?? 0),
+        },
       },
-    });
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching users:", error);
     return NextResponse.json(
@@ -63,6 +93,22 @@ export async function GET(request: NextRequest) {
 // POST - Create a new user
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 10 requests per minute per IP (stricter for user creation)
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.USER_WRITE.limit,
+      RATE_LIMITS.USER_WRITE.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many user creation requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const body = await request.json();
     const { walletAddress, username, avatarUrl } = body;
@@ -125,7 +171,16 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    return NextResponse.json({ user }, { status: 201 });
+    return NextResponse.json(
+      { user },
+      {
+        status: 201,
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error creating user:", error);
     return NextResponse.json(

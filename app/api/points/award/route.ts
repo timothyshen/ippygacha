@@ -6,6 +6,11 @@ import {
   LEVEL_CONFIG,
 } from "@/lib/points-system";
 import { ACTIVITY_TYPES, isActivityType } from "@/lib/activity-types";
+import {
+  rateLimiter,
+  RATE_LIMITS,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +22,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Wallet address and activity type are required" },
         { status: 400 }
+      );
+    }
+
+    // Rate limit by wallet address - prevent point farming
+    const clientId = `wallet:${walletAddress.toLowerCase()}`;
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.POINTS.limit,
+      RATE_LIMITS.POINTS.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many point award requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
       );
     }
 
@@ -154,20 +175,28 @@ export async function POST(request: NextRequest) {
       throw activityError;
     }
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: updatedUser.id,
-        walletAddress: updatedUser.walletAddress,
-        totalPoints: updatedUser.totalPoints,
-        totalXp: updatedUser.totalXp,
-        currentLevel: updatedUser.currentLevel,
-        levelInfo: newLevelInfo,
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: updatedUser.id,
+          walletAddress: updatedUser.walletAddress,
+          totalPoints: updatedUser.totalPoints,
+          totalXp: updatedUser.totalXp,
+          currentLevel: updatedUser.currentLevel,
+          levelInfo: newLevelInfo,
+        },
+        activity,
+        leveledUp,
+        rewards,
       },
-      activity,
-      leveledUp,
-      rewards,
-    });
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error awarding points:", error);
     return NextResponse.json(

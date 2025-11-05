@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  rateLimiter,
+  RATE_LIMITS,
+  getClientIdentifier,
+  createRateLimitResponse,
+  addRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 // Server-side only - API key NOT exposed to client
 const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
 
 export async function GET(request: NextRequest) {
+  // Rate limiting: 60 requests per minute per IP
+  const clientId = getClientIdentifier(request);
+  const rateLimit = rateLimiter.check(
+    clientId,
+    RATE_LIMITS.METADATA.limit,
+    RATE_LIMITS.METADATA.windowMs
+  );
+
+  if (!rateLimit.allowed) {
+    return createRateLimitResponse(
+      'Too many metadata requests. Please try again later.',
+      rateLimit.resetTime,
+      rateLimit.retryAfter!
+    );
+  }
   // Validate API key is configured
   if (!ALCHEMY_API_KEY) {
     console.error('ALCHEMY_API_KEY is not configured');
@@ -63,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
-    // Return the metadata with caching headers
+    // Return the metadata with caching and rate limit headers
     return NextResponse.json(data, {
       status: 200,
       headers: {
@@ -71,6 +93,9 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
         // Allow CORS for local development
         'Access-Control-Allow-Origin': '*',
+        // Rate limit info
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        'X-RateLimit-Reset': new Date(rateLimit.resetTime).toISOString(),
       },
     });
   } catch (error) {

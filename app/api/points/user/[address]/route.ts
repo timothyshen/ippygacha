@@ -1,12 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { LEVEL_CONFIG } from "@/lib/points-system";
+import {
+  rateLimiter,
+  RATE_LIMITS,
+  getClientIdentifier,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ) {
   try {
+    // Rate limiting: 100 requests per minute per IP
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.GENERAL.limit,
+      RATE_LIMITS.GENERAL.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const { address } = await params;
 
@@ -130,21 +152,29 @@ export async function GET(
       user = updatedUser;
     }
 
-    return NextResponse.json({
-      user: {
-        id: user.id,
-        walletAddress: user.walletAddress,
-        username: user.username,
-        avatarUrl: user.avatarUrl,
-        totalPoints: user.totalPoints,
-        totalXp: user.totalXp,
-        currentLevel: user.currentLevel,
-        levelInfo,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+    return NextResponse.json(
+      {
+        user: {
+          id: user.id,
+          walletAddress: user.walletAddress,
+          username: user.username,
+          avatarUrl: user.avatarUrl,
+          totalPoints: user.totalPoints,
+          totalXp: user.totalXp,
+          currentLevel: user.currentLevel,
+          levelInfo,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+        recentActivities: recentActivities ?? [],
       },
-      recentActivities: recentActivities ?? [],
-    });
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching user points:", error);
     return NextResponse.json(
