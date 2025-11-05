@@ -188,18 +188,39 @@ class MetadataService {
     tokenId: number,
     ippyNFTAddress: string
   ): Promise<{ metadata: NFTMetadata; cachedUrl: string } | null> {
-    console.log(
-      "process.env.NEXT_PUBLIC_ALCHEMY_API_KEY",
-      process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
-    );
-    const url = `https://story-aeneid.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}/getNFTMetadata?contractAddress=${ippyNFTAddress}&tokenId=${tokenId}`;
-    const options = { method: "GET" };
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return {
-      metadata: data.raw.metadata,
-      cachedUrl: data.image.cachedUrl,
-    };
+    try {
+      // Call our own API endpoint instead of Alchemy directly
+      // This keeps the API key secure on the server side
+      const url = `/api/metadata?contractAddress=${ippyNFTAddress}&tokenId=${tokenId}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`Metadata API error: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+
+      // Validate response structure
+      if (!data.raw?.metadata || !data.image?.cachedUrl) {
+        console.error("Invalid metadata response structure:", data);
+        return null;
+      }
+
+      return {
+        metadata: data.raw.metadata,
+        cachedUrl: data.image.cachedUrl,
+      };
+    } catch (error) {
+      console.error("Failed to fetch IPPY metadata:", error);
+      return null;
+    }
   }
 
   // Get blind box metadata (always on-chain)
@@ -242,7 +263,9 @@ class MetadataService {
 
       const batchResults = await Promise.allSettled(batchPromises);
       batchResults.forEach((result) => {
-        results.push(result.status === "fulfilled" ? result.value : null);
+        // Extract metadata from the result object
+        const resultValue = result.status === "fulfilled" ? result.value : null;
+        results.push(resultValue?.metadata || null);
       });
     }
 

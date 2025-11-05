@@ -9,6 +9,14 @@ import {
 import { useState, useEffect } from "react";
 import { parseEther, formatEther } from "viem";
 import { GachaItemWithCount } from "@/features/inventory/components/inventory";
+import { marketplaceCache } from "@/lib/events/cache";
+import { getCacheKey } from "@/lib/events/types";
+import {
+  ItemListedEvent,
+  ItemBoughtEvent,
+  ItemCanceledEvent,
+  MarketplaceListingData,
+} from "@/types/contracts";
 
 // Unified marketplace listing interface
 export interface MarketplaceListing {
@@ -78,94 +86,165 @@ export const useMarketplace = () => {
 
   const getAllActiveListings = async (): Promise<MarketplaceListing[]> => {
     try {
-      // Get all ItemListed events
-      const listedEvents = await readClient.getContractEvents({
-        address: nftMarketplaceAddress,
-        abi: NFTMarketplaceABI,
-        eventName: "ItemListed",
-        fromBlock: "earliest",
-        toBlock: "latest",
-      });
+      // Step 1: Load or initialize cache
+      let cache = marketplaceCache.loadCache();
+      if (!cache) {
+        console.log('No cache found, initializing empty cache');
+        cache = marketplaceCache.initEmptyCache();
+      }
 
-      // Get all ItemBought events to filter out sold items
-      const boughtEvents = await readClient.getContractEvents({
-        address: nftMarketplaceAddress,
-        abi: NFTMarketplaceABI,
-        eventName: "ItemBought",
-        fromBlock: "earliest",
-        toBlock: "latest",
-      });
+      // Step 2: Get current block number
+      const latestBlock = await readClient.getBlockNumber();
 
-      // Get all ItemCanceled events to filter out cancelled items
-      const canceledEvents = await readClient.getContractEvents({
-        address: nftMarketplaceAddress,
-        abi: NFTMarketplaceABI,
-        eventName: "ItemCanceled",
-        fromBlock: "earliest",
-        toBlock: "latest",
-      });
+      // Step 3: Calculate block range to scan
+      const fromBlock = cache.lastScannedBlock === BigInt(0)
+        ? "earliest"
+        : cache.lastScannedBlock + BigInt(1);
 
-      // Create sets of sold and cancelled items for quick lookup
-      const soldItems = new Set(
-        boughtEvents.map(
-          (event) =>
-            `${(event as any).args.nftAddress}-${(event as any).args.tokenId}`
-        )
+      console.log(
+        `Scanning marketplace events from block ${fromBlock} to ${latestBlock} ` +
+        `(cache has ${cache.activeListings.size} active listings)`
       );
 
-      const cancelledItems = new Set(
-        canceledEvents.map(
-          (event) =>
-            `${(event as any).args.nftAddress}-${(event as any).args.tokenId}`
-        )
+      // Step 4: Fetch only NEW events since last scan (INCREMENTAL!)
+      const [rawListedEvents, rawBoughtEvents, rawCanceledEvents] = await Promise.all([
+        readClient.getContractEvents({
+          address: nftMarketplaceAddress,
+          abi: NFTMarketplaceABI,
+          eventName: "ItemListed",
+          fromBlock,
+          toBlock: latestBlock,
+        }),
+        readClient.getContractEvents({
+          address: nftMarketplaceAddress,
+          abi: NFTMarketplaceABI,
+          eventName: "ItemBought",
+          fromBlock,
+          toBlock: latestBlock,
+        }),
+        readClient.getContractEvents({
+          address: nftMarketplaceAddress,
+          abi: NFTMarketplaceABI,
+          eventName: "ItemCanceled",
+          fromBlock,
+          toBlock: latestBlock,
+        }),
+      ]);
+
+      // Type-safe event casting
+      const listedEvents = rawListedEvents as unknown as ItemListedEvent[];
+      const boughtEvents = rawBoughtEvents as unknown as ItemBoughtEvent[];
+      const canceledEvents = rawCanceledEvents as unknown as ItemCanceledEvent[];
+
+      console.log(
+        `Found ${listedEvents.length} listed, ` +
+        `${boughtEvents.length} bought, ` +
+        `${canceledEvents.length} canceled events`
       );
 
-      // Filter for active listings and get latest price for each item
-      const activeListingsMap = new Map<string, MarketplaceListing>();
+      // Step 5: Update cache with new events
 
+      // Process new listings
       for (const event of listedEvents) {
-        const eventArgs = (event as any).args;
-        const key = `${eventArgs.nftAddress}-${eventArgs.tokenId}`;
+        const { nftAddress, tokenId, price, seller } = event.args;
+        const key = getCacheKey(nftAddress, tokenId);
 
-        // Skip if item was sold or cancelled
-        if (soldItems.has(key) || cancelledItems.has(key)) {
-          continue;
-        }
+        // Add to active listings
+        cache.activeListings.set(key, {
+          nftAddress,
+          tokenId: tokenId.toString(),
+          price: price.toString(),
+          seller,
+          blockNumber: event.blockNumber,
+          transactionHash: event.transactionHash,
+        });
 
-        // Double-check by querying the contract directly
+        // Remove from sold/canceled sets (re-listing)
+        cache.soldItems.delete(key);
+        cache.canceledItems.delete(key);
+      }
+
+      // Process new purchases
+      for (const event of boughtEvents) {
+        const { nftAddress, tokenId } = event.args;
+        const key = getCacheKey(nftAddress, tokenId);
+
+        // Mark as sold
+        cache.soldItems.add(key);
+        // Remove from active listings
+        cache.activeListings.delete(key);
+      }
+
+      // Process new cancellations
+      for (const event of canceledEvents) {
+        const { nftAddress, tokenId } = event.args;
+        const key = getCacheKey(nftAddress, tokenId);
+
+        // Mark as canceled
+        cache.canceledItems.add(key);
+        // Remove from active listings
+        cache.activeListings.delete(key);
+      }
+
+      // Step 6: Update cache metadata
+      cache.lastScannedBlock = latestBlock;
+      cache.updatedAt = Date.now();
+
+      // Step 7: Save updated cache
+      marketplaceCache.saveCache(cache);
+
+      // Step 8: Convert cached listings to MarketplaceListing format
+      const activeListings: MarketplaceListing[] = [];
+
+      for (const [key, cachedListing] of cache.activeListings.entries()) {
         try {
-          const listing = await readClient.readContract({
+          // Verify listing is still active on-chain (belt and suspenders)
+          const rawListing = await readClient.readContract({
             address: nftMarketplaceAddress,
             abi: NFTMarketplaceABI,
             functionName: "getListing",
-            args: [eventArgs.nftAddress, eventArgs.tokenId],
+            args: [cachedListing.nftAddress, BigInt(cachedListing.tokenId)],
           });
 
+          // Type-safe casting
+          const listing = rawListing as unknown as MarketplaceListingData;
+
           // If price is 0, the listing doesn't exist (was cancelled/sold)
-          if (!listing || (listing as any).price === BigInt(0)) {
+          if (!listing || listing.price === BigInt(0)) {
+            // Remove from cache
+            cache.activeListings.delete(key);
             continue;
           }
 
           const marketplaceListing: MarketplaceListing = {
-            nftAddress: eventArgs.nftAddress as string,
-            tokenId: eventArgs.tokenId.toString(),
-            price: (listing as any).price.toString(),
-            priceInIP: parseFloat(formatEther((listing as any).price)),
-            seller: (listing as any).seller as string,
+            nftAddress: cachedListing.nftAddress,
+            tokenId: cachedListing.tokenId,
+            price: listing.price.toString(),
+            priceInIP: parseFloat(formatEther(listing.price)),
+            seller: listing.seller,
             isActive: true,
-            metadata: getMockMetadata(eventArgs.tokenId.toString()),
+            metadata: getMockMetadata(cachedListing.tokenId),
           };
 
-          // Use the latest listing (in case of price updates)
-          activeListingsMap.set(key, marketplaceListing);
+          activeListings.push(marketplaceListing);
         } catch (error) {
-          console.log(`Failed to get listing for ${key}:`, error);
-          // Skip this listing if we can't fetch it
+          console.log(`Failed to verify listing ${key}:`, error);
+          // Keep in cache for next attempt
           continue;
         }
       }
 
-      return Array.from(activeListingsMap.values());
+      // Step 9: Log cache stats
+      const stats = marketplaceCache.getCacheStats();
+      if (stats) {
+        console.log(
+          `Cache stats: ${stats.activeListings} active, ` +
+          `${stats.soldItems} sold, ${stats.canceledItems} canceled, ` +
+          `size: ${stats.cacheSizeKB}KB, age: ${Math.round(stats.cacheAge / 1000)}s`
+        );
+      }
+
+      return activeListings;
     } catch (error) {
       console.error("Error fetching active listings:", error);
       addNotification({
@@ -463,6 +542,13 @@ export const useMarketplace = () => {
     }
   };
 
+  // Force refresh: clear cache and fetch fresh data
+  const forceRefresh = async (): Promise<MarketplaceListing[]> => {
+    console.log('Force refreshing marketplace cache...');
+    marketplaceCache.clearCache();
+    return await getAllActiveListings();
+  };
+
   return {
     listItem,
     cancelListing,
@@ -472,6 +558,7 @@ export const useMarketplace = () => {
     getProceeds,
     isApprovedForMarketplace,
     getAllActiveListings,
+    forceRefresh, // Expose force refresh to UI
   };
 };
 
@@ -480,7 +567,7 @@ export const useActiveListings = () => {
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getAllActiveListings } = useMarketplace();
+  const { getAllActiveListings, forceRefresh } = useMarketplace();
 
   const fetchListings = async () => {
     try {
@@ -496,6 +583,20 @@ export const useActiveListings = () => {
     }
   };
 
+  const handleForceRefresh = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const activeListings = await forceRefresh();
+      setListings(activeListings);
+    } catch (err) {
+      console.error("Error force refreshing listings:", err);
+      setError(err instanceof Error ? err.message : "Failed to refresh listings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchListings();
   }, []);
@@ -505,5 +606,6 @@ export const useActiveListings = () => {
     loading,
     error,
     refetch: fetchListings,
+    forceRefresh: handleForceRefresh, // Expose force refresh
   };
 };

@@ -9,21 +9,28 @@ import { useNotifications } from "@/contexts/notification-context";
 import { parseEther } from "viem";
 import { PrizeEvent } from "@/features/raffle/types";
 import { useCallback, useRef } from "react";
+import {
+  RaffleFinalizedEvent,
+  RaffleEntryData,
+  PrizeTierData,
+  PrizeDistributedEvent,
+  PrizeAwardedEvent,
+} from "@/types/contracts";
 
 export const useRaffleEntry = () => {
   const { getWalletClient } = useWalletClient();
   const { addNotification } = useNotifications();
 
-  // Request caching system
-  const cacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
+  // Request caching system with proper typing
+  const cacheRef = useRef<Map<string, { data: unknown; timestamp: number }>>(new Map());
   const CACHE_DURATION = 30000; // 30 seconds
 
-  const getCachedOrFetch = useCallback(async (key: string, fetchFn: () => Promise<any>) => {
+  const getCachedOrFetch = useCallback(async <T>(key: string, fetchFn: () => Promise<T>): Promise<T> => {
     const cached = cacheRef.current.get(key);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.data;
+      return cached.data as T;
     }
-    
+
     const data = await fetchFn();
     cacheRef.current.set(key, { data, timestamp: Date.now() });
     return data;
@@ -269,13 +276,17 @@ export const useRaffleEntry = () => {
       eventName: "PrizeDistributed",
       args: { winner: address },
       onLogs: (logs) => {
-        logs.forEach((log) => {
+        logs.forEach((rawLog) => {
+          // Type-safe event casting
+          const log = rawLog as unknown as PrizeDistributedEvent;
+          const { ipTokenAmount, nftTokenId, prizeIndex } = log.args;
+
           const prize = {
             type: "guaranteed" as const,
             tier: 1,
-            ipTokenAmount: (log as any).args.ipTokenAmount,
-            nftTokenId: (log as any).args.nftTokenId,
-            prizeIndex: (log as any).args.prizeIndex,
+            ipTokenAmount,
+            nftTokenId,
+            prizeIndex,
             transactionHash: log.transactionHash || "",
             blockNumber: log.blockNumber || BigInt(0),
           };
@@ -291,13 +302,17 @@ export const useRaffleEntry = () => {
       eventName: "PrizeAwarded",
       args: { winner: address },
       onLogs: (logs) => {
-        logs.forEach((log) => {
+        logs.forEach((rawLog) => {
+          // Type-safe event casting
+          const log = rawLog as unknown as PrizeAwardedEvent;
+          const { tier, ipTokenAmount, nftTokenId, prizeIndex } = log.args;
+
           const prize = {
             type: "bonus" as const,
-            tier: (log as any).args.tier,
-            ipTokenAmount: (log as any).args.ipTokenAmount,
-            nftTokenId: (log as any).args.nftTokenId,
-            prizeIndex: (log as any).args.prizeIndex,
+            tier,
+            ipTokenAmount,
+            nftTokenId,
+            prizeIndex,
             transactionHash: log.transactionHash || "",
             blockNumber: log.blockNumber || BigInt(0),
           };
