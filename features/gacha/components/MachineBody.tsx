@@ -1,3 +1,4 @@
+import React from "react"
 import { Sparkles, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { GachaItem } from "@/types/gacha"
@@ -24,7 +25,7 @@ interface MachineBodyProps {
     onPullGacha: () => void
 }
 
-export const MachineBody = ({
+export const MachineBody = React.memo(({
     isSpinning,
     showBlindBoxModal,
     blinkingCell,
@@ -211,4 +212,6 @@ export const MachineBody = ({
             </p>
         </div>
     )
-} 
+})
+
+MachineBody.displayName = "MachineBody" 

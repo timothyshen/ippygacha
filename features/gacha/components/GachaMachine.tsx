@@ -31,11 +31,14 @@ export const GachaMachine = React.memo(() => {
 
     const router = useRouter()
 
-    const handleRevealBlindBox = useCallback(() => {
-        revealBlindBox()
-
-        
-        refreshInventory()
+    const handleRevealBlindBox = useCallback(async () => {
+        try {
+            await revealBlindBox()
+            await refreshInventory()
+        } catch (error) {
+            console.error("Error revealing blind box:", error)
+            // Error notification is handled by BlindBoxModal
+        }
     }, [refreshInventory, revealBlindBox])
 
     const handleOpenInventory = useCallback(() => {

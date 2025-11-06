@@ -85,8 +85,12 @@ export const useBlindBox = () => {
       // Get the account address
       const [account] = await walletClient.getAddresses();
 
+      // Get box price from contract
+      const contractInfoResult = await getContractInfo();
+      const [boxPrice] = contractInfoResult as [bigint, bigint, bigint, bigint, bigint];
+
       // Calculate total cost
-      const totalCost = parseEther("0.1") * BigInt(amount);
+      const totalCost = boxPrice * BigInt(amount);
 
       // First simulate the contract call to ensure it will succeed
       const { request } = await readClient.simulateContract({
@@ -194,13 +198,17 @@ export const useBlindBox = () => {
         duration: 5000,
       });
 
+      // Get open box fee from contract if needed (currently hardcoded in contract)
+      // For now, use the known fee of 0.01 ETH
+      const openBoxFee = parseEther("0.01");
+
       // Execute the transaction
       const txHash = await walletClient.writeContract({
         address: blindBoxAddress,
         abi: blindBoxABI,
         functionName: "openBox",
         args: [BigInt(amount)],
-        value: parseEther("0.01"),
+        value: openBoxFee,
         account,
       });
 

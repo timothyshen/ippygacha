@@ -15,7 +15,7 @@ import { Share, ExternalLink, Loader2, Box, Sparkles } from "lucide-react"
 import { shareToTwitter } from "@/utils/twitter-share"
 import { useNotifications } from "@/contexts/notification-context"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 
 interface BlindBoxModalProps {
     isOpen: boolean
@@ -40,6 +40,19 @@ export const BlindBoxModal = ({
     const router = useRouter();
     const [isRevealing, setIsRevealing] = useState(false);
 
+    // Reset revealing state when item is revealed
+    useEffect(() => {
+        if (isRevealed) {
+            setIsRevealing(false);
+        }
+    }, [isRevealed]);
+
+    // Memoize transaction hash display
+    const displayTxHash = useMemo(() => {
+        if (!transactionHash) return null;
+        return `${transactionHash.slice(0, 10)}...${transactionHash.slice(-8)}`;
+    }, [transactionHash]);
+
     const handleShare = () => {
         if (item) {
             shareToTwitter()
@@ -60,9 +73,16 @@ export const BlindBoxModal = ({
             await onReveal();
         } catch (error) {
             console.error("Reveal error:", error);
+            addNotification({
+                type: "error",
+                title: "Reveal Failed",
+                message: error instanceof Error ? error.message : "Failed to reveal box",
+                icon: "❌",
+                duration: 5000,
+            });
+        } finally {
             setIsRevealing(false);
         }
-        // isRevealing will be set to false when the item is revealed via isRevealed prop
     }
 
     const handleClose = () => {
@@ -100,8 +120,9 @@ export const BlindBoxModal = ({
                         <button
                             onClick={handleViewTransaction}
                             className="text-xs text-primary hover:underline font-mono break-all"
+                            aria-label="View transaction on StoryScan"
                         >
-                            {transactionHash.slice(0, 10)}...{transactionHash.slice(-8)}
+                            {displayTxHash}
                         </button>
                         <p className="text-[10px] text-muted-foreground mt-1">
                             ✓ Verified on-chain
@@ -159,7 +180,15 @@ export const BlindBoxModal = ({
                                 )}
                             >
                                 <div className="text-4xl md:text-5xl mb-2 drop-shadow-lg">
-                                    <img src={item.image} alt={item.name} width={100} height={100} />
+                                    <img
+                                        src={item.image}
+                                        alt={item.name}
+                                        width={100}
+                                        height={100}
+                                        onError={(e) => {
+                                            e.currentTarget.src = '/imageAssets/placeholder.png';
+                                        }}
+                                    />
                                 </div>
                                 <div className="text-xs md:text-sm font-bold text-center leading-tight">
                                     {item.name}
