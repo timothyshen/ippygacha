@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
       const { data: createdUser, error: createError } = await supabase
         .from("users")
         .insert({
+          id: crypto.randomUUID(),
           walletAddress: normalizedWallet,
           totalPoints: 0,
           totalXp: 0,

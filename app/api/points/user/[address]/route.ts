@@ -70,6 +70,7 @@ export async function GET(
       const { data: createdUser, error: createUserError } = await supabase
         .from("users")
         .insert({
+          id: crypto.randomUUID(),
           walletAddress: normalizedAddress,
           totalPoints: 0,
           totalXp: 0,
