@@ -2,6 +2,8 @@ import { useState, useCallback } from "react";
 import { useRaffleEntry } from "@/hooks/raffle/useRaffleEntry";
 import { awardActivityPoints } from "@/lib/auth";
 import { Winner } from "../types";
+import { formatEther } from "viem";
+import { useUserData } from "@/contexts/user-data-context";
 
 interface UseRaffleUIProps {
   walletAddress: string;
@@ -39,6 +41,7 @@ export const useRaffleUI = ({
   const [isTransactionPending, setIsTransactionPending] = useState(false);
 
   const { enterRaffle, getUserCooldownStatus } = useRaffleEntry();
+  const { refreshUserData } = useUserData();
 
   /**
    * Handle wheel spin and raffle entry
@@ -71,10 +74,13 @@ export const useRaffleUI = ({
         "RAFFLE_DRAW",
         {
           timestamp: new Date().toISOString(),
-          amount: entryPrice,
+          amount: entryPrice ? formatEther(entryPrice) : "0.1",
         },
         transactionResult.txHash
       );
+
+      // Refresh user data to update level, points, and recent activities
+      await refreshUserData();
 
       // Transaction is now confirmed, proceed with UI updates
       setIsTransactionPending(false);

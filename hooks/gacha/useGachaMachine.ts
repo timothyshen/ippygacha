@@ -9,12 +9,14 @@ import { ippyIPABI } from "@/lib/contract/ippyIPABI";
 import { ippyNFTAddress } from "@/lib/contract/contractAddress";
 import { readClient } from "@/lib/contract/client";
 import { metadataService } from "@/lib/metadata";
+import { useUserData } from "@/contexts/user-data-context";
 
 export const useGachaMachine = () => {
   const { user, authenticated } = usePrivy();
   const { inventory, unrevealedItems, refreshInventory } = useInventory();
   const { purchaseBoxes, openBoxes } = useBlindBox();
   const { addNotification } = useNotifications();
+  const { refreshUserData } = useUserData();
   const [coins, setCoins] = useState(10);
 
   const walletAddress = user?.wallet?.address;
@@ -246,6 +248,9 @@ export const useGachaMachine = () => {
           },
           txHash
         );
+
+        // Refresh user data to update level, points, and recent activities
+        await refreshUserData();
       }
 
       // Refresh balances after purchase
@@ -286,6 +291,9 @@ export const useGachaMachine = () => {
           },
           txHash
         );
+
+        // Refresh user data to update level, points, and recent activities
+        await refreshUserData();
       }
 
       await refreshInventory();

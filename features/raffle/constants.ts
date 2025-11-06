@@ -52,6 +52,12 @@ export const CONTRACT_CONSTANTS = {
   PPM_DENOM: 1000000, // 1e6 (parts per million)
 } as const;
 
+// Wheel visualization constants
+export const WHEEL_CONFIG = {
+  REPETITIONS: 3, // Each prize repeats 3 times = 12 total shards
+  SPIN_DURATION: 4000, // Duration of spin animation in ms
+} as const;
+
 // Local cooldown period (5 minutes for demo - contract doesn't enforce cooldown)
 // Cooldown period (5 minutes - matches smart contract)
 export const COOLDOWN_PERIOD = 5 * 60; // 5 minutes in seconds (matches contract)

@@ -1,5 +1,5 @@
 "use client"
-import { memo, useState, useEffect } from "react";
+import { memo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { ensureUserExists, getUserActivities, type UserData, type Activity } from "@/lib/auth";
+import { useUserData } from "@/contexts/user-data-context";
 
 import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Activity as ActivityIcon, Sparkles, ExternalLink } from "lucide-react";
 import { LEVEL_CONFIG } from "@/lib/points-system";
@@ -53,39 +53,9 @@ const getTimeAgo = (date: Date) => {
 };
 
 export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
-    const { login, logout, user, authenticated } = usePrivy();
+    const { login, logout, user } = usePrivy();
     const router = useRouter();
-    const [userData, setUserData] = useState<UserData | null>(null);
-    const [isLoadingUser, setIsLoadingUser] = useState(false);
-    const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
-
-    // Check/create user in database when user logs in
-    useEffect(() => {
-        const initUser = async () => {
-            if (authenticated && user?.wallet?.address) {
-                setIsLoadingUser(true);
-                const data = await ensureUserExists(user.wallet.address);
-                setUserData(data);
-                setIsLoadingUser(false);
-            } else {
-                setUserData(null);
-            }
-        };
-
-        initUser();
-    }, [authenticated, user?.wallet?.address]);
-
-    // Fetch user activities separately
-    useEffect(() => {
-        const fetchActivities = async () => {
-            if (authenticated && user?.wallet?.address) {
-                const activities = await getUserActivities(user.wallet.address, 5);
-                setRecentActivities(activities);
-            }
-        };
-
-        fetchActivities();
-    }, [authenticated, user?.wallet?.address]);
+    const { userData, recentActivities, isLoadingUser } = useUserData();
 
     const sliceAddress = (address: string) => {
         if (!address) return "";
