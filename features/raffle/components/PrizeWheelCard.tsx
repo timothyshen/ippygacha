@@ -77,7 +77,7 @@ export const PrizeWheelCard = React.memo(({
         )}
       </CardHeader>
       <CardContent className="flex flex-col items-center space-y-6">
-        {!canSpin && walletAddress && !showWinModal && (
+        {!canSpin && walletAddress && !showWinModal && (cooldownHours > 0 || cooldownMinutes > 0 || cooldownSeconds > 0) && (
           <CooldownDisplay
             cooldownHours={cooldownHours}
             cooldownMinutes={cooldownMinutes}

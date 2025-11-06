@@ -27,6 +27,7 @@ export const useGachaMachine = () => {
   const [currentBlindBox, setCurrentBlindBox] = useState<GachaItem | null>(
     null
   );
+  const [currentTransactionHash, setCurrentTransactionHash] = useState<string | null>(null);
 
   const [isItemRevealed, setIsItemRevealed] = useState(false);
   const [blinkingCell, setBlinkingCell] = useState<number | null>(null);
@@ -231,6 +232,9 @@ export const useGachaMachine = () => {
     try {
       const txHash = await purchaseBoxes(1);
 
+      // Store transaction hash for display
+      setCurrentTransactionHash(txHash);
+
       // Record gacha pull activity
       if (authenticated && user?.wallet?.address && txHash) {
         await awardActivityPoints(
@@ -296,6 +300,7 @@ export const useGachaMachine = () => {
     setCurrentResults([]);
     setShowBlindBoxModal(false);
     setCurrentBlindBox(null);
+    setCurrentTransactionHash(null);
     setIsItemRevealed(false);
     setIsSpinning(false);
   };
@@ -315,6 +320,7 @@ export const useGachaMachine = () => {
     showResults,
     showBlindBoxModal,
     currentBlindBox,
+    currentTransactionHash,
     isItemRevealed,
     blinkingCell,
     animationPhase,

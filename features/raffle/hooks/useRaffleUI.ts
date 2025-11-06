@@ -60,7 +60,9 @@ export const useRaffleUI = ({
       // Execute smart contract transaction
       const transactionResult = await enterRaffle();
 
-      setIsTransactionPending(false);
+      // IMPORTANT: Wait for transaction confirmation before proceeding
+      console.log("[Raffle] Transaction submitted, waiting for confirmation...");
+
       updateTransactionHash(transactionResult.txHash);
 
       // Award activity points
@@ -73,6 +75,9 @@ export const useRaffleUI = ({
         },
         transactionResult.txHash
       );
+
+      // Transaction is now confirmed, proceed with UI updates
+      setIsTransactionPending(false);
 
       // Start spinning animation
       const totalRotations = 5 + Math.random() * 3;
@@ -99,18 +104,33 @@ export const useRaffleUI = ({
 
       setIsSpinning(false);
 
-      // Fetch fresh cooldown data from contract
+      // CRITICAL: Fetch fresh cooldown data from contract AFTER transaction is confirmed
+      console.log("[Raffle] Fetching cooldown status from contract...");
       const cooldownStatus = await getUserCooldownStatus(walletAddress);
 
-      // Update cooldown state with fresh data
-      const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000;
-      const lastEntryTimeMs = Number(cooldownStatus.lastEntryTime) * 1000;
-      startCooldown(timeRemainingMs, lastEntryTimeMs);
+      console.log("[Raffle] Cooldown status:", {
+        canEnter: cooldownStatus.canEnter,
+        lastEntryTime: cooldownStatus.lastEntryTime,
+        timeRemaining: cooldownStatus.timeRemaining,
+      });
 
-      // Small delay to ensure state is fully updated
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // Only start cooldown if contract confirms user cannot enter
+      if (!cooldownStatus.canEnter) {
+        const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000;
+        const lastEntryTimeMs = Number(cooldownStatus.lastEntryTime) * 1000;
 
-      // NOW show the congratulations modal with correct cooldown data
+        console.log("[Raffle] Starting cooldown:", {
+          timeRemainingMs,
+          lastEntryTimeMs,
+          timeRemainingMinutes: (timeRemainingMs / 1000 / 60).toFixed(2),
+        });
+
+        startCooldown(timeRemainingMs, lastEntryTimeMs);
+      } else {
+        console.warn("[Raffle] Contract says user can still enter - cooldown not started");
+      }
+
+      // Show the congratulations modal with updated cooldown data
       setShowConfetti(true);
       setShowWinModal(true);
 

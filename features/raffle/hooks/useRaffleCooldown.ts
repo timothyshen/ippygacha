@@ -134,13 +134,15 @@ export const useRaffleCooldown = (walletAddress: string) => {
         const remainingTime = COOLDOWN_PERIOD_MS - timeSinceLastSpin;
 
         if (remainingTime <= 0) {
-          // Show 0 time first
+          // Immediately set canSpin to true for instant UI feedback
+          setCanSpin(true);
+          setLastSpinTime(null);
           updateCooldownDisplay(0, COOLDOWN_PERIOD_MS);
 
-          // Wait a bit to show the 0 state, then check contract
-          setTimeout(() => {
-            checkCanSpin(walletAddress);
-          }, 500);
+          // Verify with contract in background (double-check)
+          checkCanSpin(walletAddress).catch((error) => {
+            console.error("Error verifying cooldown completion:", error);
+          });
 
           clearInterval(interval);
         } else {

@@ -181,26 +181,24 @@ export const useRaffleEntry = () => {
   }, [getCachedOrFetch, handleContractError]);
 
   const getUserCooldownStatus = useCallback(async (userAddress: string) => {
-    return getCachedOrFetch(`cooldownStatus-${userAddress}`, async () => {
-      try {
-        const result = (await readClient.readContract({
-          address: onchainRaffleAddress,
-          abi: onchainRaffleABI,
-          functionName: "getUserCooldownStatus",
-          args: [userAddress],
-        })) as [boolean, bigint, bigint, bigint];
+    try {
+      const result = (await readClient.readContract({
+        address: onchainRaffleAddress,
+        abi: onchainRaffleABI,
+        functionName: "getUserCooldownStatus",
+        args: [userAddress],
+      })) as [boolean, bigint, bigint, bigint];
 
-        return {
-          canEnter: result[0],
-          lastEntryTime: result[1],
-          cooldownEndTime: result[2],
-          timeRemaining: result[3],
-        };
-      } catch (error) {
-        handleContractError(error, "fetch user cooldown status");
-      }
-    });
-  }, [getCachedOrFetch, handleContractError]);
+      return {
+        canEnter: result[0],
+        lastEntryTime: result[1],
+        cooldownEndTime: result[2],
+        timeRemaining: result[3],
+      };
+    } catch (error) {
+      handleContractError(error, "fetch user cooldown status");
+    }
+  }, [handleContractError]);
 
   const enterRaffle = useCallback(async () => {
     try {

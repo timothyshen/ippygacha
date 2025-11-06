@@ -20,6 +20,8 @@ export const GachaMachine = React.memo(() => {
         showResults,
         leverPulled,
         currentBlindBox,
+        currentTransactionHash,
+        unrevealedItems,
         pullGacha,
         revealBlindBox,
         closeModalAndReset,
@@ -73,6 +75,8 @@ export const GachaMachine = React.memo(() => {
                         item={blindBoxItem}
                         onReveal={handleRevealBlindBox}
                         isRevealed={isItemRevealed}
+                        unrevealedBoxes={unrevealedItems?.length || 0}
+                        transactionHash={currentTransactionHash}
                     />
                 )}
             </div>

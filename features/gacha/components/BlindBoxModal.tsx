@@ -11,10 +11,11 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Share } from "lucide-react"
+import { Share, ExternalLink, Loader2, Box, Sparkles } from "lucide-react"
 import { shareToTwitter } from "@/utils/twitter-share"
 import { useNotifications } from "@/contexts/notification-context"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 interface BlindBoxModalProps {
     isOpen: boolean
@@ -22,6 +23,8 @@ interface BlindBoxModalProps {
     item: GachaItem
     onReveal: () => void
     isRevealed: boolean
+    unrevealedBoxes?: number
+    transactionHash?: string | null
 }
 
 export const BlindBoxModal = ({
@@ -30,12 +33,15 @@ export const BlindBoxModal = ({
     item,
     onReveal,
     isRevealed,
+    unrevealedBoxes = 0,
+    transactionHash,
 }: BlindBoxModalProps) => {
     const { addNotification } = useNotifications();
     const router = useRouter();
+    const [isRevealing, setIsRevealing] = useState(false);
+
     const handleShare = () => {
         if (item) {
-            // Play button click sound
             shareToTwitter()
 
             addNotification({
@@ -48,19 +54,73 @@ export const BlindBoxModal = ({
         }
     }
 
+    const handleReveal = async () => {
+        setIsRevealing(true);
+        try {
+            await onReveal();
+        } catch (error) {
+            console.error("Reveal error:", error);
+            setIsRevealing(false);
+        }
+        // isRevealing will be set to false when the item is revealed via isRevealed prop
+    }
+
     const handleClose = () => {
         onClose();
         router.push("/inventory");
+    }
+
+    const handleViewTransaction = () => {
+        if (transactionHash) {
+            window.open(`https://aeneid.storyscan.io/tx/${transactionHash}`, "_blank");
+        }
     }
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-lg w-full shadow-2xl transition-all duration-700 border-0 items-center justify-center z-50 p-4 backdrop-blur-lg">
                 <DialogHeader>
-                    <DialogTitle>Mystery Premium Box</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Box className="h-5 w-5" />
+                        {!isRevealed ? "Mystery Premium Box" : "Revealed!"}
+                    </DialogTitle>
                 </DialogHeader>
                 <DialogDescription>
-                    What treasures await inside? Open to discover your prize!
+                    {!isRevealed
+                        ? "What treasures await inside? Open to discover your prize!"
+                        : "Congratulations on your new collectible!"}
                 </DialogDescription>
+
+                {/* Transaction Hash - Show for both states */}
+                {transactionHash && (
+                    <div className="bg-muted/50 p-3 rounded-lg text-center mb-2">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs font-semibold">Transaction Hash</span>
+                        </div>
+                        <button
+                            onClick={handleViewTransaction}
+                            className="text-xs text-primary hover:underline font-mono break-all"
+                        >
+                            {transactionHash.slice(0, 10)}...{transactionHash.slice(-8)}
+                        </button>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                            ✓ Verified on-chain
+                        </p>
+                    </div>
+                )}
+
+                {/* Unrevealed Boxes Counter */}
+                {unrevealedBoxes > 0 && !isRevealed && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg text-center mb-4">
+                        <div className="flex items-center justify-center gap-2">
+                            <Box className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                                You have {unrevealedBoxes} unopened box{unrevealedBoxes !== 1 ? 'es' : ''}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {!isRevealed ? (
                     // Enhanced Blind Box State
                     <div className="my-8 flex flex-col items-center justify-center">
@@ -144,19 +204,34 @@ export const BlindBoxModal = ({
                 )}
 
                 <div className="space-y-4">
-                    {!isRevealed ? <Button
-                        onClick={onReveal}
-                        size="lg"
-                        className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                    >
-                        🎁 Open Box
-                    </Button> : <Button
-                        onClick={handleClose}
-                        size="lg"
-                        className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                    >
-                        To Inventory
-                    </Button>}
+                    {!isRevealed ? (
+                        <Button
+                            onClick={handleReveal}
+                            size="lg"
+                            disabled={isRevealing}
+                            className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isRevealing ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                    Revealing...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-5 h-5 mr-2" />
+                                    Open Box
+                                </>
+                            )}
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={handleClose}
+                            size="lg"
+                            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                        >
+                            ✓ View in Inventory
+                        </Button>
+                    )}
 
                     {/* Enhanced Share Button */}
                     <Button
