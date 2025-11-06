@@ -1,5 +1,5 @@
-import React from "react"
-import { PRIZES, PRIZE_COLORS } from "../constants"
+import React, { useMemo } from "react"
+import { PRIZES, PRIZE_COLORS, WHEEL_CONFIG } from "../constants"
 import {
   calculateWheelSegment,
   generateSegmentClipPath,
@@ -28,23 +28,42 @@ export const PrizeWheel = React.memo(({
   cooldownMinutes,
   onSpin,
 }: PrizeWheelProps) => {
+  // Generate repeated prize shards for better visual effect
+  const wheelShards = useMemo(() => {
+    const shards = [];
+    for (let rep = 0; rep < WHEEL_CONFIG.REPETITIONS; rep++) {
+      for (let i = 0; i < PRIZES.length; i++) {
+        shards.push({
+          prize: PRIZES[i],
+          colorIndex: i,
+          shardIndex: rep * PRIZES.length + i,
+        });
+      }
+    }
+    return shards;
+  }, []);
+
+  const totalShards = wheelShards.length;
+
   return (
     <div className="relative">
       <div
-        className="w-80 h-80 rounded-full border-8 border-primary/20 relative overflow-hidden transition-transform duration-4000 ease-out shadow-2xl"
+        className={`w-80 h-80 rounded-full border-8 border-primary/20 relative overflow-hidden shadow-2xl ${
+          isTransactionPending ? "animate-spin-slow" : "transition-transform duration-4000 ease-out"
+        }`}
         style={{
-          transform: `rotate(${spinnerRotation}deg)`,
+          transform: isTransactionPending ? undefined : `rotate(${spinnerRotation}deg)`,
         }}
       >
-        {PRIZES.map((prize, index) => {
-          const { startAngle, actualSegmentAngle } = calculateWheelSegment(index, PRIZES.length);
+        {wheelShards.map(({ prize, colorIndex, shardIndex }) => {
+          const { startAngle, actualSegmentAngle } = calculateWheelSegment(shardIndex, totalShards);
           const clipPath = generateSegmentClipPath(startAngle, actualSegmentAngle);
           const iconStyle = calculateIconTransform(startAngle, actualSegmentAngle);
 
           return (
             <div
-              key={`${prize.name}-${index}`}
-              className={`absolute inset-0 ${PRIZE_COLORS[index]} border-2 border-white/30`}
+              key={`${prize.name}-${shardIndex}`}
+              className={`absolute inset-0 ${PRIZE_COLORS[colorIndex]} border-2 border-white/30`}
               style={{ clipPath }}
             >
               <div

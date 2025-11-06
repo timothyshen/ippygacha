@@ -11,7 +11,7 @@ interface RecentWinnersProps {
 const getPrizeIcon = (prizeName: string) => {
   if (prizeName.includes("1 IP")) return <Coins className="h-5 w-5 text-yellow-500" />
   if (prizeName.includes("2 IP")) return <Coins className="h-5 w-5 text-green-500" />
-  if (prizeName.includes("0.5 IP")) return <Coins className="h-5 w-5 text-blue-500" />
+  if (prizeName.includes("0.4 IP")) return <Coins className="h-5 w-5 text-blue-500" />
   if (prizeName.includes("5 IP")) return <Coins className="h-5 w-5 text-purple-500" />
   if (prizeName.includes("NFT")) return <ImageIcon className="h-5 w-5 text-pink-500" />
   if (prizeName.includes("Thank You")) return <Heart className="h-5 w-5 text-red-500" />
