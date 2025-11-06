@@ -21,6 +21,7 @@ interface PrizeWheelCardProps {
   raffleInfo: ContractRaffleInfo | null
   userStats: ContractUserStats | null
   entryPrice: bigint | null
+  showWinModal: boolean
   onSpin: () => void
 }
 
@@ -38,6 +39,7 @@ export const PrizeWheelCard = React.memo(({
   raffleInfo,
   userStats,
   entryPrice,
+  showWinModal,
   onSpin,
 }: PrizeWheelCardProps) => {
   const entryPriceDisplay = entryPrice ? formatEther(entryPrice) : "0.1";
@@ -75,7 +77,7 @@ export const PrizeWheelCard = React.memo(({
         )}
       </CardHeader>
       <CardContent className="flex flex-col items-center space-y-6">
-        {!canSpin && walletAddress && (
+        {!canSpin && walletAddress && !showWinModal && (
           <CooldownDisplay
             cooldownHours={cooldownHours}
             cooldownMinutes={cooldownMinutes}

@@ -106,14 +106,17 @@ export const useRaffleState = () => {
   // Cooldown management functions
   const updateCooldownDisplay = useCallback(
     (remainingTime: number, cooldownPeriod: number = 5 * 60 * 1000) => {
-      const hours = Math.floor(remainingTime / (60 * 60 * 1000));
+      // Clamp remaining time to 0 if negative
+      const clampedRemainingTime = Math.max(0, remainingTime);
+
+      const hours = Math.floor(clampedRemainingTime / (60 * 60 * 1000));
       const minutes = Math.floor(
-        (remainingTime % (60 * 60 * 1000)) / (60 * 1000)
+        (clampedRemainingTime % (60 * 60 * 1000)) / (60 * 1000)
       );
-      const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
+      const seconds = Math.floor((clampedRemainingTime % (60 * 1000)) / 1000);
       const progress =
         cooldownPeriod > 0
-          ? ((cooldownPeriod - remainingTime) / cooldownPeriod) * 100
+          ? Math.min(100, ((cooldownPeriod - clampedRemainingTime) / cooldownPeriod) * 100)
           : 0;
 
       dispatchCooldownDisplay({
@@ -290,17 +293,21 @@ export const useRaffleState = () => {
         const now = Date.now();
         const timeSinceLastSpin = now - lastSpinTime;
         const COOLDOWN_PERIOD_MS = 5 * 60 * 1000; // 5 minutes
+        const remainingTime = COOLDOWN_PERIOD_MS - timeSinceLastSpin;
 
-        if (timeSinceLastSpin >= COOLDOWN_PERIOD_MS) {
-          // Cooldown should be over, check contract once
-          checkCanSpin(walletAddress);
+        if (remainingTime <= 0) {
+          // Show 0 time first
+          updateCooldownDisplay(0, COOLDOWN_PERIOD_MS);
+
+          // Wait a bit to show the 0 state, then check contract
+          setTimeout(() => {
+            checkCanSpin(walletAddress);
+          }, 500);
+
           clearInterval(interval);
         } else {
           // Just update the display
-          updateCooldownDisplay(
-            COOLDOWN_PERIOD_MS - timeSinceLastSpin,
-            COOLDOWN_PERIOD_MS
-          );
+          updateCooldownDisplay(remainingTime, COOLDOWN_PERIOD_MS);
         }
       }, 1000);
       return () => clearInterval(interval);
@@ -416,6 +423,21 @@ export const useRaffleState = () => {
 
       setRecentWinners((prev) => [newWinner, ...prev.slice(0, 5)]);
       setIsSpinning(false);
+
+      // Fetch fresh cooldown data from contract
+      const cooldownStatus = await getUserCooldownStatus(walletAddress);
+
+      // Update cooldown state with fresh data
+      setCanSpin(false);
+      const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000;
+      const cooldownPeriodMs = 5 * 60 * 1000; // 5 minutes
+      setLastSpinTime(Number(cooldownStatus.lastEntryTime) * 1000);
+      updateCooldownDisplay(timeRemainingMs, cooldownPeriodMs);
+
+      // Small delay to ensure state is fully updated
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // NOW show the congratulations modal with correct cooldown data
       setShowConfetti(true);
       setShowWinModal(true);
 
@@ -423,13 +445,11 @@ export const useRaffleState = () => {
         setShowConfetti(false);
       }, 4000);
 
-      // Refresh contract data and cooldown status
-      // Note: loadUserData is throttled, so it won't make redundant calls
-      await Promise.all([
+      // Refresh other contract data in background
+      Promise.all([
         loadContractData(),
         loadUserData(walletAddress),
-        checkCanSpin(walletAddress),
-      ]);
+      ]).catch(error => console.error("Error refreshing data:", error));
     } catch (error: any) {
       console.error("[Contract] Raffle entry failed:", error);
       setIsSpinning(false);

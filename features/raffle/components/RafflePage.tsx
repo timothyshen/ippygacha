@@ -93,6 +93,7 @@ export default function RafflePage() {
                   raffleInfo={raffleInfo}
                   userStats={userStats}
                   entryPrice={entryPrice}
+                  showWinModal={showWinModal}
                   onSpin={handleSpinWheel}
                 />
               </div>
