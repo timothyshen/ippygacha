@@ -8,21 +8,17 @@ interface RecentWinnersProps {
   recentWinners: Winner[]
 }
 
+const getPrizeIcon = (prizeName: string) => {
+  if (prizeName.includes("1 IP")) return <Coins className="h-5 w-5 text-yellow-500" />
+  if (prizeName.includes("2 IP")) return <Coins className="h-5 w-5 text-green-500" />
+  if (prizeName.includes("0.5 IP")) return <Coins className="h-5 w-5 text-blue-500" />
+  if (prizeName.includes("5 IP")) return <Coins className="h-5 w-5 text-purple-500" />
+  if (prizeName.includes("NFT")) return <ImageIcon className="h-5 w-5 text-pink-500" />
+  if (prizeName.includes("Thank You")) return <Heart className="h-5 w-5 text-red-500" />
+  return <Gift className="h-5 w-5 text-primary" />
+}
+
 export const RecentWinners = React.memo(({ recentWinners }: RecentWinnersProps) => {
-  const getPrizeIcon = (prizeName: string) => {
-    if (prizeName.includes("1 IP")) return <Coins className="h-5 w-5 text-yellow-500" />
-    if (prizeName.includes("2 IP")) return <Coins className="h-5 w-5 text-green-500" />
-    if (prizeName.includes("0.5 IP")) return <Coins className="h-5 w-5 text-blue-500" />
-    if (prizeName.includes("5 IP")) return <Coins className="h-5 w-5 text-purple-500" />
-    if (prizeName.includes("NFT")) return <ImageIcon className="h-5 w-5 text-pink-500" />
-    if (prizeName.includes("Thank You")) return <Heart className="h-5 w-5 text-red-500" />
-    return <Gift className="h-5 w-5 text-primary" />
-  }
-
-
-  const sliceAddWinnerAddress = (winner: string) => {
-    return winner.slice(0, 6) + "..." + winner.slice(-4)
-  }
 
   return (
     <Card className="border-2 border-primary/20 h-fit">
@@ -56,7 +52,7 @@ export const RecentWinners = React.memo(({ recentWinners }: RecentWinnersProps) 
                     )}
                   </div>
                   <div>
-                    <p className="font-semibold text-card-foreground">{sliceAddWinnerAddress(winner.name)}</p>
+                    <p className="font-semibold text-card-foreground">{winner.name}</p>
                     <p className="text-sm text-muted-foreground">Won: {winner.prize}</p>
                   </div>
                 </div>
