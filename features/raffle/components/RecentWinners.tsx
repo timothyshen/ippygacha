@@ -31,7 +31,7 @@ export const RecentWinners = React.memo(({ recentWinners }: RecentWinnersProps) 
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {recentWinners.map((winner, index) => (
+          {[...recentWinners].slice().reverse().map((winner, index) => (
             <div
               key={winner.id}
               className={`p-4 rounded-lg border transition-all duration-300 ${index === 0 && winner.date === "Just now"
