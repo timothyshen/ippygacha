@@ -1,7 +1,6 @@
 "use client"
 import { cn } from "@/lib/utils"
 import { GachaItem } from "@/types/gacha"
-import { COLLECTION_COLORS } from "@/types/gacha"
 import {
     Dialog,
     DialogContent,
@@ -10,12 +9,13 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Share, ExternalLink, Loader2, Box, Sparkles } from "lucide-react"
+import { Share, ExternalLink, Box } from "lucide-react"
 import { shareToTwitter } from "@/utils/twitter-share"
 import { useNotifications } from "@/contexts/notification-context"
 import { useRouter } from "next/navigation"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
+import { UnrevealedBoxView } from "./UnrevealedBoxView"
+import { RevealedItemView } from "./RevealedItemView"
 
 interface BlindBoxModalProps {
     isOpen: boolean
@@ -46,12 +46,6 @@ export const BlindBoxModal = ({
             setIsRevealing(false);
         }
     }, [isRevealed]);
-
-    // Memoize transaction hash display
-    const displayTxHash = useMemo(() => {
-        if (!transactionHash) return null;
-        return `${transactionHash.slice(0, 10)}...${transactionHash.slice(-8)}`;
-    }, [transactionHash]);
 
     const handleShare = () => {
         if (item) {
@@ -122,7 +116,7 @@ export const BlindBoxModal = ({
                             className="text-xs text-primary hover:underline font-mono break-all"
                             aria-label="View transaction on StoryScan"
                         >
-                            {displayTxHash}
+                            {transactionHash.slice(0, 10)}...{transactionHash.slice(-8)}
                         </button>
                         <p className="text-[10px] text-muted-foreground mt-1">
                             ✓ Verified on-chain
@@ -130,137 +124,19 @@ export const BlindBoxModal = ({
                     </div>
                 )}
 
-                {/* Unrevealed Boxes Counter */}
-                {unrevealedBoxes > 0 && !isRevealed && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg text-center mb-4">
-                        <div className="flex items-center justify-center gap-2">
-                            <Box className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                                You have {unrevealedBoxes} unopened box{unrevealedBoxes !== 1 ? 'es' : ''}
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                {!isRevealed ? (
-                    // Enhanced Blind Box State
-                    <div className="my-8 flex flex-col items-center justify-center">
-                        <div className="text-6xl md:text-7xl mb-6 animate-bounce drop-shadow-lg">📦</div>
-                        <h2
-                            className="text-2xl md:text-3xl font-bold mb-3 text-black"
-                        >
-                            Mystery Premium Box
-                        </h2>
-                        <p
-                            className={cn(
-                                "mb-6 text-base md:text-lg font-medium",
-                                "text-black"
-                            )}
-                        >
-                            What treasures await inside? Open to discover your prize!
-                        </p>
-                        <Badge
-                            className={cn(
-                                "text-sm md:text-base px-4 py-2 font-bold",
-                                "bg-slate-100 text-slate-800 border-slate-300"
-                            )}
-                        >
-                            🎁 PREMIUM MYSTERY BOX
-                        </Badge>
-                    </div>
+                {/* State-specific content */}
+                {isRevealed ? (
+                    <RevealedItemView item={item} onClose={handleClose} />
                 ) : (
-                    // Enhanced Revealed Item State
-                    <div className="mb-8">
-                        <div className="item-reveal text-center">
-                            <div
-                                className={cn(
-                                    "mx-auto w-32 h-32 md:w-40 md:h-40 rounded-2xl border-4 p-6 md:p-8 flex flex-col items-center justify-center mb-6 transition-all duration-500 shadow-xl",
-                                    COLLECTION_COLORS.ippy,
-                                    item.collection === "ippy" && "legendary-glow",
-                                )}
-                            >
-                                <div className="text-4xl md:text-5xl mb-2 drop-shadow-lg">
-                                    <img
-                                        src={item.image}
-                                        alt={item.name}
-                                        width={100}
-                                        height={100}
-                                        onError={(e) => {
-                                            e.currentTarget.src = '/imageAssets/placeholder.png';
-                                        }}
-                                    />
-                                </div>
-                                <div className="text-xs md:text-sm font-bold text-center leading-tight">
-                                    {item.name}
-                                </div>
-                            </div>
-                            <h2
-                                className={cn(
-                                    "text-2xl md:text-3xl font-bold mb-3",
-                                    "text-black",
-                                )}
-                            >
-                                {item.name}
-                            </h2>
-                            <p
-                                className={cn(
-                                    "mb-4 text-base md:text-lg font-medium",
-                                    "text-black"
-                                )}
-                            >
-                                {item.description}
-                            </p>
-                            <div className="flex justify-center gap-3 mb-4">
-                                <Badge variant="secondary" className="text-sm font-bold px-3 py-1">
-                                    {item.collection.toUpperCase()}
-                                </Badge>
-                                <Badge
-                                    variant={item.version === "hidden" ? "default" : "outline"}
-                                    className={`text-sm font-bold px-3 py-1 ${item.version === "hidden" ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white" : ""}`}
-                                >
-                                    {item.version.toUpperCase()}
-                                </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {item.attributes?.map((attribute) => (
-                                    <Badge variant="outline" className="text-sm font-bold px-3 py-1">
-                                        {attribute.trait_type}: {attribute.value}
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                    <UnrevealedBoxView
+                        item={item}
+                        onReveal={handleReveal}
+                        isRevealing={isRevealing}
+                        unrevealedBoxes={unrevealedBoxes}
+                    />
                 )}
 
-                <div className="space-y-4">
-                    {!isRevealed ? (
-                        <Button
-                            onClick={handleReveal}
-                            size="lg"
-                            disabled={isRevealing}
-                            className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isRevealing ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                    Revealing...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="w-5 h-5 mr-2" />
-                                    Open Box
-                                </>
-                            )}
-                        </Button>
-                    ) : (
-                        <Button
-                            onClick={handleClose}
-                            size="lg"
-                            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                        >
-                            ✓ View in Inventory
-                        </Button>
-                    )}
+                <div className="space-y-4 mt-4">
 
                     {/* Enhanced Share Button */}
                     <Button

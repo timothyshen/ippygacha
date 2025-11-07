@@ -161,70 +161,48 @@ export const useGachaMachine = () => {
   };
 
   const startBlinkingAnimation = () => {
-    const fastPhaseDuration = 1000;
-    const slowingPhaseDuration = 1000;
-    const landingPhaseDuration = 500;
-    const initialBlinkInterval = 80;
-    const maxBlinkInterval = 300;
+    // Animation phases: data structure defines behavior
+    const ANIMATION_CONFIG = [
+      { duration: 1000, interval: 80, cells: [0, 1, 2, 3, 4, 5, 6, 7, 8], phase: "fast" },
+      { duration: 1000, intervalRange: [80, 300], cells: [0, 1, 2, 3, 4, 5, 6, 7, 8], phase: "slowing" },
+      { duration: 500, interval: 300, cells: [1, 3, 4, 5, 7], finalCell: 4, phase: "landing" },
+    ];
 
+    const totalDuration = ANIMATION_CONFIG.reduce((sum, phase) => sum + phase.duration, 0);
     const startTime = Date.now();
-    let currentInterval = initialBlinkInterval;
 
     const scheduleNextBlink = () => {
-      blinkTimeoutRef.current = null;
-      const elapsedTime = Date.now() - startTime;
-      const totalAnimationTime =
-        fastPhaseDuration + slowingPhaseDuration + landingPhaseDuration;
-
-      if (elapsedTime < fastPhaseDuration) {
-        setAnimationPhase((prev) => (prev === "fast" ? prev : "fast"));
-        setBlinkingCell(Math.floor(Math.random() * 9));
-        currentInterval = initialBlinkInterval;
-      } else if (elapsedTime < fastPhaseDuration + slowingPhaseDuration) {
-        setAnimationPhase((prev) => (prev === "slowing" ? prev : "slowing"));
-
-        setBlinkingCell(Math.floor(Math.random() * 9));
-        const slowingProgress =
-          (elapsedTime - fastPhaseDuration) / slowingPhaseDuration;
-        currentInterval =
-          initialBlinkInterval +
-          (maxBlinkInterval - initialBlinkInterval) * slowingProgress;
-      } else if (elapsedTime < totalAnimationTime) {
-        setAnimationPhase((prev) => (prev === "landing" ? prev : "landing"));
-
-        const remainingTime = totalAnimationTime - elapsedTime;
-        const remainingBlinks = Math.max(
-          1,
-          Math.floor(remainingTime / maxBlinkInterval)
-        );
-
-        if (remainingBlinks <= 1) {
-          setBlinkingCell(4);
-        } else {
-          const possibleCells = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-          const landingProgress =
-            (elapsedTime - fastPhaseDuration - slowingPhaseDuration) /
-            landingPhaseDuration;
-
-          if (landingProgress > 0.5) {
-            const adjacentCells = [1, 3, 4, 5, 7];
-            setBlinkingCell(
-              adjacentCells[Math.floor(Math.random() * adjacentCells.length)]
-            );
-          } else {
-            setBlinkingCell(
-              possibleCells[Math.floor(Math.random() * possibleCells.length)]
-            );
-          }
-        }
-
-        currentInterval = maxBlinkInterval;
-      } else {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= totalDuration) {
         finishAnimation();
         return;
       }
 
-      blinkTimeoutRef.current = setTimeout(scheduleNextBlink, currentInterval);
+      // Find current phase
+      let accumulatedTime = 0;
+      for (const config of ANIMATION_CONFIG) {
+        if (elapsed < accumulatedTime + config.duration) {
+          const progress = (elapsed - accumulatedTime) / config.duration;
+
+          setAnimationPhase(config.phase);
+
+          // Select cell based on phase config
+          if (config.finalCell !== undefined && progress > 0.8) {
+            setBlinkingCell(config.finalCell);
+          } else {
+            setBlinkingCell(config.cells[Math.floor(Math.random() * config.cells.length)]);
+          }
+
+          // Calculate interval (support both fixed and progressive)
+          const interval = config.intervalRange
+            ? config.intervalRange[0] + (config.intervalRange[1] - config.intervalRange[0]) * progress
+            : config.interval;
+
+          blinkTimeoutRef.current = setTimeout(scheduleNextBlink, interval);
+          return;
+        }
+        accumulatedTime += config.duration;
+      }
     };
 
     scheduleNextBlink();
