@@ -27,6 +27,13 @@ export const useInventoryFilters = () => {
     setSelectedCollectionDetail(null);
   };
 
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setSelectedCollection("all");
+    setSelectedVersion("all");
+    setSortBy("recent");
+  };
+
   return {
     // Filter state
     searchTerm,
@@ -47,5 +54,6 @@ export const useInventoryFilters = () => {
     // Actions
     openCollectionDetail,
     closeCollectionModal,
+    clearAllFilters,
   };
 };

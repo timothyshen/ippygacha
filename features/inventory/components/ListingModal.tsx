@@ -24,13 +24,15 @@ import { metadataMapping } from "@/lib/metadataMapping"
 import { cn } from "@/lib/utils"
 import { useMarketplace } from "@/hooks/marketplace/useMarketplace"
 import { ippyNFTAddress } from "@/lib/contract/contractAddress"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface ListingModalProps {
     item: GachaItemWithCount
 }
 
 export const ListingModal = ({ item }: ListingModalProps) => {
-    const [isHovered, setIsHovered] = useState(true)
+    const isMobile = useIsMobile()
+    const [isHovered, setIsHovered] = useState(false)
     const quantity = 1
     const [floorPrice, setFloorPrice] = useState(0)
     const [detailOpen, setDetailOpen] = useState(false)
@@ -87,7 +89,7 @@ export const ListingModal = ({ item }: ListingModalProps) => {
 
     return (
 
-        <div className="max-w-md mx-auto">
+        <div className="w-full">
             {item.metadataLoading && (
                 <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -95,7 +97,7 @@ export const ListingModal = ({ item }: ListingModalProps) => {
             )}
             <Card
                 className={cn(
-                    "p-0 transition-all duration-300 cursor-pointer border-2 shadow-lg hover:shadow-xl relative overflow-hidden",
+                    "p-0 transition-all duration-300 cursor-pointer border-2 shadow-lg hover:shadow-xl relative overflow-hidden w-full",
                     // Use metadata-based styling if available
                     hasRichMetadata(item) ? getItemDisplayStyle(item) : COLLECTION_COLORS.ippy,
                     VERSION_STYLES[item.version],
@@ -109,17 +111,17 @@ export const ListingModal = ({ item }: ListingModalProps) => {
                 onMouseLeave={() => setIsHovered(false)}
             >
                 <CardContent className="p-0">
-                    <div className="relative">
-                        <div className="aspect-square flex items-center justify-center relative">
-                            <div className="absolute top-2 right-2">
-                                <Badge className="text-sm bg-white text-black border-black">
+                    <div className="relative p-2 sm:p-2.5 md:p-3">
+                        <div className="aspect-square flex items-center justify-center relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg sm:rounded-xl overflow-hidden">
+                            <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-10">
+                                <Badge className="text-xs sm:text-sm bg-white/95 text-black border-black px-1.5 py-0.5 sm:px-2 sm:py-1 shadow-sm">
                                     x{item.count}
                                 </Badge>
                             </div>
                             <Image
                                 src={imageUrl}
                                 alt={getItemDisplayName(item)}
-                                className="w-full h-full object-contain"
+                                className="w-full h-full object-contain p-2 sm:p-3 md:p-4"
                                 onError={handleImageError}
                                 width={128}
                                 height={128}
@@ -131,20 +133,20 @@ export const ListingModal = ({ item }: ListingModalProps) => {
                         </div>
                     </div>
 
-                    <div className="p-4 space-y-3">
+                    <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4 sm:pt-2 md:px-4 md:pb-4 space-y-2 sm:space-y-2.5 md:space-y-3">
                         <div className="text-center">
-                            <h3 className="font-bold text-lg text-blue-600">{item.name}</h3>
+                            <h3 className="font-bold text-sm sm:text-base md:text-lg text-blue-600 line-clamp-1">{item.name}</h3>
                         </div>
-                        <div className="flex justify-center gap-2">
+                        <div className="flex justify-center gap-1.5 sm:gap-2">
                             <Badge
                                 variant="secondary"
-                                className="text-xs font-bold bg-blue-100 text-blue-800 border-blue-300 flex-shrink-0"
+                                className="text-[10px] sm:text-xs font-bold bg-blue-100 text-blue-800 border-blue-300 flex-shrink-0 px-1.5 py-0.5 sm:px-2"
                             >
                                 IPPY
                             </Badge>
                             <Badge
                                 className={cn(
-                                    "text-xs font-bold px-2 py-0.5 flex-shrink-0",
+                                    "text-[10px] sm:text-xs font-bold px-1.5 py-0.5 sm:px-2 flex-shrink-0",
                                     `bg-gradient-to-r ${rarityInfo.color}`,
                                     "text-white border-white/30 shadow-sm"
                                 )}
@@ -153,23 +155,24 @@ export const ListingModal = ({ item }: ListingModalProps) => {
                             </Badge>
                         </div>
                     </div>
-                    <div className="w-full relative min-h-[40px]">
-                        {isHovered ? (
-                            <div className="flex w-full h-full animate-in slide-in-from-bottom-2 duration-500 ease-out">
+                    <div className="w-full relative min-h-[40px] sm:min-h-[44px] px-2 sm:px-2.5 md:px-3 pb-2 sm:pb-2.5 md:pb-3">
+                        {(isMobile || isHovered) ? (
+                            <div className="flex w-full h-full gap-1.5 sm:gap-2 animate-in slide-in-from-bottom-2 duration-500 ease-out ">
                                 {/* List Item Button */}
                                 <Drawer>
                                     <DrawerTrigger asChild>
                                         <Button
-                                            size="lg"
-                                            className="bg-blue-300 hover:bg-blue-500/80 active:bg-blue-800 w-1/2 rounded-none border-r border-blue-500/20 transition-all duration-300 ease-out hover:scale-105 hover:z-10 shadow-lg hover:shadow-blue-500/25 transform-gpu"
+                                            size="sm"
+                                            className="bg-blue-300 hover:bg-blue-500/80 active:bg-blue-800 flex-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 hover:z-10 shadow-md hover:shadow-lg hover:shadow-blue-500/25 transform-gpu h-9 sm:h-10 text-xs sm:text-sm"
                                             style={{
                                                 animationDelay: '0.1s',
                                                 transform: 'translateY(0)',
                                                 transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0.1s'
                                             }}
                                         >
-                                            <List className="w-4 h-4 mr-2 transition-transform duration-300 ease-out" />
-                                            <span className="text-sm font-medium">List Item</span>
+                                            <List className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1.5 transition-transform duration-300 ease-out" />
+                                            <span className="font-medium hidden xs:inline">List</span>
+                                            <span className="font-medium hidden sm:inline ml-0.5"> Item</span>
                                         </Button>
                                     </DrawerTrigger>
                                     <DrawerContent className="w-full bg-gray-900 text-white border-gray-800">
@@ -177,7 +180,7 @@ export const ListingModal = ({ item }: ListingModalProps) => {
                                             <DrawerTitle className="text-white text-xl">Create listing</DrawerTitle>
                                         </DrawerHeader>
 
-                                        <div className="py-6 space-y-6 max-w-2xl mx-auto">
+                                        <div className="p-6 sm:p-8 md:p-10 space-y-6 max-w-2xl mx-auto">
                                             <div className="flex items-center gap-2 text-sm text-gray-400">
                                                 <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-xs">1</div>1
                                                 item
@@ -290,16 +293,16 @@ export const ListingModal = ({ item }: ListingModalProps) => {
                                 <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
                                     <DialogTrigger asChild>
                                         <Button
-                                            size="lg"
-                                            className="bg-blue-300 hover:bg-blue-500 active:bg-blue-800 w-1/2 rounded-none transition-all duration-300 ease-out hover:scale-105 shadow-lg transform-gpu"
+                                            size="sm"
+                                            className="bg-blue-300 hover:bg-blue-500 active:bg-blue-800 flex-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 shadow-md hover:shadow-lg transform-gpu h-9 sm:h-10 text-xs sm:text-sm"
                                             style={{
                                                 animationDelay: '0.15s',
                                                 transform: 'translateY(0)',
                                                 transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0.15s'
                                             }}
                                         >
-                                            <Eye className="w-4 h-4 mr-2 transition-transform duration-300 ease-out" />
-                                            <span className="text-sm font-medium">Details</span>
+                                            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1.5 transition-transform duration-300 ease-out" />
+                                            <span className="font-medium hidden xs:inline">Details</span>
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-2xl">
@@ -370,12 +373,10 @@ export const ListingModal = ({ item }: ListingModalProps) => {
 
                             </div>
                         ) : (
-                            <div className="flex w-full min-h-[40px] items-center justify-center backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out">
-                                <div className="flex flex-col items-center gap-1">
-                                    <p className="text-center text-gray-600 font-extrabold text-sm">
-                                        Not Listed
-                                    </p>
-                                </div>
+                            <div className="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out">
+                                <p className="text-center text-gray-600 font-extrabold text-xs sm:text-sm">
+                                    Not Listed
+                                </p>
                             </div>
                         )}
                     </div>
