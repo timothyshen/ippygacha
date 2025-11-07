@@ -11,8 +11,6 @@ import { SortBy } from "@/features/inventory/types"
 interface CollectionFiltersProps {
     searchTerm: string
     onSearchChange: (value: string) => void
-    selectedCollection: string
-    onCollectionChange: (value: string) => void
     selectedVersion: string
     onVersionChange: (value: string) => void
     sortBy: SortBy
@@ -23,8 +21,6 @@ interface CollectionFiltersProps {
 export function CollectionFilters({
     searchTerm,
     onSearchChange,
-    selectedCollection,
-    onCollectionChange,
     selectedVersion,
     onVersionChange,
     sortBy,
@@ -32,7 +28,7 @@ export function CollectionFilters({
     onClearAll,
 }: CollectionFiltersProps) {
     // Check if any filters are active
-    const hasActiveFilters = searchTerm !== "" || selectedCollection !== "all" || selectedVersion !== "all" || sortBy !== "recent"
+    const hasActiveFilters = searchTerm !== "" || selectedVersion !== "all" || sortBy !== "recent"
 
     return (
         <div className="space-y-3 sm:space-y-4">
@@ -56,15 +52,6 @@ export function CollectionFilters({
                                 </Badge>
                             )}
 
-                            {selectedCollection !== "all" && (
-                                <Badge variant="secondary" className="gap-1.5 bg-white/90 text-slate-700 hover:bg-white">
-                                    <span className="text-xs">Collection: <strong>{selectedCollection.toUpperCase()}</strong></span>
-                                    <X
-                                        className="w-3 h-3 cursor-pointer hover:text-red-600 transition-colors"
-                                        onClick={() => onCollectionChange("all")}
-                                    />
-                                </Badge>
-                            )}
 
                             {selectedVersion !== "all" && (
                                 <Badge variant="secondary" className="gap-1.5 bg-white/90 text-slate-700 hover:bg-white">
@@ -153,42 +140,6 @@ export function CollectionFilters({
                     {/* Filter Buttons */}
                     <div className="flex flex-wrap gap-2 sm:gap-3">
                         <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className="text-xs sm:text-sm font-medium text-slate-600">Collection:</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            <Button
-                                variant={selectedCollection === "all" ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => {
-                                    onCollectionChange("all")
-                                }}
-                                className={cn(
-                                    "transition-all duration-300 text-xs sm:text-sm h-8 sm:h-9 px-2.5 sm:px-3",
-                                    selectedCollection === "all"
-                                        ? "bg-slate-600 hover:bg-slate-700 text-white"
-                                        : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                                )}
-                            >
-                                All
-                            </Button>
-                            <Button
-                                variant={selectedCollection === "ippy" ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => {
-                                    onCollectionChange("ippy")
-                                }}
-                                className={cn(
-                                    "transition-all duration-300 text-xs sm:text-sm h-8 sm:h-9 px-2.5 sm:px-3",
-                                    selectedCollection === "ippy"
-                                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                        : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100",
-                                )}
-                            >
-                                IPPY
-                            </Button>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 sm:gap-2 ml-2 sm:ml-4">
                             <span className="text-xs sm:text-sm font-medium text-slate-600">Version:</span>
                         </div>
                         <div className="flex gap-1.5 sm:gap-2 flex-wrap">

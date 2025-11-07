@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Package, Bookmark } from "lucide-react"
 
 // Import all the new components
-import { InventoryStats } from "./InventoryStats"
+import { CollectionHeader } from "./CollectionHeader"
 import { BlindBoxTab } from "./BlindBoxTab"
 import { CollectionFilters } from "./CollectionFilters"
 import { GridView } from "./GridView"
@@ -12,8 +12,12 @@ import Footer from "@/features/shared/components/Footer"
 
 
 // Import custom hooks
-import { useInventoryLogic, useInventoryFilters } from "@/features/inventory/hooks"
+import { useInventoryLogic, useInventoryFilters, useBatchSelection, useFavorites, useKeyboardShortcuts } from "@/features/inventory/hooks"
 import { Header } from "@/features/shared/components/Header"
+import { Button } from "@/components/ui/button"
+import { CheckSquare, Square, Heart, X, List, Keyboard } from "lucide-react"
+import { useState } from "react"
+import { cn } from "@/lib/utils"
 
 export default function Inventory() {
     // Use the enhanced inventory logic hook
@@ -34,10 +38,10 @@ export default function Inventory() {
     const {
         searchTerm,
         setSearchTerm,
-        selectedCollection,
-        setSelectedCollection,
         selectedVersion,
         setSelectedVersion,
+        selectedNFTType,
+        setSelectedNFTType,
         sortBy,
         setSortBy,
         activeTab,
@@ -45,14 +49,70 @@ export default function Inventory() {
         clearAllFilters,
     } = useInventoryFilters()
 
+    // Batch selection and favorites
+    const batchSelection = useBatchSelection()
+    const favorites = useFavorites()
+
+    // Quick filter state
+    const [quickFilter, setQuickFilter] = useState<"all" | "favorites">("all")
+    const [showShortcuts, setShowShortcuts] = useState(false)
+
+    // Keyboard shortcuts
+    useKeyboardShortcuts({
+        onToggleBatchMode: () => {
+            if (activeTab === "collection") {
+                batchSelection.toggleBatchMode()
+            }
+        },
+        onToggleFavorites: () => {
+            if (activeTab === "collection") {
+                setQuickFilter((prev) => (prev === "all" ? "favorites" : "all"))
+            }
+        },
+        onClearFilters: () => {
+            if (activeTab === "collection") {
+                clearAllFilters()
+                setQuickFilter("all")
+            }
+        },
+        onSelectAll: () => {
+            if (activeTab === "collection" && batchSelection.batchMode) {
+                batchSelection.selectAll(filteredItems)
+            }
+        },
+        onEscape: () => {
+            if (batchSelection.selectedCount > 0) {
+                batchSelection.clearSelection()
+            } else if (batchSelection.batchMode) {
+                batchSelection.toggleBatchMode()
+            }
+        },
+    })
+
 
     // Get filtered items based on current filters
-    const filteredItems = getFilteredItems(searchTerm, selectedCollection, selectedVersion, sortBy)
+    let filteredItems = getFilteredItems(searchTerm, selectedVersion, selectedNFTType, sortBy)
+
+    // Apply quick filter for favorites
+    if (quickFilter === "favorites") {
+        filteredItems = filteredItems.filter((item) => {
+            const itemId = item.id || `${item.name}-${item.tokenId}`
+            return favorites.isFavorite(itemId)
+        })
+    }
+
     // Get NFT type breakdown for additional insights
     const nftTypeBreakdown = getNFTTypeBreakdown
 
     const renderCollectionContent = () => {
-        return <GridView items={filteredItems} inventoryLength={inventory.length} />
+        return (
+            <GridView
+                items={filteredItems}
+                inventoryLength={inventory.length}
+                batchSelection={batchSelection}
+                favorites={favorites}
+            />
+        )
     }
 
     // Show loading state
@@ -95,109 +155,36 @@ export default function Inventory() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-3 sm:p-4 md:p-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen relative overflow-hidden p-3 sm:p-4 md:p-6">
+            {/* Animated background layers */}
+            <div className="fixed inset-0 -z-10">
+                {/* Base gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50" />
+
+                {/* Animated gradient orbs */}
+                <div className="absolute top-0 -left-48 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" />
+                <div className="absolute top-0 -right-48 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" style={{ animationDelay: "2s" }} />
+                <div className="absolute -bottom-48 left-1/2 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" style={{ animationDelay: "4s" }} />
+
+                {/* Subtle grid pattern */}
+                <div className="absolute inset-0 opacity-[0.02]" style={{
+                    backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
+                    backgroundSize: '40px 40px'
+                }} />
+            </div>
+
+            <div className="max-w-7xl mx-auto relative">
 
                 <Header name="Inventory" subtitle="Premium Collection Experience" isDark={true} />
 
                 <div className="w-full max-w-7xl mx-auto flex-1 pt-6 sm:pt-10 md:pt-12 lg:pt-14 px-1 sm:px-0">
-                    {/* Contract Info Display - Show box price and supply info if available */}
-                    {contractInfo && <InventoryStats
-                        {...contractInfo}
-                    />}
-
-                    {/* NFT Type Breakdown - Enhanced visual display */}
-                    {nftTypeBreakdown.length > 0 && (
-                        <div className="bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 border border-slate-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 mx-0.5 sm:mx-0">
-                            <div className="flex items-center justify-between mb-3 sm:mb-4">
-                                <div className="flex items-center space-x-2 sm:space-x-3">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg">
-                                        <span className="text-white text-base sm:text-lg">🎭</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-base sm:text-xl font-bold text-slate-800">Collection Breakdown</h3>
-                                        <p className="text-xs sm:text-sm text-slate-600 hidden sm:block">Your NFT distribution</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-xl sm:text-2xl font-bold text-slate-800">
-                                        {nftTypeBreakdown.reduce((sum, { count }) => sum + count, 0)}
-                                    </div>
-                                    <div className="text-xs text-slate-500">Total</div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-4">
-                                {nftTypeBreakdown.map(({ typeName, count }, index) => {
-                                    const total = nftTypeBreakdown.reduce((sum, { count }) => sum + count, 0);
-                                    const percentage = total > 0 ? (count / total) * 100 : 0;
-                                    const colors = [
-                                        'from-blue-500 to-blue-600',
-                                        'from-purple-500 to-purple-600',
-                                        'from-pink-500 to-pink-600',
-                                        'from-green-500 to-green-600',
-                                        'from-orange-500 to-orange-600',
-                                        'from-red-500 to-red-600',
-                                        'from-indigo-500 to-indigo-600'
-                                    ];
-                                    const colorClass = colors[index % colors.length];
-
-                                    return (
-                                        <div
-                                            key={typeName}
-                                            className="group relative bg-white/70 backdrop-blur-sm rounded-lg sm:rounded-xl p-2.5 sm:p-4 border border-slate-200/50 hover:border-slate-300/70 transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
-                                            onClick={() => {
-                                                // Filter by this NFT type
-                                                setSelectedCollection(typeName.toLowerCase());
-                                                setActiveTab("collection");
-                                            }}
-                                        >
-                                            <div className="text-center">
-                                                <div className={`w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 bg-gradient-to-br ${colorClass} rounded-lg sm:rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow duration-300`}>
-                                                    <span className="text-white font-bold text-sm sm:text-lg">
-                                                        {typeName.charAt(0)}
-                                                    </span>
-                                                </div>
-                                                <div className="font-bold text-lg sm:text-2xl text-slate-800 mb-0.5 sm:mb-1 group-hover:text-blue-600 transition-colors duration-300">
-                                                    {count}
-                                                </div>
-                                                <div className="text-[10px] sm:text-xs font-medium text-slate-600 mb-1.5 sm:mb-2 uppercase tracking-wide line-clamp-1">
-                                                    {typeName}
-                                                </div>
-                                                <div className="w-full bg-slate-200 rounded-full h-1 sm:h-1.5 overflow-hidden">
-                                                    <div
-                                                        className={`h-full bg-gradient-to-r ${colorClass} rounded-full transition-all duration-500 ease-out`}
-                                                        style={{ width: `${percentage}%` }}
-                                                    />
-                                                </div>
-                                                <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">
-                                                    {percentage.toFixed(1)}%
-                                                </div>
-                                            </div>
-
-                                            {/* Hover tooltip - hide on mobile */}
-                                            <div className="hidden sm:block absolute -top-12 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-10">
-                                                Click to filter by {typeName}
-                                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-slate-800"></div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Summary stats */}
-                            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-200/50">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 text-xs sm:text-sm">
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"></div>
-                                        <span className="text-slate-600">Most: {nftTypeBreakdown.reduce((max, current) => current.count > max.count ? current : max, nftTypeBreakdown[0])?.typeName}</span>
-                                    </div>
-                                    <div className="text-slate-500 text-xs sm:text-sm">
-                                        {nftTypeBreakdown.length} types
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    {/* Collection Header */}
+                    {contractInfo && nftTypeBreakdown.length > 0 && (
+                        <CollectionHeader
+                            contractInfo={contractInfo}
+                            nftTypeBreakdown={nftTypeBreakdown}
+                            totalItems={inventory.length}
+                        />
                     )}
 
                     {/* Main Tabs */}
@@ -233,11 +220,103 @@ export default function Inventory() {
 
                         {/* Collection Tab */}
                         <TabsContent value="collection" className="space-y-4 sm:space-y-6">
+                            {/* Quick Filter & Batch Mode Toolbar */}
+                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center justify-between bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-slate-200 shadow-lg mx-0.5 sm:mx-0">
+                                {/* Quick Filters */}
+                                <div className="flex gap-2 flex-wrap">
+                                    <Button
+                                        size="sm"
+                                        variant={quickFilter === "all" ? "default" : "outline"}
+                                        onClick={() => setQuickFilter("all")}
+                                        className="h-9 text-xs sm:text-sm"
+                                    >
+                                        All Items
+                                        <span className="ml-1.5 font-bold">({filteredItems.length})</span>
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={quickFilter === "favorites" ? "default" : "outline"}
+                                        onClick={() => setQuickFilter("favorites")}
+                                        className="h-9 text-xs sm:text-sm"
+                                    >
+                                        <Heart className="w-3.5 h-3.5 mr-1.5" />
+                                        Favorites
+                                        <span className="ml-1.5 font-bold">({favorites.favoriteCount})</span>
+                                    </Button>
+                                </div>
+
+                                {/* Batch Mode Toggle */}
+                                <Button
+                                    size="sm"
+                                    variant={batchSelection.batchMode ? "default" : "outline"}
+                                    onClick={batchSelection.toggleBatchMode}
+                                    className="h-9 text-xs sm:text-sm"
+                                >
+                                    {batchSelection.batchMode ? (
+                                        <>
+                                            <CheckSquare className="w-3.5 h-3.5 mr-1.5" />
+                                            Exit Batch Mode
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Square className="w-3.5 h-3.5 mr-1.5" />
+                                            Batch Select
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+
+                            {/* Batch Action Toolbar (when items selected) */}
+                            {batchSelection.batchMode && batchSelection.selectedCount > 0 && (
+                                <div className="bg-blue-600 text-white rounded-xl p-3 sm:p-4 shadow-xl mx-0.5 sm:mx-0 animate-in slide-in-from-top-4 duration-300">
+                                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-sm sm:text-base">
+                                                {batchSelection.selectedCount} item{batchSelection.selectedCount > 1 ? "s" : ""} selected
+                                            </span>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={batchSelection.clearSelection}
+                                                className="text-white hover:text-white hover:bg-white/20 h-7 text-xs"
+                                            >
+                                                <X className="w-3 h-3 mr-1" />
+                                                Clear
+                                            </Button>
+                                        </div>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                className="h-9 text-xs sm:text-sm"
+                                                disabled
+                                            >
+                                                <List className="w-3.5 h-3.5 mr-1.5" />
+                                                Batch List
+                                                <span className="ml-1 text-[10px] opacity-70">(Soon)</span>
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                onClick={() => {
+                                                    batchSelection.selectedItems.forEach((id) => {
+                                                        favorites.toggleFavorite(id)
+                                                    })
+                                                    batchSelection.clearSelection()
+                                                }}
+                                                className="h-9 text-xs sm:text-sm"
+                                            >
+                                                <Heart className="w-3.5 h-3.5 mr-1.5" />
+                                                Add to Favorites
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <CollectionFilters
                                 searchTerm={searchTerm}
                                 onSearchChange={setSearchTerm}
-                                selectedCollection={selectedCollection}
-                                onCollectionChange={setSelectedCollection}
                                 selectedVersion={selectedVersion}
                                 onVersionChange={setSelectedVersion}
                                 sortBy={sortBy}
@@ -259,6 +338,64 @@ export default function Inventory() {
             getCollectionItems={getCollectionItems}
           /> */}
                 </div>
+
+                {/* Keyboard Shortcuts Help Button */}
+                <button
+                    onClick={() => setShowShortcuts(!showShortcuts)}
+                    className="fixed bottom-6 right-6 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group"
+                >
+                    <Keyboard className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                </button>
+
+                {/* Keyboard Shortcuts Panel */}
+                {showShortcuts && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in-0 duration-200">
+                        <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Keyboard className="w-6 h-6" />
+                                    Keyboard Shortcuts
+                                </h3>
+                                <button
+                                    onClick={() => setShowShortcuts(false)}
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                    <span className="text-sm text-slate-700">Toggle Batch Mode</span>
+                                    <kbd className="px-2 py-1 bg-white border border-slate-300 rounded text-xs font-mono">⌘/Ctrl + B</kbd>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                    <span className="text-sm text-slate-700">Toggle Favorites</span>
+                                    <kbd className="px-2 py-1 bg-white border border-slate-300 rounded text-xs font-mono">⌘/Ctrl + F</kbd>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                    <span className="text-sm text-slate-700">Clear Filters</span>
+                                    <kbd className="px-2 py-1 bg-white border border-slate-300 rounded text-xs font-mono">⌘/Ctrl + K</kbd>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                    <span className="text-sm text-slate-700">Select All</span>
+                                    <kbd className="px-2 py-1 bg-white border border-slate-300 rounded text-xs font-mono">⌘/Ctrl + A</kbd>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                    <span className="text-sm text-slate-700">Clear/Exit</span>
+                                    <kbd className="px-2 py-1 bg-white border border-slate-300 rounded text-xs font-mono">Esc</kbd>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <p className="text-xs text-blue-800">
+                                    <strong>Tip:</strong> Shortcuts only work on the Collection tab when not typing in input fields.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <Footer />
             </div>
 

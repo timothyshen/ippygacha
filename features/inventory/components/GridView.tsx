@@ -8,9 +8,18 @@ import { ListingModal } from "./ListingModal"
 interface GridViewProps {
     items: GachaItemWithCount[]
     inventoryLength: number
+    batchSelection?: {
+        batchMode: boolean
+        toggleItemSelection: (itemId: string) => void
+        isSelected: (itemId: string) => boolean
+    }
+    favorites?: {
+        toggleFavorite: (itemId: string) => void
+        isFavorite: (itemId: string) => boolean
+    }
 }
 
-export function GridView({ items, inventoryLength }: GridViewProps) {
+export function GridView({ items, inventoryLength, batchSelection, favorites }: GridViewProps) {
     // Check if any items are still loading metadata
     const hasLoadingItems = items.some((item) => item.metadataLoading);
 
@@ -51,13 +60,27 @@ export function GridView({ items, inventoryLength }: GridViewProps) {
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 px-0.5 sm:px-0">
-            {items.map((item, index) => (
-                <ListingModal
-                    item={item}
-                    key={`${item.id}-${index}`}
-                />
-            ))}
-        </div>
+        <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm mx-0.5 sm:mx-0">
+            <CardContent className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+                    {items.map((item, index) => (
+                        <div
+                            key={`${item.id}-${index}`}
+                            className="animate-fade-in-up"
+                            style={{
+                                animationDelay: `${index * 50}ms`,
+                                opacity: 0,
+                            }}
+                        >
+                            <ListingModal
+                                item={item}
+                                batchSelection={batchSelection}
+                                favorites={favorites}
+                            />
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
     )
 } 

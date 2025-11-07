@@ -99,8 +99,8 @@ export const useInventoryLogic = () => {
   const getFilteredItems = useMemo(() => {
     return (
       searchTerm: string,
-      selectedCollection: string,
       selectedVersion: string,
+      selectedNFTType: string,
       sortBy: "name" | "collection" | "count" | "recent"
     ): GachaItemWithCount[] => {
       return getUniqueItems
@@ -108,12 +108,11 @@ export const useInventoryLogic = () => {
           const matchesSearch = item.name
             .toLowerCase()
             .includes(searchTerm.toLowerCase());
-          const matchesCollection =
-            selectedCollection === "all" ||
-            item.collection === selectedCollection;
           const matchesVersion =
             selectedVersion === "all" || item.version === selectedVersion;
-          return matchesSearch && matchesCollection && matchesVersion;
+          const matchesNFTType =
+            selectedNFTType === "all" || item.name === selectedNFTType;
+          return matchesSearch && matchesVersion && matchesNFTType;
         })
         .sort((a, b) => {
           switch (sortBy) {

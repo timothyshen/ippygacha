@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Eye, List, Loader2, Minus, Plus } from "lucide-react"
+import { Eye, List, Loader2, Minus, Plus, Heart, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,11 +28,23 @@ import { useIsMobile } from "@/hooks/use-mobile"
 
 interface ListingModalProps {
     item: GachaItemWithCount
+    batchSelection?: {
+        batchMode: boolean
+        toggleItemSelection: (itemId: string) => void
+        isSelected: (itemId: string) => boolean
+    }
+    favorites?: {
+        toggleFavorite: (itemId: string) => void
+        isFavorite: (itemId: string) => boolean
+    }
 }
 
-export const ListingModal = ({ item }: ListingModalProps) => {
+export const ListingModal = ({ item, batchSelection, favorites }: ListingModalProps) => {
     const isMobile = useIsMobile()
     const [isHovered, setIsHovered] = useState(false)
+    const itemId = item.id || `${item.name}-${item.tokenId}`
+    const isSelected = batchSelection?.isSelected(itemId) || false
+    const isFavorited = favorites?.isFavorite(itemId) || false
     const quantity = 1
     const [floorPrice, setFloorPrice] = useState(0)
     const [detailOpen, setDetailOpen] = useState(false)
@@ -87,9 +99,19 @@ export const ListingModal = ({ item }: ListingModalProps) => {
         tokenId: "#1234",
     }
 
+    // Determine glow animation based on rarity
+    const getGlowAnimation = () => {
+        if (item.version === "hidden") return "animate-pulse-glow-hidden";
+        if (rarityInfo.label === "Rare" || rarityInfo.label === "Epic") return "animate-pulse-glow-rare";
+        return "";
+    };
+
     return (
 
-        <div className="w-full">
+        <div
+            className="w-full group perspective-1000"
+            style={{ perspective: "1000px" }}
+        >
             {item.metadataLoading && (
                 <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -97,11 +119,16 @@ export const ListingModal = ({ item }: ListingModalProps) => {
             )}
             <Card
                 className={cn(
-                    "p-0 transition-all duration-300 cursor-pointer border-2 shadow-lg hover:shadow-xl relative overflow-hidden w-full",
+                    "p-0 transition-all duration-500 cursor-pointer border-2 shadow-lg hover:shadow-2xl relative overflow-hidden w-full",
+                    // 3D tilt effect on hover
+                    "hover:-translate-y-2 hover:scale-105",
+                    "transform-gpu",
                     // Use metadata-based styling if available
                     hasRichMetadata(item) ? getItemDisplayStyle(item) : COLLECTION_COLORS.ippy,
                     VERSION_STYLES[item.version],
                     COLLECTION_GLOW.ippy,
+                    // Glow animations for rare items
+                    getGlowAnimation(),
                     // Enhanced styling for hidden/rare items
                     item.version === "hidden" && "ring-2 ring-purple-400/50 shadow-purple-200/50",
                     // Loading state styling
@@ -113,15 +140,67 @@ export const ListingModal = ({ item }: ListingModalProps) => {
                 <CardContent className="p-0">
                     <div className="relative p-2 sm:p-2.5 md:p-3">
                         <div className="aspect-square flex items-center justify-center relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg sm:rounded-xl overflow-hidden">
-                            <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-10">
+                            {/* Shimmer effect for rare items */}
+                            {(item.version === "hidden" || rarityInfo.label === "Rare" || rarityInfo.label === "Epic") && (
+                                <div
+                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer -z-0"
+                                    style={{
+                                        backgroundSize: "200% 100%",
+                                    }}
+                                />
+                            )}
+
+                            {/* Top right badges and controls */}
+                            <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-10 flex gap-1.5">
+                                {/* Batch selection checkbox */}
+                                {batchSelection?.batchMode && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            batchSelection.toggleItemSelection(itemId)
+                                        }}
+                                        className={cn(
+                                            "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-200",
+                                            isSelected
+                                                ? "bg-blue-600 border-blue-600"
+                                                : "bg-white/95 border-slate-300 hover:border-blue-400"
+                                        )}
+                                    >
+                                        {isSelected && <Check className="w-4 h-4 text-white" />}
+                                    </button>
+                                )}
+
+                                {/* Count badge */}
                                 <Badge className="text-xs sm:text-sm bg-white/95 text-black border-black px-1.5 py-0.5 sm:px-2 sm:py-1 shadow-sm">
                                     x{item.count}
                                 </Badge>
                             </div>
+
+                            {/* Top left - Favorite button */}
+                            {favorites && !batchSelection?.batchMode && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        favorites.toggleFavorite(itemId)
+                                    }}
+                                    className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10 w-7 h-7 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-sm"
+                                >
+                                    <Heart
+                                        className={cn(
+                                            "w-4 h-4 transition-colors",
+                                            isFavorited ? "fill-red-500 text-red-500" : "text-slate-400"
+                                        )}
+                                    />
+                                </button>
+                            )}
                             <Image
                                 src={imageUrl}
                                 alt={getItemDisplayName(item)}
-                                className="w-full h-full object-contain p-2 sm:p-3 md:p-4"
+                                className={cn(
+                                    "w-full h-full object-contain p-2 sm:p-3 md:p-4 transition-transform duration-300",
+                                    // Floating animation on hover
+                                    "group-hover:animate-float"
+                                )}
                                 onError={handleImageError}
                                 width={128}
                                 height={128}
@@ -129,6 +208,28 @@ export const ListingModal = ({ item }: ListingModalProps) => {
                             />
                             {item.version === "hidden" && (
                                 <div className="absolute inset-0 bg-gradient-to-t from-purple-900/20 to-transparent pointer-events-none" />
+                            )}
+
+                            {/* Quick info overlay on hover (desktop only) */}
+                            {!isMobile && isHovered && (
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent flex flex-col justify-end p-3 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+                                    <div className="text-white space-y-1">
+                                        <div className="text-xs font-semibold opacity-90">Collection</div>
+                                        <div className="text-sm font-bold">{item.collection}</div>
+                                        <div className="flex gap-2 mt-2">
+                                            <div className="flex-1">
+                                                <div className="text-xs opacity-75">Rarity</div>
+                                                <div className="text-xs font-bold">{rarityInfo.label}</div>
+                                            </div>
+                                            {item.tokenId && (
+                                                <div className="flex-1">
+                                                    <div className="text-xs opacity-75">Token ID</div>
+                                                    <div className="text-xs font-bold">#{item.tokenId}</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </div>
