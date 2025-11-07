@@ -145,7 +145,7 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                             >
                                 <SheetHeader className="border-b border-slate-200 bg-slate-50 px-6 py-6 text-left">
                                     <SheetTitle>
-                                        <div className="flex items-start gap-4">
+                                        <div className="flex items-start gap-4 pr-8">
                                             <Avatar className="h-14 w-14 border border-amber-200">
                                                 <AvatarImage src={""} alt="User avatar" />
                                                 <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-base font-semibold text-white">
@@ -160,10 +160,6 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                                     Level {userData?.currentLevel || 1}
                                                 </Badge>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={logout}>
-                                                <LogOut className="h-4 w-4" />
-                                                <span className="hidden sm:inline">Logout</span>
-                                            </Button>
                                         </div>
                                     </SheetTitle>
                                 </SheetHeader>
@@ -319,6 +315,18 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                                 })
                                             )}
                                         </div>
+                                    </section>
+
+                                    {/* Logout Section */}
+                                    <section className="pt-4 border-t border-slate-200">
+                                        <Button
+                                            variant="outline"
+                                            onClick={logout}
+                                            className="w-full justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        >
+                                            <LogOut className="h-4 w-4" />
+                                            <span>Logout</span>
+                                        </Button>
                                     </section>
                                 </div>
                             </SheetContent>
