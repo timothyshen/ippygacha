@@ -17,6 +17,7 @@ import {
   ItemCanceledEvent,
   MarketplaceListingData,
 } from "@/types/contracts";
+import { metadataService } from "@/lib/metadata";
 
 // Unified marketplace listing interface
 export interface MarketplaceListing {
@@ -54,30 +55,47 @@ export const convertListingToGachaItem = (
   };
 };
 
-// Mock metadata for testing - replace with actual NFT metadata fetching
-const getMockMetadata = (tokenId: string): GachaItemWithCount => {
-  const mockNames = [
-    "IPPY",
-    "BIPPY",
-    "DIPPY",
-    "TIPPY",
-    "RIPPY",
-    "SIPPY",
-    "NIPPY",
-  ];
-  const mockName = mockNames[parseInt(tokenId) % mockNames.length] || "IPPY";
+// Fetch real metadata from metadata service
+const getMetadata = async (
+  nftAddress: string,
+  tokenId: string
+): Promise<GachaItemWithCount | null> => {
+  try {
+    const result = await metadataService.getIPPYMetadata(
+      parseInt(tokenId),
+      nftAddress
+    );
 
-  return {
-    id: tokenId,
-    name: mockName,
-    collection: "ippy",
-    description: `A unique ${mockName} NFT from the IPPY collection`,
-    emoji: "🎁",
-    version: "standard",
-    tokenId: parseInt(tokenId),
-    count: 1,
-    metadataLoading: false,
-  } as GachaItemWithCount;
+    if (!result) {
+      return null;
+    }
+
+    const { metadata, cachedUrl } = result;
+
+    return {
+      id: tokenId,
+      name: metadata.name,
+      collection: "ippy",
+      description: metadata.description,
+      emoji: "🎁",
+      version: (metadata.rarity === "hidden" ? "hidden" : "standard") as
+        | "standard"
+        | "hidden",
+      tokenId: parseInt(tokenId),
+      count: 1,
+      metadataLoading: false,
+      image: cachedUrl,
+      metadata: metadata,
+      rarity: metadata.rarity,
+      theme: metadata.theme,
+    } as GachaItemWithCount;
+  } catch (error) {
+    console.error(
+      `Error fetching metadata for token ${tokenId}:`,
+      error
+    );
+    return null;
+  }
 };
 
 export const useMarketplace = () => {
@@ -184,42 +202,63 @@ export const useMarketplace = () => {
       // Step 8: Convert cached listings to MarketplaceListing format
       const activeListings: MarketplaceListing[] = [];
 
-      for (const [key, cachedListing] of cache.activeListings.entries()) {
-        try {
-          // Verify listing is still active on-chain (belt and suspenders)
-          const rawListing = await readClient.readContract({
-            address: nftMarketplaceAddress,
-            abi: NFTMarketplaceABI,
-            functionName: "getListing",
-            args: [cachedListing.nftAddress, BigInt(cachedListing.tokenId)],
-          });
+      // Process all listings in parallel
+      const listingPromises = Array.from(cache.activeListings.entries()).map(
+        async ([key, cachedListing]) => {
+          try {
+            // Verify listing is still active on-chain (belt and suspenders)
+            const rawListing = await readClient.readContract({
+              address: nftMarketplaceAddress,
+              abi: NFTMarketplaceABI,
+              functionName: "getListing",
+              args: [cachedListing.nftAddress, BigInt(cachedListing.tokenId)],
+            });
 
-          // Type-safe casting
-          const listing = rawListing as unknown as MarketplaceListingData;
+            // Type-safe casting
+            const listing = rawListing as unknown as MarketplaceListingData;
 
-          // If price is 0, the listing doesn't exist (was cancelled/sold)
-          if (!listing || listing.price === BigInt(0)) {
-            // Remove from cache
-            cache.activeListings.delete(key);
-            continue;
+            // If price is 0, the listing doesn't exist (was cancelled/sold)
+            if (!listing || listing.price === BigInt(0)) {
+              // Remove from cache
+              cache.activeListings.delete(key);
+              return null;
+            }
+
+            // Fetch real metadata
+            const metadata = await getMetadata(
+              cachedListing.nftAddress,
+              cachedListing.tokenId
+            );
+
+            const marketplaceListing: MarketplaceListing = {
+              nftAddress: cachedListing.nftAddress,
+              tokenId: cachedListing.tokenId,
+              price: listing.price.toString(),
+              priceInIP: parseFloat(formatEther(listing.price)),
+              seller: listing.seller,
+              isActive: true,
+              metadata: metadata || undefined,
+            };
+
+            return marketplaceListing;
+          } catch (error) {
+            console.error(
+              `Error processing listing ${key}:`,
+              error
+            );
+            return null;
           }
-
-          const marketplaceListing: MarketplaceListing = {
-            nftAddress: cachedListing.nftAddress,
-            tokenId: cachedListing.tokenId,
-            price: listing.price.toString(),
-            priceInIP: parseFloat(formatEther(listing.price)),
-            seller: listing.seller,
-            isActive: true,
-            metadata: getMockMetadata(cachedListing.tokenId),
-          };
-
-          activeListings.push(marketplaceListing);
-        } catch (error) {
-          // Keep in cache for next attempt
-          continue;
         }
-      }
+      );
+
+      const results = await Promise.all(listingPromises);
+
+      // Filter out null results
+      results.forEach((listing) => {
+        if (listing) {
+          activeListings.push(listing);
+        }
+      });
 
       // Return active listings
       return activeListings;

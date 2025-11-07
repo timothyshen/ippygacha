@@ -19,6 +19,7 @@ import { COLLECTION_GLOW } from "@/features/inventory/types"
 import { cn } from "@/lib/utils"
 import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarketplace"
 import { metadataMapping } from "@/lib/metadataMapping"
+import { getImageDisplayUrl } from "@/lib/metadata"
 
 interface MarketplaceBuyingModalProps {
     listing: MarketplaceListing
@@ -49,7 +50,8 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
     }
 
     const getImage = (name: string) => {
-        return metadataMapping[name as keyof typeof metadataMapping]
+        const key = name.toLowerCase() as keyof typeof metadataMapping
+        return metadataMapping[key] || metadataMapping.ippy
     }
 
     const nft = listing.metadata || {
@@ -59,6 +61,13 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
         emoji: "🎁",
         version: "standard" as const,
     }
+
+    // Use real metadata image if available, fallback to metadataMapping
+    const imageUrl = listing.metadata?.image
+        ? getImageDisplayUrl(listing.metadata.image)
+        : nft.name
+            ? getImage(nft.name.toLowerCase())
+            : metadataMapping.ippy
 
     return (
         <div className="max-w-md mx-auto">
@@ -73,7 +82,7 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                 <CardContent className="p-0">
                     <div className="relative" onClick={() => setDetailOpen(true)}>
                         <div className="aspect-square flex items-center justify-center relative bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg">
-                            {nft.name && <Image src={getImage(nft.name.toLowerCase())} alt={nft.name} width={128} height={128} className="w-full h-full object-contain" />}
+                            <Image src={imageUrl} alt={nft.name} width={128} height={128} className="w-full h-full object-contain" />
                         </div>
                     </div>
 
@@ -131,7 +140,7 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded flex items-center justify-center text-lg">
-                                                            {nft.name && <Image src={getImage(nft.name.toLowerCase())} alt={nft.name} width={40} height={40} className="object-contain" />}
+                                                            <Image src={imageUrl} alt={nft.name} width={40} height={40} className="object-contain" />
                                                         </div>
                                                         <span className="font-medium">
                                                             {nft.collection.toUpperCase()} - {nft.name}
@@ -201,7 +210,7 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center p-2">
-                                {nft.name && <Image src={getImage(nft.name.toLowerCase())} alt={nft.name} width={300} height={300} className="object-contain" />}
+                                <Image src={imageUrl} alt={nft.name} width={300} height={300} className="object-contain" />
                             </div>
 
                             <div className="flex gap-2">

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Eye, List, Loader2, Minus, Plus, Heart, Check } from "lucide-react"
+import { Eye, List, Loader2, Minus, Plus, Heart, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import {
     DrawerHeader,
     DrawerTitle,
     DrawerTrigger,
+    DrawerClose,
 } from "@/components/ui/drawer"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,8 @@ import { cn } from "@/lib/utils"
 import { useMarketplace } from "@/hooks/marketplace/useMarketplace"
 import { ippyNFTAddress } from "@/lib/contract/contractAddress"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { formatEther } from "viem"
+import { getImageDisplayUrl } from "@/lib/metadata"
 
 interface ListingModalProps {
     item: GachaItemWithCount
@@ -48,13 +51,64 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
     const quantity = 1
     const [floorPrice, setFloorPrice] = useState(0)
     const [detailOpen, setDetailOpen] = useState(false)
-    const { listItem } = useMarketplace();
+    const [listDrawerOpen, setListDrawerOpen] = useState(false)
+    const { listItem, cancelListing, getListing } = useMarketplace();
+
+    // Listing state
+    const [isListed, setIsListed] = useState(false)
+    const [listingPrice, setListingPrice] = useState<string>("0")
+    const [listingLoading, setListingLoading] = useState(false)
+    const [checkingListing, setCheckingListing] = useState(true)
 
     const handleImageError = () => {
         // We could show a fallback image here if desired.
     };
     const rarityInfo = getRarityInfo(item);
-    const imageUrl = metadataMapping[item.name.toLowerCase() as keyof typeof metadataMapping]
+
+    // Use real metadata image if available, fallback to metadataMapping
+    const imageUrl = item.image
+        ? getImageDisplayUrl(item.image)
+        : item.metadata?.image
+            ? getImageDisplayUrl(item.metadata.image)
+            : metadataMapping[item.name.toLowerCase() as keyof typeof metadataMapping] || metadataMapping.ippy
+
+    // Fetch listing status on mount and when item changes
+    useEffect(() => {
+        const fetchListingStatus = async () => {
+            if (!item.tokenId) {
+                setCheckingListing(false)
+                return
+            }
+
+            try {
+                setCheckingListing(true)
+                const listing = await getListing(ippyNFTAddress, item.tokenId.toString())
+
+                if (listing && typeof listing === 'object' && 'price' in listing) {
+                    const price = listing.price as bigint
+                    if (price > BigInt(0)) {
+                        setIsListed(true)
+                        setListingPrice(formatEther(price))
+                    } else {
+                        setIsListed(false)
+                        setListingPrice("0")
+                    }
+                } else {
+                    setIsListed(false)
+                    setListingPrice("0")
+                }
+            } catch (error) {
+                console.error("Error fetching listing status:", error)
+                setIsListed(false)
+                setListingPrice("0")
+            } finally {
+                setCheckingListing(false)
+            }
+        }
+
+        fetchListingStatus()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.tokenId])
 
     const handleFloorPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -66,7 +120,39 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
     };
 
     const handleList = async (tokenId: number, price: number) => {
-        await listItem(ippyNFTAddress, tokenId.toString(), price.toString());
+        try {
+            setListingLoading(true)
+            await listItem(ippyNFTAddress, tokenId.toString(), price.toString());
+            setListDrawerOpen(false)
+            // Refetch listing status
+            const listing = await getListing(ippyNFTAddress, tokenId.toString())
+            if (listing && typeof listing === 'object' && 'price' in listing) {
+                const priceValue = listing.price as bigint
+                if (priceValue > BigInt(0)) {
+                    setIsListed(true)
+                    setListingPrice(formatEther(priceValue))
+                }
+            }
+        } catch (error) {
+            console.error("Error listing item:", error)
+        } finally {
+            setListingLoading(false)
+        }
+    };
+
+    const handleCancelListing = async () => {
+        if (!item.tokenId) return
+
+        try {
+            setListingLoading(true)
+            await cancelListing(ippyNFTAddress, item.tokenId.toString())
+            setIsListed(false)
+            setListingPrice("0")
+        } catch (error) {
+            console.error("Error canceling listing:", error)
+        } finally {
+            setListingLoading(false)
+        }
     };
 
     const handleCalculation = (floorPrice: number) => {
@@ -170,6 +256,13 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                     </button>
                                 )}
 
+                                {/* Listed badge */}
+                                {isListed && (
+                                    <Badge className="text-xs sm:text-sm bg-green-500 text-white border-green-600 px-1.5 py-0.5 sm:px-2 sm:py-1 shadow-sm">
+                                        Listed
+                                    </Badge>
+                                )}
+
                                 {/* Count badge */}
                                 <Badge className="text-xs sm:text-sm bg-white/95 text-black border-black px-1.5 py-0.5 sm:px-2 sm:py-1 shadow-sm">
                                     x{item.count}
@@ -257,11 +350,53 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                         </div>
                     </div>
                     <div className="w-full relative min-h-[40px] sm:min-h-[44px] px-2 sm:px-2.5 md:px-3 pb-2 sm:pb-2.5 md:pb-3">
-                        {(isMobile || isHovered) ? (
-                            <div className="flex w-full h-full gap-1.5 sm:gap-2 animate-in slide-in-from-bottom-2 duration-500 ease-out ">
-                                {/* List Item Button */}
-                                <Drawer>
-                                    <DrawerTrigger asChild>
+                        {checkingListing ? (
+                            <div className="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center">
+                                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                            </div>
+                        ) : isListed ? (
+                            /* Listed state - show price and cancel button */
+                            (isMobile || isHovered) ? (
+                                <div className="flex w-full h-full gap-1.5 sm:gap-2 flex-col animate-in slide-in-from-bottom-2 duration-500 ease-out">
+                                    <div className="text-center">
+                                        <div className="text-xs text-slate-500">Listed Price</div>
+                                        <div className="text-sm sm:text-base font-bold text-green-600">{parseFloat(listingPrice).toFixed(4)} IP</div>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={handleCancelListing}
+                                        disabled={listingLoading}
+                                        className="w-full h-9 sm:h-10 text-xs sm:text-sm"
+                                    >
+                                        {listingLoading ? (
+                                            <>
+                                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 animate-spin" />
+                                                Canceling...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" />
+                                                Cancel Listing
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center">
+                                    <div className="text-center">
+                                        <div className="text-xs text-slate-500">Listed</div>
+                                        <div className="text-sm font-bold text-green-600">{parseFloat(listingPrice).toFixed(4)} IP</div>
+                                    </div>
+                                </div>
+                            )
+                        ) : (
+                            /* Not listed state - show list and details buttons */
+                            (isMobile || isHovered) ? (
+                                <div className="flex w-full h-full gap-1.5 sm:gap-2 animate-in slide-in-from-bottom-2 duration-500 ease-out ">
+                                    {/* List Item Button */}
+                                    <Drawer open={listDrawerOpen} onOpenChange={setListDrawerOpen}>
+                                        <DrawerTrigger asChild>
                                         <Button
                                             size="sm"
                                             className="bg-blue-300 hover:bg-blue-500/80 active:bg-blue-800 flex-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 hover:z-10 shadow-md hover:shadow-lg hover:shadow-blue-500/25 transform-gpu h-9 sm:h-10 text-xs sm:text-sm"
@@ -383,7 +518,20 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                                         <SelectItem value="90">90 days</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleList(item.tokenId || 0, floorPrice)}>Confirm listing</Button>
+                                                <Button
+                                                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                                                    onClick={() => handleList(item.tokenId || 0, floorPrice)}
+                                                    disabled={listingLoading || floorPrice <= 0}
+                                                >
+                                                    {listingLoading ? (
+                                                        <>
+                                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                            Listing...
+                                                        </>
+                                                    ) : (
+                                                        'Confirm listing'
+                                                    )}
+                                                </Button>
                                             </div>
                                         </div>
                                     </DrawerContent>
@@ -473,12 +621,13 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                 </Dialog>
 
                             </div>
-                        ) : (
-                            <div className="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out">
-                                <p className="text-center text-gray-600 font-extrabold text-xs sm:text-sm">
-                                    Not Listed
-                                </p>
-                            </div>
+                            ) : (
+                                <div className="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out">
+                                    <p className="text-center text-gray-600 font-extrabold text-xs sm:text-sm">
+                                        Not Listed
+                                    </p>
+                                </div>
+                            )
                         )}
                     </div>
                 </CardContent >
