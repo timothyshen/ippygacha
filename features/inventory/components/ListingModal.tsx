@@ -18,26 +18,18 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import { GachaItemWithCount, COLLECTION_COLORS, VERSION_STYLES, COLLECTION_GLOW } from "./inventory"
+import { GachaItemWithCount, COLLECTION_COLORS, VERSION_STYLES, COLLECTION_GLOW } from "@/features/inventory/types"
 import { getItemDisplayName, getRarityInfo, hasRichMetadata, getItemDisplayStyle } from "@/types/gacha"
 import { metadataMapping } from "@/lib/metadataMapping"
 import { cn } from "@/lib/utils"
 import { useMarketplace } from "@/hooks/marketplace/useMarketplace"
 import { ippyNFTAddress } from "@/lib/contract/contractAddress"
 
-
-interface ImageCache {
-    imageUrl: string | null;
-    loading: boolean;
-    error: boolean;
-}
-
 interface ListingModalProps {
     item: GachaItemWithCount
-    imageData: ImageCache
 }
 
-export const ListingModal = ({ item, imageData }: ListingModalProps) => {
+export const ListingModal = ({ item }: ListingModalProps) => {
     const [isHovered, setIsHovered] = useState(true)
     const quantity = 1
     const [floorPrice, setFloorPrice] = useState(0)
@@ -96,7 +88,7 @@ export const ListingModal = ({ item, imageData }: ListingModalProps) => {
     return (
 
         <div className="max-w-md mx-auto">
-            {(item.metadataLoading || imageData?.loading) && (
+            {item.metadataLoading && (
                 <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                 </div>
@@ -111,7 +103,7 @@ export const ListingModal = ({ item, imageData }: ListingModalProps) => {
                     // Enhanced styling for hidden/rare items
                     item.version === "hidden" && "ring-2 ring-purple-400/50 shadow-purple-200/50",
                     // Loading state styling
-                    (item.metadataLoading || imageData?.loading) && "opacity-75"
+                    item.metadataLoading && "opacity-75"
                 )}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}

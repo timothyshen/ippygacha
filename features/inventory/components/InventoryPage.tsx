@@ -12,8 +12,7 @@ import Footer from "@/features/shared/components/Footer"
 
 
 // Import custom hooks
-import { useInventoryLogic } from "@/hooks/gacha/useInventoryLogic"
-import { useInventoryFilters } from "@/hooks/gacha/useInventoryFilters"
+import { useInventoryLogic, useInventoryFilters } from "@/features/inventory/hooks"
 import { Header } from "@/features/shared/components/Header"
 
 export default function Inventory() {

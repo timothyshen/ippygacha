@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { useInventory } from "./useInventory";
+import { useInventory } from "@/hooks/gacha/useInventory";
 import {
   GachaItemWithCount,
   CollectionStats,
   COLLECTION_TOTALS,
-} from "@/features/inventory/components/inventory";
-import { useBlindBox } from "../useBlindBox";
+} from "@/features/inventory/types";
+import { useBlindBox } from "@/hooks/useBlindBox";
 
 export const useInventoryLogic = () => {
   const {

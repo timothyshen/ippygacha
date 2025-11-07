@@ -8,7 +8,7 @@ import {
 } from "@/lib/contract";
 import { useState, useEffect } from "react";
 import { parseEther, formatEther } from "viem";
-import { GachaItemWithCount } from "@/features/inventory/components/inventory";
+import { GachaItemWithCount } from "@/features/inventory/types";
 import { marketplaceCache } from "@/lib/events/cache";
 import { getCacheKey } from "@/lib/events/types";
 import {

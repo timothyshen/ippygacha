@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/drawer"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { COLLECTION_GLOW } from "@/features/inventory/components/inventory"
+import { COLLECTION_GLOW } from "@/features/inventory/types"
 import { cn } from "@/lib/utils"
 import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarketplace"
 import { metadataMapping } from "@/lib/metadataMapping"
