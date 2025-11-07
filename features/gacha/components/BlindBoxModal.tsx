@@ -49,12 +49,14 @@ export const BlindBoxModal = ({
 
     const handleShare = () => {
         if (item) {
-            shareToTwitter()
+            shareToTwitter(item.name, isRevealed)
 
             addNotification({
                 type: "info",
                 title: "Shared to Twitter!",
-                message: "Show off your amazing pull!",
+                message: isRevealed
+                    ? "Show off your amazing NFT!"
+                    : "Shared your blind box pull!",
                 icon: "🐦",
                 duration: 3000,
             })

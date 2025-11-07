@@ -51,6 +51,17 @@ const decodeBase64String = (value: string): string => {
 
 class MetadataService {
   private cache: MetadataCache = {};
+  // Request deduplication: track in-flight requests
+  private inFlightRequests: Map<string, Promise<{ metadata: NFTMetadata; cachedUrl: string } | null>> = new Map();
+  // Batching: collect requests over a time window
+  private requestQueue: Array<{
+    tokenId: number;
+    ippyNFTAddress: string;
+    resolve: (value: { metadata: NFTMetadata; cachedUrl: string } | null) => void;
+    reject: (error: any) => void;
+  }> = [];
+  private batchTimer: NodeJS.Timeout | null = null;
+  private readonly BATCH_WINDOW = 50; // 50ms batching window
 
   constructor() {
     this.loadCache();
@@ -183,44 +194,109 @@ class MetadataService {
     }
   }
 
-  // Main function to get NFT metadata
+  // Process the batch queue
+  private async processBatchQueue() {
+    if (this.requestQueue.length === 0) return;
+
+    // Take all pending requests
+    const requests = [...this.requestQueue];
+    this.requestQueue = [];
+    this.batchTimer = null;
+
+    // Group by unique (tokenId, address) pairs
+    const uniqueRequests = new Map<string, typeof requests[0][]>();
+
+    requests.forEach((req) => {
+      const key = `${req.ippyNFTAddress}_${req.tokenId}`;
+      if (!uniqueRequests.has(key)) {
+        uniqueRequests.set(key, []);
+      }
+      uniqueRequests.get(key)!.push(req);
+    });
+
+    console.log(`[MetadataService] Processing batch: ${uniqueRequests.size} unique requests from ${requests.length} total requests`);
+
+    // Fetch all unique requests
+    const fetchPromises = Array.from(uniqueRequests.entries()).map(
+      async ([key, requestGroup]) => {
+        const { tokenId, ippyNFTAddress } = requestGroup[0];
+
+        try {
+          const url = `/api/metadata?contractAddress=${ippyNFTAddress}&tokenId=${tokenId}`;
+          const response = await fetch(url, {
+            method: "GET",
+            headers: { "Accept": "application/json" },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          if (!data.raw?.metadata || !data.image?.cachedUrl) {
+            throw new Error("Invalid metadata response structure");
+          }
+
+          const result = {
+            metadata: data.raw.metadata,
+            cachedUrl: data.image.cachedUrl,
+          };
+
+          // Resolve all requests for this token
+          requestGroup.forEach((req) => req.resolve(result));
+
+          return result;
+        } catch (error) {
+          console.error(`Failed to fetch metadata for token ${tokenId}:`, error);
+          // Reject all requests for this token
+          requestGroup.forEach((req) => req.reject(error));
+          return null;
+        }
+      }
+    );
+
+    await Promise.allSettled(fetchPromises);
+  }
+
+  // Main function to get NFT metadata (with deduplication)
   async getIPPYMetadata(
     tokenId: number,
     ippyNFTAddress: string
   ): Promise<{ metadata: NFTMetadata; cachedUrl: string } | null> {
-    try {
-      // Call our own API endpoint instead of Alchemy directly
-      // This keeps the API key secure on the server side
-      const url = `/api/metadata?contractAddress=${ippyNFTAddress}&tokenId=${tokenId}`;
+    const requestKey = `${ippyNFTAddress}_${tokenId}`;
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        console.error(`Metadata API error: ${response.status} ${response.statusText}`);
-        return null;
-      }
-
-      const data = await response.json();
-
-      // Validate response structure
-      if (!data.raw?.metadata || !data.image?.cachedUrl) {
-        console.error("Invalid metadata response structure:", data);
-        return null;
-      }
-
-      return {
-        metadata: data.raw.metadata,
-        cachedUrl: data.image.cachedUrl,
-      };
-    } catch (error) {
-      console.error("Failed to fetch IPPY metadata:", error);
-      return null;
+    // Check if request is already in-flight
+    const inFlight = this.inFlightRequests.get(requestKey);
+    if (inFlight) {
+      console.log(`[MetadataService] Deduplicating request for token ${tokenId}`);
+      return inFlight;
     }
+
+    // Create new request promise
+    const requestPromise = new Promise<{ metadata: NFTMetadata; cachedUrl: string } | null>(
+      (resolve, reject) => {
+        // Add to queue
+        this.requestQueue.push({ tokenId, ippyNFTAddress, resolve, reject });
+
+        // Schedule batch processing
+        if (!this.batchTimer) {
+          this.batchTimer = setTimeout(() => {
+            this.processBatchQueue();
+          }, this.BATCH_WINDOW);
+        }
+      }
+    );
+
+    // Track in-flight request
+    this.inFlightRequests.set(requestKey, requestPromise);
+
+    // Clean up after completion
+    requestPromise.finally(() => {
+      this.inFlightRequests.delete(requestKey);
+    });
+
+    return requestPromise;
   }
 
   // Get blind box metadata (always on-chain)
@@ -248,28 +324,26 @@ class MetadataService {
   }
 
   // Batch fetch multiple NFT metadata
+  // Now leverages automatic deduplication and batching from getIPPYMetadata
   async batchGetIPPYMetadata(
     nfts: Array<{ tokenId: number; ippyNFTAddress: string }>
   ): Promise<Array<NFTMetadata | null>> {
-    // Process in parallel with concurrency limit
-    const BATCH_SIZE = 5;
-    const results: Array<NFTMetadata | null> = [];
+    console.log(`[MetadataService] Batch request for ${nfts.length} NFTs`);
 
-    for (let i = 0; i < nfts.length; i += BATCH_SIZE) {
-      const batch = nfts.slice(i, i + BATCH_SIZE);
-      const batchPromises = batch.map((nft) =>
-        this.getIPPYMetadata(nft.tokenId, nft.ippyNFTAddress)
-      );
+    // Simply call getIPPYMetadata for each - they will be automatically batched
+    // within the BATCH_WINDOW and deduplicated if there are duplicates
+    const promises = nfts.map((nft) =>
+      this.getIPPYMetadata(nft.tokenId, nft.ippyNFTAddress)
+    );
 
-      const batchResults = await Promise.allSettled(batchPromises);
-      batchResults.forEach((result) => {
-        // Extract metadata from the result object
-        const resultValue = result.status === "fulfilled" ? result.value : null;
-        results.push(resultValue?.metadata || null);
-      });
-    }
+    const results = await Promise.allSettled(promises);
 
-    return results;
+    return results.map((result) => {
+      if (result.status === "fulfilled" && result.value) {
+        return result.value.metadata;
+      }
+      return null;
+    });
   }
 
   // Clear cache manually
@@ -291,6 +365,21 @@ class MetadataService {
       validEntries: valid.length,
       expiredEntries: entries.length - valid.length,
       cacheSize: JSON.stringify(this.cache).length,
+      inFlightRequests: this.inFlightRequests.size,
+      queuedRequests: this.requestQueue.length,
+      batchTimerActive: this.batchTimer !== null,
+    };
+  }
+
+  // Get request queue info (for debugging)
+  getQueueInfo() {
+    return {
+      inFlight: Array.from(this.inFlightRequests.keys()),
+      queued: this.requestQueue.map((req) => ({
+        tokenId: req.tokenId,
+        address: req.ippyNFTAddress,
+      })),
+      batchScheduled: this.batchTimer !== null,
     };
   }
 }
