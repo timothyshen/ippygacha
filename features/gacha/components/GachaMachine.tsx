@@ -22,6 +22,7 @@ export const GachaMachine = React.memo(() => {
         currentBlindBox,
         currentTransactionHash,
         unrevealedItems,
+        showBallDrop,
         pullGacha,
         revealBlindBox,
         closeModalAndReset,
@@ -64,6 +65,7 @@ export const GachaMachine = React.memo(() => {
                     currentResults={currentResults}
                     leverPulled={leverPulled}
                     coins={coins}
+                    showBallDrop={showBallDrop}
                     onPullGacha={pullGacha}
                 />
                 <ControlPanel

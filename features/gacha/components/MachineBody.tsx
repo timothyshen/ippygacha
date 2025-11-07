@@ -22,6 +22,7 @@ interface MachineBodyProps {
     currentResults: GachaItem[]
     leverPulled: boolean
     coins: number
+    showBallDrop: boolean
     onPullGacha: () => void
 }
 
@@ -34,6 +35,7 @@ export const MachineBody = React.memo(({
     currentResults,
     leverPulled,
     coins,
+    showBallDrop,
     onPullGacha,
 }: MachineBodyProps) => {
     return (
@@ -116,7 +118,7 @@ export const MachineBody = React.memo(({
                                                     "bg-gradient-to-br from-amber-300 to-amber-500 border-amber-200",
                                                     "ring-4 ring-amber-400/60 shadow-xl scale-105",
                                                     animationPhase === "landing" && "scale-110",
-                                                    animationPhase === "landing" && i === 4 && "scale-125",
+                                                    animationPhase === "landing" && i === 4 && "scale-125 ring-8 ring-yellow-400/80 animate-pulse",
                                                 )
                                                 : "bg-white/10 border-white/20 backdrop-blur-sm",
                                         )}
@@ -174,12 +176,22 @@ export const MachineBody = React.memo(({
                     {/* Turn Knob and Dispensing Area */}
                     <div className="flex justify-between items-end">
                         {/* Dispensing Chute */}
-                        <div className="flex flex-col items-center z-20">
+                        <div className="flex flex-col items-center z-20 relative">
                             <div
-                                className="w-[210px] h-[75px] ml-9 my-2 flex items-center justify-center bg-[url('/imageAssets/ItemPlacement.png')] bg-auto z-40 object-contain"
+                                className="w-[210px] h-[75px] ml-9 my-2 flex items-center justify-center bg-[url('/imageAssets/ItemPlacement.png')] bg-auto z-40 object-contain relative"
                             >
-                                {showBlindBoxModal && (
-                                    <div className="text-3xl md:text-4xl animate-bounce drop-shadow-lg">📦</div>
+                                {/* Ball Drop Animation */}
+                                {showBallDrop && (
+                                    <div
+                                        className="absolute top-0 left-1/2 w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 shadow-2xl animate-ball-drop pointer-events-none"
+                                        style={{
+                                            boxShadow: "0 0 30px rgba(251, 191, 36, 0.8), 0 0 60px rgba(251, 191, 36, 0.5), inset 0 -5px 10px rgba(0, 0, 0, 0.2)",
+                                            zIndex: 9999,
+                                        }}
+                                    >
+                                        <div className="absolute inset-3 rounded-full bg-gradient-to-br from-amber-200 to-transparent opacity-70"></div>
+                                        <div className="absolute inset-0 rounded-full animate-ping bg-amber-300 opacity-50"></div>
+                                    </div>
                                 )}
                             </div>
                         </div>
