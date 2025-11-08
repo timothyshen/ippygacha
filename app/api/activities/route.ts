@@ -1,10 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { isActivityType } from "@/lib/activity-types";
+import {
+  rateLimiter,
+  RATE_LIMITS,
+  getClientIdentifier,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 // GET all activities with optional filtering
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting: 100 requests per minute per IP
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.GENERAL.limit,
+      RATE_LIMITS.GENERAL.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -84,15 +106,23 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    return NextResponse.json({
-      activities,
-      pagination: {
-        total: count ?? 0,
-        limit,
-        offset,
-        hasMore: offset + limit < (count ?? 0),
+    return NextResponse.json(
+      {
+        activities,
+        pagination: {
+          total: count ?? 0,
+          limit,
+          offset,
+          hasMore: offset + limit < (count ?? 0),
+        },
       },
-    });
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching activities:", error);
     return NextResponse.json(
@@ -105,6 +135,22 @@ export async function GET(request: NextRequest) {
 // POST - Create a new activity
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 100 requests per minute per IP
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.GENERAL.limit,
+      RATE_LIMITS.GENERAL.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many activity creation requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const body = await request.json();
     const { userId, activityType, pointsEarned, xpEarned, metadata, txnHash } =
@@ -175,7 +221,16 @@ export async function POST(request: NextRequest) {
       throw activityError;
     }
 
-    return NextResponse.json({ activity }, { status: 201 });
+    return NextResponse.json(
+      { activity },
+      {
+        status: 201,
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error creating activity:", error);
     return NextResponse.json(

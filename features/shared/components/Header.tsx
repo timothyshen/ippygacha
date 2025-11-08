@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { ensureUserExists, getUserActivities, type UserData, type Activity } from "@/lib/auth";
+import { useUserData } from "@/contexts/user-data-context";
+import { useMarketplace } from "@/hooks/marketplace/useMarketplace";
+import { formatEther } from "viem";
 
-import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Activity as ActivityIcon, Sparkles, ExternalLink } from "lucide-react";
+import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Activity as ActivityIcon, Sparkles, ExternalLink, Wallet, Loader2 } from "lucide-react";
 import { LEVEL_CONFIG } from "@/lib/points-system";
 
 type HeaderProps = {
@@ -53,39 +55,14 @@ const getTimeAgo = (date: Date) => {
 };
 
 export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
-    const { login, logout, user, authenticated } = usePrivy();
+    const { login, logout, user } = usePrivy();
     const router = useRouter();
-    const [userData, setUserData] = useState<UserData | null>(null);
-    const [isLoadingUser, setIsLoadingUser] = useState(false);
-    const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+    const { userData, recentActivities, isLoadingUser } = useUserData();
+    const { getProceeds, withdrawProceeds } = useMarketplace();
 
-    // Check/create user in database when user logs in
-    useEffect(() => {
-        const initUser = async () => {
-            if (authenticated && user?.wallet?.address) {
-                setIsLoadingUser(true);
-                const data = await ensureUserExists(user.wallet.address);
-                setUserData(data);
-                setIsLoadingUser(false);
-            } else {
-                setUserData(null);
-            }
-        };
-
-        initUser();
-    }, [authenticated, user?.wallet?.address]);
-
-    // Fetch user activities separately
-    useEffect(() => {
-        const fetchActivities = async () => {
-            if (authenticated && user?.wallet?.address) {
-                const activities = await getUserActivities(user.wallet.address, 5);
-                setRecentActivities(activities);
-            }
-        };
-
-        fetchActivities();
-    }, [authenticated, user?.wallet?.address]);
+    const [proceeds, setProceeds] = useState<bigint>(BigInt(0));
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
+    const [isLoadingProceeds, setIsLoadingProceeds] = useState(false);
 
     const sliceAddress = (address: string) => {
         if (!address) return "";
@@ -108,6 +85,41 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
 
     const handleInventoryClick = () => {
         router.push("/inventory");
+    };
+
+    // Fetch proceeds when user wallet is available
+    useEffect(() => {
+        const fetchProceeds = async () => {
+            if (user?.wallet?.address) {
+                try {
+                    setIsLoadingProceeds(true);
+                    const userProceeds = await getProceeds(user.wallet.address);
+                    setProceeds(userProceeds || BigInt(0));
+                } catch (error) {
+                    console.error("Error fetching proceeds:", error);
+                } finally {
+                    setIsLoadingProceeds(false);
+                }
+            }
+        };
+
+        fetchProceeds();
+    }, [user?.wallet?.address, getProceeds]);
+
+    const handleWithdraw = async () => {
+        try {
+            setIsWithdrawing(true);
+            await withdrawProceeds();
+            // Refresh proceeds after withdrawal
+            if (user?.wallet?.address) {
+                const userProceeds = await getProceeds(user.wallet.address);
+                setProceeds(userProceeds || BigInt(0));
+            }
+        } catch (error) {
+            console.error("Withdrawal error:", error);
+        } finally {
+            setIsWithdrawing(false);
+        }
     };
 
     return (
@@ -175,7 +187,7 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                             >
                                 <SheetHeader className="border-b border-slate-200 bg-slate-50 px-6 py-6 text-left">
                                     <SheetTitle>
-                                        <div className="flex items-start gap-4">
+                                        <div className="flex items-start gap-4 pr-8">
                                             <Avatar className="h-14 w-14 border border-amber-200">
                                                 <AvatarImage src={""} alt="User avatar" />
                                                 <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-base font-semibold text-white">
@@ -190,10 +202,6 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                                     Level {userData?.currentLevel || 1}
                                                 </Badge>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={logout}>
-                                                <LogOut className="h-4 w-4" />
-                                                <span className="hidden sm:inline">Logout</span>
-                                            </Button>
                                         </div>
                                     </SheetTitle>
                                 </SheetHeader>
@@ -241,6 +249,48 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                             </section>
                                         </>
                                     )}
+
+                                    {/* Withdraw Earnings Section */}
+                                    <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 p-4 shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-emerald-800">Marketplace Earnings</h3>
+                                                <p className="text-xs text-emerald-600 mt-0.5">From NFT sales</p>
+                                            </div>
+                                            <Wallet className="h-5 w-5 text-emerald-600" />
+                                        </div>
+                                        <div className="mt-3 flex items-end justify-between">
+                                            <div>
+                                                {isLoadingProceeds ? (
+                                                    <div className="h-8 w-24 bg-emerald-100 animate-pulse rounded" />
+                                                ) : (
+                                                    <>
+                                                        <div className="text-2xl font-bold text-emerald-900">
+                                                            {formatEther(proceeds)} ETH
+                                                        </div>
+                                                        <div className="text-xs text-emerald-600">
+                                                            ≈ ${(parseFloat(formatEther(proceeds)) * 3000).toFixed(2)}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <Button
+                                                onClick={handleWithdraw}
+                                                disabled={isWithdrawing || proceeds <= BigInt(0) || isLoadingProceeds}
+                                                size="sm"
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                                            >
+                                                {isWithdrawing ? (
+                                                    <>
+                                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                        Withdrawing...
+                                                    </>
+                                                ) : (
+                                                    "Withdraw"
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </section>
 
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                                         <h3 className="text-sm font-semibold text-slate-800">Quick actions</h3>
@@ -349,6 +399,18 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                                 })
                                             )}
                                         </div>
+                                    </section>
+
+                                    {/* Logout Section */}
+                                    <section className="pt-4 border-t border-slate-200">
+                                        <Button
+                                            variant="outline"
+                                            onClick={logout}
+                                            className="w-full justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        >
+                                            <LogOut className="h-4 w-4" />
+                                            <span>Logout</span>
+                                        </Button>
                                     </section>
                                 </div>
                             </SheetContent>

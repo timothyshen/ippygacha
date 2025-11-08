@@ -20,6 +20,9 @@ export const GachaMachine = React.memo(() => {
         showResults,
         leverPulled,
         currentBlindBox,
+        currentTransactionHash,
+        unrevealedItems,
+        showBallDrop,
         pullGacha,
         revealBlindBox,
         closeModalAndReset,
@@ -29,11 +32,14 @@ export const GachaMachine = React.memo(() => {
 
     const router = useRouter()
 
-    const handleRevealBlindBox = useCallback(() => {
-        revealBlindBox()
-
-        
-        refreshInventory()
+    const handleRevealBlindBox = useCallback(async () => {
+        try {
+            await revealBlindBox()
+            await refreshInventory()
+        } catch (error) {
+            console.error("Error revealing blind box:", error)
+            // Error notification is handled by BlindBoxModal
+        }
     }, [refreshInventory, revealBlindBox])
 
     const handleOpenInventory = useCallback(() => {
@@ -59,6 +65,7 @@ export const GachaMachine = React.memo(() => {
                     currentResults={currentResults}
                     leverPulled={leverPulled}
                     coins={coins}
+                    showBallDrop={showBallDrop}
                     onPullGacha={pullGacha}
                 />
                 <ControlPanel
@@ -73,6 +80,8 @@ export const GachaMachine = React.memo(() => {
                         item={blindBoxItem}
                         onReveal={handleRevealBlindBox}
                         isRevealed={isItemRevealed}
+                        unrevealedBoxes={unrevealedItems?.length || 0}
+                        transactionHash={currentTransactionHash}
                     />
                 )}
             </div>

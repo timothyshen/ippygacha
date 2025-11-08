@@ -8,14 +8,23 @@ import {
 } from "@/lib/contract";
 import { useState, useEffect } from "react";
 import { parseEther, formatEther } from "viem";
-import { GachaItemWithCount } from "@/features/inventory/components/inventory";
+import { GachaItemWithCount } from "@/features/inventory/types";
+import { marketplaceCache } from "@/lib/events/cache";
+import { getCacheKey } from "@/lib/events/types";
+import {
+  ItemListedEvent,
+  ItemBoughtEvent,
+  ItemCanceledEvent,
+  MarketplaceListingData,
+} from "@/types/contracts";
+import { metadataService } from "@/lib/metadata";
 
 // Unified marketplace listing interface
 export interface MarketplaceListing {
   nftAddress: string;
   tokenId: string;
   price: string; // in wei
-  priceInIP: number; // converted to IP for display
+  priceInETH: number; // converted to ETH for display
   seller: string;
   isActive: boolean;
   metadata?: GachaItemWithCount; // NFT metadata fetched separately
@@ -36,7 +45,7 @@ export const convertListingToGachaItem = (
   return {
     ...listing.metadata,
     // Add marketplace-specific fields
-    marketPrice: listing.priceInIP,
+    marketPrice: listing.priceInETH,
     seller: listing.seller,
     isListed: true,
   } as GachaItemWithCount & {
@@ -46,30 +55,47 @@ export const convertListingToGachaItem = (
   };
 };
 
-// Mock metadata for testing - replace with actual NFT metadata fetching
-const getMockMetadata = (tokenId: string): GachaItemWithCount => {
-  const mockNames = [
-    "IPPY",
-    "BIPPY",
-    "DIPPY",
-    "TIPPY",
-    "RIPPY",
-    "SIPPY",
-    "NIPPY",
-  ];
-  const mockName = mockNames[parseInt(tokenId) % mockNames.length] || "IPPY";
+// Fetch real metadata from metadata service
+const getMetadata = async (
+  nftAddress: string,
+  tokenId: string
+): Promise<GachaItemWithCount | null> => {
+  try {
+    const result = await metadataService.getIPPYMetadata(
+      parseInt(tokenId),
+      nftAddress
+    );
 
-  return {
-    id: tokenId,
-    name: mockName,
-    collection: "ippy",
-    description: `A unique ${mockName} NFT from the IPPY collection`,
-    emoji: "🎁",
-    version: "standard",
-    tokenId: parseInt(tokenId),
-    count: 1,
-    metadataLoading: false,
-  } as GachaItemWithCount;
+    if (!result) {
+      return null;
+    }
+
+    const { metadata, cachedUrl } = result;
+
+    return {
+      id: tokenId,
+      name: metadata.name,
+      collection: "ippy",
+      description: metadata.description,
+      emoji: "🎁",
+      version: (metadata.rarity === "hidden" ? "hidden" : "standard") as
+        | "standard"
+        | "hidden",
+      tokenId: parseInt(tokenId),
+      count: 1,
+      metadataLoading: false,
+      image: cachedUrl,
+      metadata: metadata,
+      rarity: metadata.rarity,
+      theme: metadata.theme,
+    } as GachaItemWithCount;
+  } catch (error) {
+    console.error(
+      `Error fetching metadata for token ${tokenId}:`,
+      error
+    );
+    return null;
+  }
 };
 
 export const useMarketplace = () => {
@@ -78,94 +104,156 @@ export const useMarketplace = () => {
 
   const getAllActiveListings = async (): Promise<MarketplaceListing[]> => {
     try {
-      // Get all ItemListed events
-      const listedEvents = await readClient.getContractEvents({
-        address: nftMarketplaceAddress,
-        abi: NFTMarketplaceABI,
-        eventName: "ItemListed",
-        fromBlock: "earliest",
-        toBlock: "latest",
-      });
-
-      // Get all ItemBought events to filter out sold items
-      const boughtEvents = await readClient.getContractEvents({
-        address: nftMarketplaceAddress,
-        abi: NFTMarketplaceABI,
-        eventName: "ItemBought",
-        fromBlock: "earliest",
-        toBlock: "latest",
-      });
-
-      // Get all ItemCanceled events to filter out cancelled items
-      const canceledEvents = await readClient.getContractEvents({
-        address: nftMarketplaceAddress,
-        abi: NFTMarketplaceABI,
-        eventName: "ItemCanceled",
-        fromBlock: "earliest",
-        toBlock: "latest",
-      });
-
-      // Create sets of sold and cancelled items for quick lookup
-      const soldItems = new Set(
-        boughtEvents.map(
-          (event) =>
-            `${(event as any).args.nftAddress}-${(event as any).args.tokenId}`
-        )
-      );
-
-      const cancelledItems = new Set(
-        canceledEvents.map(
-          (event) =>
-            `${(event as any).args.nftAddress}-${(event as any).args.tokenId}`
-        )
-      );
-
-      // Filter for active listings and get latest price for each item
-      const activeListingsMap = new Map<string, MarketplaceListing>();
-
-      for (const event of listedEvents) {
-        const eventArgs = (event as any).args;
-        const key = `${eventArgs.nftAddress}-${eventArgs.tokenId}`;
-
-        // Skip if item was sold or cancelled
-        if (soldItems.has(key) || cancelledItems.has(key)) {
-          continue;
-        }
-
-        // Double-check by querying the contract directly
-        try {
-          const listing = await readClient.readContract({
-            address: nftMarketplaceAddress,
-            abi: NFTMarketplaceABI,
-            functionName: "getListing",
-            args: [eventArgs.nftAddress, eventArgs.tokenId],
-          });
-
-          // If price is 0, the listing doesn't exist (was cancelled/sold)
-          if (!listing || (listing as any).price === BigInt(0)) {
-            continue;
-          }
-
-          const marketplaceListing: MarketplaceListing = {
-            nftAddress: eventArgs.nftAddress as string,
-            tokenId: eventArgs.tokenId.toString(),
-            price: (listing as any).price.toString(),
-            priceInIP: parseFloat(formatEther((listing as any).price)),
-            seller: (listing as any).seller as string,
-            isActive: true,
-            metadata: getMockMetadata(eventArgs.tokenId.toString()),
-          };
-
-          // Use the latest listing (in case of price updates)
-          activeListingsMap.set(key, marketplaceListing);
-        } catch (error) {
-          console.log(`Failed to get listing for ${key}:`, error);
-          // Skip this listing if we can't fetch it
-          continue;
-        }
+      // Step 1: Load or initialize cache
+      let cache = marketplaceCache.loadCache();
+      if (!cache) {
+        cache = marketplaceCache.initEmptyCache();
       }
 
-      return Array.from(activeListingsMap.values());
+      // Step 2: Get current block number
+      const latestBlock = await readClient.getBlockNumber();
+
+      // Step 3: Calculate block range to scan
+      const fromBlock = cache.lastScannedBlock === BigInt(0)
+        ? "earliest"
+        : cache.lastScannedBlock + BigInt(1);
+
+      // Step 4: Fetch only NEW events since last scan (INCREMENTAL!)
+      const [rawListedEvents, rawBoughtEvents, rawCanceledEvents] = await Promise.all([
+        readClient.getContractEvents({
+          address: nftMarketplaceAddress,
+          abi: NFTMarketplaceABI,
+          eventName: "ItemListed",
+          fromBlock,
+          toBlock: latestBlock,
+        }),
+        readClient.getContractEvents({
+          address: nftMarketplaceAddress,
+          abi: NFTMarketplaceABI,
+          eventName: "ItemBought",
+          fromBlock,
+          toBlock: latestBlock,
+        }),
+        readClient.getContractEvents({
+          address: nftMarketplaceAddress,
+          abi: NFTMarketplaceABI,
+          eventName: "ItemCanceled",
+          fromBlock,
+          toBlock: latestBlock,
+        }),
+      ]);
+
+      // Type-safe event casting
+      const listedEvents = rawListedEvents as unknown as ItemListedEvent[];
+      const boughtEvents = rawBoughtEvents as unknown as ItemBoughtEvent[];
+      const canceledEvents = rawCanceledEvents as unknown as ItemCanceledEvent[];
+
+      // Step 5: Update cache with new events
+
+      // Process new listings
+      for (const event of listedEvents) {
+        const { nftAddress, tokenId, price, seller } = event.args;
+        const key = getCacheKey(nftAddress, tokenId);
+
+        // Add to active listings
+        cache.activeListings.set(key, {
+          nftAddress,
+          tokenId: tokenId.toString(),
+          price: price.toString(),
+          seller,
+          blockNumber: event.blockNumber,
+          transactionHash: event.transactionHash,
+        });
+      }
+
+      // Process new purchases
+      for (const event of boughtEvents) {
+        const { nftAddress, tokenId } = event.args;
+        const key = getCacheKey(nftAddress, tokenId);
+
+        // Remove from active listings
+        cache.activeListings.delete(key);
+      }
+
+      // Process new cancellations
+      for (const event of canceledEvents) {
+        const { nftAddress, tokenId } = event.args;
+        const key = getCacheKey(nftAddress, tokenId);
+
+        // Remove from active listings
+        cache.activeListings.delete(key);
+      }
+
+      // Step 6: Update cache metadata
+      cache.lastScannedBlock = latestBlock;
+      cache.updatedAt = Date.now();
+
+      // Step 7: Save updated cache
+      marketplaceCache.saveCache(cache);
+
+      // Step 8: Convert cached listings to MarketplaceListing format
+      const activeListings: MarketplaceListing[] = [];
+
+      // Process all listings in parallel
+      const listingPromises = Array.from(cache.activeListings.entries()).map(
+        async ([key, cachedListing]) => {
+          try {
+            // Verify listing is still active on-chain (belt and suspenders)
+            const rawListing = await readClient.readContract({
+              address: nftMarketplaceAddress,
+              abi: NFTMarketplaceABI,
+              functionName: "getListing",
+              args: [cachedListing.nftAddress, BigInt(cachedListing.tokenId)],
+            });
+
+            // Type-safe casting
+            const listing = rawListing as unknown as MarketplaceListingData;
+
+            // If price is 0, the listing doesn't exist (was cancelled/sold)
+            if (!listing || listing.price === BigInt(0)) {
+              // Remove from cache
+              cache.activeListings.delete(key);
+              return null;
+            }
+
+            // Fetch real metadata
+            const metadata = await getMetadata(
+              cachedListing.nftAddress,
+              cachedListing.tokenId
+            );
+
+            const marketplaceListing: MarketplaceListing = {
+              nftAddress: cachedListing.nftAddress,
+              tokenId: cachedListing.tokenId,
+              price: listing.price.toString(),
+              priceInETH: parseFloat(formatEther(listing.price)),
+              seller: listing.seller,
+              isActive: true,
+              metadata: metadata || undefined,
+            };
+
+            return marketplaceListing;
+          } catch (error) {
+            console.error(
+              `Error processing listing ${key}:`,
+              error
+            );
+            return null;
+          }
+        }
+      );
+
+      const results = await Promise.all(listingPromises);
+
+      // Filter out null results
+      results.forEach((listing) => {
+        if (listing) {
+          activeListings.push(listing);
+        }
+      });
+
+      // Return active listings
+      return activeListings;
     } catch (error) {
       console.error("Error fetching active listings:", error);
       addNotification({
@@ -261,7 +349,7 @@ export const useMarketplace = () => {
 
       addNotification({
         title: "Item listed successfully!",
-        message: `You have listed item ${tokenId} for ${price} IP!`,
+        message: `You have listed item ${tokenId} for ${price} ETH!`,
         type: "success",
         action: {
           label: "View on StoryScan",
@@ -443,24 +531,90 @@ export const useMarketplace = () => {
     }
   };
 
-  const getProceeds = async (nftAddress: string) => {
+  const getProceeds = async (sellerAddress: string) => {
+    try {
+      const proceeds = await readClient.readContract({
+        address: nftMarketplaceAddress,
+        abi: NFTMarketplaceABI,
+        functionName: "getProceeds",
+        args: [sellerAddress],
+      });
+
+      return proceeds;
+    } catch (error) {
+      console.error(error);
+      return BigInt(0);
+    }
+  };
+
+  const withdrawProceeds = async () => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
         throw new Error("No wallet connected");
       }
 
-      const proceeds = await readClient.readContract({
+      const [account] = await walletClient.getAddresses();
+
+      // Check proceeds first
+      const proceeds = await getProceeds(account);
+      if (!proceeds || proceeds <= BigInt(0)) {
+        addNotification({
+          title: "No proceeds to withdraw",
+          message: "You don't have any proceeds to withdraw from sales.",
+          type: "info",
+          duration: 5000,
+        });
+        return;
+      }
+
+      const { request } = await readClient.simulateContract({
         address: nftMarketplaceAddress,
         abi: NFTMarketplaceABI,
-        functionName: "getProceeds",
-        args: [nftAddress],
+        functionName: "withdrawProceeds",
+        account,
       });
 
-      return proceeds;
+      const txHash = await walletClient.writeContract(request);
+
+      const tx = await readClient.waitForTransactionReceipt({
+        hash: txHash,
+      });
+
+      const proceedsInETH = formatEther(proceeds);
+      addNotification({
+        title: "Proceeds withdrawn successfully!",
+        message: `You have withdrawn ${proceedsInETH} ETH from your sales!`,
+        type: "success",
+        action: {
+          label: "View on StoryScan",
+          onClick: () => {
+            window.open(
+              `https://aeneid.storyscan.io/tx/${tx.transactionHash}`,
+              "_blank"
+            );
+          },
+        },
+        duration: 10000,
+      });
+
+      return tx;
     } catch (error) {
       console.error(error);
+      addNotification({
+        title: "Withdrawal failed",
+        message: error instanceof Error ? error.message : "Failed to withdraw proceeds",
+        type: "error",
+        duration: 5000,
+      });
+      throw error;
     }
+  };
+
+  // Force refresh: clear cache and fetch fresh data
+  const forceRefresh = async (): Promise<MarketplaceListing[]> => {
+    marketplaceCache.clearCache();
+    return await getAllActiveListings();
   };
 
   return {
@@ -470,8 +624,10 @@ export const useMarketplace = () => {
     updateListing,
     getListing,
     getProceeds,
+    withdrawProceeds,
     isApprovedForMarketplace,
     getAllActiveListings,
+    forceRefresh, // Expose force refresh to UI
   };
 };
 
@@ -480,7 +636,7 @@ export const useActiveListings = () => {
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getAllActiveListings } = useMarketplace();
+  const { getAllActiveListings, forceRefresh } = useMarketplace();
 
   const fetchListings = async () => {
     try {
@@ -496,6 +652,20 @@ export const useActiveListings = () => {
     }
   };
 
+  const handleForceRefresh = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const activeListings = await forceRefresh();
+      setListings(activeListings);
+    } catch (err) {
+      console.error("Error force refreshing listings:", err);
+      setError(err instanceof Error ? err.message : "Failed to refresh listings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchListings();
   }, []);
@@ -505,5 +675,6 @@ export const useActiveListings = () => {
     loading,
     error,
     refetch: fetchListings,
+    forceRefresh: handleForceRefresh, // Expose force refresh
   };
 };

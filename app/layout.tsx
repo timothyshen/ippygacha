@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Providers from '@/provider/web3Provider'
 import { NotificationProvider } from '@/contexts/notification-context'
+import { UserDataProvider } from '@/contexts/user-data-context'
 
 export const metadata: Metadata = {
   title: 'Gacha Machine',
@@ -18,7 +19,9 @@ export default function RootLayout({
       <body>
         <Providers>
           <NotificationProvider>
+            <UserDataProvider>
               {children}
+            </UserDataProvider>
           </NotificationProvider>
         </Providers>
       </body>

@@ -1,17 +1,22 @@
-export function shareToTwitter() {
-  // Create the tweet text
-  const tweetText = [
-    `Just pulled a ippy blind box`,
-    `Come and join the IPPY verse to reveal your ippy!`,
-    "",
-    "#IPPY",
-  ].join("\n");
-
-  const finalTweet = tweetText;
+export function shareToTwitter(itemName?: string, isRevealed: boolean = false) {
+  // Create the tweet text based on reveal status
+  const tweetText = isRevealed && itemName
+    ? [
+        `Just revealed my IPPY NFT: ${itemName}! 🎉`,
+        `Come and join the IPPY verse to reveal your ippy!`,
+        "",
+        "#IPPY #NFT",
+      ].join("\n")
+    : [
+        `Just pulled an IPPY blind box! 📦`,
+        `Come and join the IPPY verse to reveal your ippy!`,
+        "",
+        "#IPPY",
+      ].join("\n");
 
   // Create Twitter URL
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    finalTweet
+    tweetText
   )}`;
 
   // Open in new window

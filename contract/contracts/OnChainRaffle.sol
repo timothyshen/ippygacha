@@ -102,7 +102,7 @@ contract OnChainRaffle is
             BonusOutcome({payoutPpm: 400_000, probPpm: 7_000, givesNFT: false})
         ); // 0.7% chance of +40%
         bonus.push(
-            BonusOutcome({payoutPpm: 1_200_000, probPpm: 1_800, givesNFT: true})
+            BonusOutcome({payoutPpm: 1_000_000, probPpm: 1_800, givesNFT: true})
         ); // 0.18% chance of +120% + NFT
         bonus.push(
             BonusOutcome({payoutPpm: 2_000_000, probPpm: 200, givesNFT: false})

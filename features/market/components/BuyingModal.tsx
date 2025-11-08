@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/drawer"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { COLLECTION_GLOW } from "@/features/inventory/components/inventory"
+import { COLLECTION_GLOW } from "@/features/inventory/types"
 import { cn } from "@/lib/utils"
 import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarketplace"
 
@@ -29,7 +29,7 @@ export const BuyingModal = ({ listing }: BuyingModalProps) => {
     const { buyItem } = useMarketplace();
 
     const handlePurchase = async () => {
-        await buyItem(listing.nftAddress, listing.tokenId, listing.priceInIP.toString());
+        await buyItem(listing.nftAddress, listing.tokenId, listing.priceInETH.toString());
     };
 
     const handleCalculation = (price: number) => {
@@ -177,8 +177,8 @@ export const BuyingModal = ({ listing }: BuyingModalProps) => {
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
-                                                            <div>{listing.priceInIP.toFixed(2)} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
+                                                            <div>{listing.priceInETH.toFixed(2)} ETH</div>
+                                                            <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -190,8 +190,8 @@ export const BuyingModal = ({ listing }: BuyingModalProps) => {
                                                 <div className="flex justify-between font-medium">
                                                     <span>Total</span>
                                                     <div className="text-right">
-                                                        <div>{handleCalculation(listing.priceInIP).proceeds} IP</div>
-                                                        <div className="text-xs text-gray-400">(${(handleCalculation(listing.priceInIP).proceeds * 3).toFixed(2)})</div>
+                                                        <div>{handleCalculation(listing.priceInETH).proceeds} ETH</div>
+                                                        <div className="text-xs text-gray-400">(${(handleCalculation(listing.priceInETH).proceeds * 3).toFixed(2)})</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -262,7 +262,7 @@ export const BuyingModal = ({ listing }: BuyingModalProps) => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Floor Price</span>
-                                        <span>{listing.priceInIP} IP</span>
+                                        <span>{listing.priceInETH} ETH</span>
                                     </div>
                                 </div>
                             </div>

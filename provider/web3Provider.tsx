@@ -1,8 +1,28 @@
 "use client";
 
-import { PrivyProvider } from "@privy-io/react-auth";
+import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
 import { storyAeneid } from "viem/chains";
+import { useEffect } from "react";
+import { ensureUserExists } from "@/lib/auth";
+
+// Auto-create user profile on login
+function AutoCreateUserProfile() {
+    const { authenticated, user } = usePrivy();
+
+    useEffect(() => {
+        const createUserProfile = async () => {
+            if (authenticated && user?.wallet?.address) {
+                // Auto-create user profile in database
+                await ensureUserExists(user.wallet.address);
+            }
+        };
+
+        createUserProfile();
+    }, [authenticated, user?.wallet?.address]);
+
+    return null;
+}
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     return (
@@ -25,7 +45,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 supportedChains: [storyAeneid],
             }}
         >
-            <SmartWalletsProvider>{children}</SmartWalletsProvider>
+            <SmartWalletsProvider>
+                <AutoCreateUserProfile />
+                {children}
+            </SmartWalletsProvider>
         </PrivyProvider>
     );
 }

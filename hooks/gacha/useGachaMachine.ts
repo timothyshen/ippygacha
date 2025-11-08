@@ -9,12 +9,19 @@ import { ippyIPABI } from "@/lib/contract/ippyIPABI";
 import { ippyNFTAddress } from "@/lib/contract/contractAddress";
 import { readClient } from "@/lib/contract/client";
 import { metadataService } from "@/lib/metadata";
+import { useUserData } from "@/contexts/user-data-context";
 
 export const useGachaMachine = () => {
   const { user, authenticated } = usePrivy();
   const { inventory, unrevealedItems, refreshInventory } = useInventory();
-  const { purchaseBoxes, openBoxes } = useBlindBox();
+  const {
+    purchaseBoxes,
+    openBoxes,
+    purchaseState,
+    resetPurchaseState,
+  } = useBlindBox();
   const { addNotification } = useNotifications();
+  const { refreshUserData } = useUserData();
   const [coins, setCoins] = useState(10);
 
   const walletAddress = user?.wallet?.address;
@@ -27,6 +34,9 @@ export const useGachaMachine = () => {
   const [currentBlindBox, setCurrentBlindBox] = useState<GachaItem | null>(
     null
   );
+  const [currentTransactionHash, setCurrentTransactionHash] = useState<
+    string | null
+  >(null);
 
   const [isItemRevealed, setIsItemRevealed] = useState(false);
   const [blinkingCell, setBlinkingCell] = useState<number | null>(null);
@@ -34,6 +44,7 @@ export const useGachaMachine = () => {
   const [animationPhase, setAnimationPhase] = useState<
     "fast" | "slowing" | "landing" | "none"
   >("none");
+  const [showBallDrop, setShowBallDrop] = useState(false);
   const revealWatcherRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -44,6 +55,93 @@ export const useGachaMachine = () => {
       }
     };
   }, []);
+
+  // Watch purchase state and update animation accordingly
+  useEffect(() => {
+    if (!isSpinning) return;
+
+    console.log("[Gacha] Purchase state changed:", purchaseState.status);
+
+    // Update animation based on transaction state
+    if (purchaseState.status === "preparing") {
+      setAnimationPhase("fast");
+    } else if (purchaseState.status === "signing") {
+      // User needs to sign - slow down and focus on center
+      setAnimationPhase("landing");
+      setBlinkingCell(4);
+    } else if (purchaseState.status === "confirming") {
+      // Transaction submitted - accelerate animation
+      setAnimationPhase("fast");
+    } else if (purchaseState.status === "confirmed") {
+      // Stop blinking animation
+      if (blinkTimeoutRef.current) {
+        clearTimeout(blinkTimeoutRef.current);
+        blinkTimeoutRef.current = null;
+      }
+      setAnimationPhase("none");
+      setBlinkingCell(4); // Keep center cell highlighted
+
+      // Prepare item data
+      const result = getPlaceholderItem();
+      setCurrentBlindBox(result);
+      setCurrentTransactionHash(purchaseState.txHash);
+
+      // Short pause for dramatic effect, then ball drop
+      setTimeout(() => {
+        setBlinkingCell(null);
+        setShowBallDrop(true);
+      }, 300);
+
+      // Wait for ball drop animation to complete, then show modal
+      setTimeout(() => {
+        setShowBallDrop(false);
+        setIsSpinning(false);
+        setShowBlindBoxModal(true);
+      }, 1400); // 300ms pause + 1100ms ball drop
+
+      // Do backend work in background
+      Promise.all([
+        authenticated && user?.wallet?.address && purchaseState.txHash
+          ? awardActivityPoints(
+              user.wallet.address,
+              "GACHA_PULL",
+              {
+                timestamp: new Date().toISOString(),
+                amount: 1,
+              },
+              purchaseState.txHash
+            ).then(() => {
+              console.log("[Gacha] Activity points recorded");
+              return refreshUserData();
+            })
+          : Promise.resolve(),
+        refreshInventory().then(() => {
+          console.log("[Gacha] Inventory refreshed");
+        }),
+      ])
+        .then(() => {
+          console.log("[Gacha] All backend work complete");
+        })
+        .catch((error) => {
+          console.error("[Gacha] Backend work failed (non-critical):", error);
+        });
+
+      // Reset purchase state for next pull
+      resetPurchaseState();
+    } else if (purchaseState.status === "error") {
+      // Stop animation on error
+      if (blinkTimeoutRef.current) {
+        clearTimeout(blinkTimeoutRef.current);
+        blinkTimeoutRef.current = null;
+      }
+      setAnimationPhase("none");
+      setBlinkingCell(null);
+      setIsSpinning(false);
+
+      // Reset purchase state
+      resetPurchaseState();
+    }
+  }, [purchaseState, isSpinning, authenticated, user, refreshUserData, refreshInventory, resetPurchaseState]);
 
   const stopRevealWatcher = useCallback(() => {
     if (revealWatcherRef.current) {
@@ -63,8 +161,10 @@ export const useGachaMachine = () => {
       eventName: "NFTMinted",
       args: { to: walletAddress as `0x${string}` },
       poll: true,
-      pollingInterval: 2000,
+      pollingInterval: 1000, // Poll every 1 second for faster response
       onLogs: (logs) => {
+        console.log(`[Gacha] Received ${logs.length} NFTMinted event(s)`);
+
         const processLogs = async () => {
           for (const log of logs) {
             const { tokenId, nftType, isHidden } = log.args as {
@@ -76,9 +176,11 @@ export const useGachaMachine = () => {
             const tokenIdNumber = Number(tokenId);
             const nftTypeNumber = Number(nftType);
 
-            console.log("tokenId", tokenId);
-            console.log("nftType", nftType);
-            console.log("isHidden", isHidden);
+            console.log("[Gacha] Processing NFT:", {
+              tokenIdNumber,
+              nftTypeNumber,
+              isHidden,
+            });
 
             const tokenURI = await readClient.readContract({
               address: ippyNFTAddress,
@@ -87,14 +189,10 @@ export const useGachaMachine = () => {
               args: [tokenId],
             });
 
-            console.log("tokenURI", tokenURI);
-
             const metadata = await metadataService.getIPPYMetadata(
               tokenIdNumber,
               ippyNFTAddress
             );
-
-            console.log("metadata", metadata);
 
             const mintedItem: GachaItem = {
               id: `nft-${tokenIdNumber}`,
@@ -107,6 +205,7 @@ export const useGachaMachine = () => {
               attributes: metadata?.metadata.attributes,
             };
 
+            console.log("[Gacha] Setting revealed item:", mintedItem.name);
             setCurrentBlindBox(mintedItem);
             setIsItemRevealed(true);
             setShowBlindBoxModal(true);
@@ -114,10 +213,11 @@ export const useGachaMachine = () => {
 
           await refreshInventory();
           stopRevealWatcher();
+          console.log("[Gacha] Event watcher stopped");
         };
 
         processLogs().catch((error) => {
-          console.error("Failed to process NFTMinted logs:", error);
+          console.error("[Gacha] Failed to process NFTMinted logs:", error);
         });
       },
     });
@@ -136,9 +236,9 @@ export const useGachaMachine = () => {
   };
 
   const pullGacha = async () => {
-    if (coins < 1 || isSpinning || showBlindBoxModal) return;
+    if (isSpinning || showBlindBoxModal) return;
 
-    setCoins((prev) => prev - 1);
+    // 1. Immediately set animation state
     setIsSpinning(true);
     setLeverPulled(true);
     setShowResults(false);
@@ -146,6 +246,7 @@ export const useGachaMachine = () => {
     setAnimationPhase("fast");
     setIsItemRevealed(false);
 
+    // 2. Play lever animation
     await new Promise((resolve) => setTimeout(resolve, 500));
     setLeverPulled(false);
 
@@ -154,130 +255,104 @@ export const useGachaMachine = () => {
       blinkTimeoutRef.current = null;
     }
 
+    // 3. Start blinking animation
     startBlinkingAnimation();
 
-    addNotification({
-      type: "success",
-      title: "Starting Gacha!",
-      message: `Pulling a box...`,
-      icon: "🎰",
-      duration: 4000,
-    });
+    // 4. Start transaction asynchronously (state changes are handled by useEffect)
+    try {
+      console.log("[Gacha] Calling purchaseBoxes(1)...");
+      await purchaseBoxes(1);
+      // Transaction state updates are handled by purchaseState in useEffect
+    } catch (error) {
+      console.error("[Gacha] Error purchasing boxes:", error);
+      setIsSpinning(false);
+      setAnimationPhase("none");
+      setBlinkingCell(null);
+    }
   };
 
   const startBlinkingAnimation = () => {
-    const fastPhaseDuration = 1000;
-    const slowingPhaseDuration = 1000;
-    const landingPhaseDuration = 500;
-    const initialBlinkInterval = 80;
-    const maxBlinkInterval = 300;
+    // Animation phases: data structure defines behavior
+    const ANIMATION_CONFIG = [
+      {
+        duration: 1500,
+        interval: 80,
+        cells: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        phase: "fast" as const,
+      },
+      {
+        duration: 1500,
+        intervalRange: [80, 300],
+        cells: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        phase: "slowing" as const,
+      },
+      {
+        duration: 1000,
+        interval: 300,
+        cells: [1, 3, 4, 5, 7],
+        finalCell: 4,
+        phase: "landing" as const,
+      },
+    ];
 
     const startTime = Date.now();
-    let currentInterval = initialBlinkInterval;
 
     const scheduleNextBlink = () => {
-      blinkTimeoutRef.current = null;
-      const elapsedTime = Date.now() - startTime;
-      const totalAnimationTime =
-        fastPhaseDuration + slowingPhaseDuration + landingPhaseDuration;
+      const elapsed = Date.now() - startTime;
+      const totalDuration = ANIMATION_CONFIG.reduce(
+        (sum, phase) => sum + phase.duration,
+        0
+      );
 
-      if (elapsedTime < fastPhaseDuration) {
-        setAnimationPhase((prev) => (prev === "fast" ? prev : "fast"));
-        setBlinkingCell(Math.floor(Math.random() * 9));
-        currentInterval = initialBlinkInterval;
-      } else if (elapsedTime < fastPhaseDuration + slowingPhaseDuration) {
-        setAnimationPhase((prev) => (prev === "slowing" ? prev : "slowing"));
-
-        setBlinkingCell(Math.floor(Math.random() * 9));
-        const slowingProgress =
-          (elapsedTime - fastPhaseDuration) / slowingPhaseDuration;
-        currentInterval =
-          initialBlinkInterval +
-          (maxBlinkInterval - initialBlinkInterval) * slowingProgress;
-      } else if (elapsedTime < totalAnimationTime) {
-        setAnimationPhase((prev) => (prev === "landing" ? prev : "landing"));
-
-        const remainingTime = totalAnimationTime - elapsedTime;
-        const remainingBlinks = Math.max(
-          1,
-          Math.floor(remainingTime / maxBlinkInterval)
-        );
-
-        if (remainingBlinks <= 1) {
-          setBlinkingCell(4);
-        } else {
-          const possibleCells = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-          const landingProgress =
-            (elapsedTime - fastPhaseDuration - slowingPhaseDuration) /
-            landingPhaseDuration;
-
-          if (landingProgress > 0.5) {
-            const adjacentCells = [1, 3, 4, 5, 7];
-            setBlinkingCell(
-              adjacentCells[Math.floor(Math.random() * adjacentCells.length)]
-            );
-          } else {
-            setBlinkingCell(
-              possibleCells[Math.floor(Math.random() * possibleCells.length)]
-            );
-          }
-        }
-
-        currentInterval = maxBlinkInterval;
-      } else {
-        finishAnimation();
+      // If max animation time reached, keep animating on final cell (waiting for transaction)
+      if (elapsed >= totalDuration) {
+        setAnimationPhase("landing");
+        setBlinkingCell(4); // Stay on center cell
+        blinkTimeoutRef.current = setTimeout(scheduleNextBlink, 300);
         return;
       }
 
-      blinkTimeoutRef.current = setTimeout(scheduleNextBlink, currentInterval);
+      // Find current phase
+      let accumulatedTime = 0;
+      for (const config of ANIMATION_CONFIG) {
+        if (elapsed < accumulatedTime + config.duration) {
+          const progress = (elapsed - accumulatedTime) / config.duration;
+
+          setAnimationPhase(config.phase);
+
+          // Select cell based on phase config
+          if (config.finalCell !== undefined && progress > 0.8) {
+            setBlinkingCell(config.finalCell);
+          } else {
+            setBlinkingCell(
+              config.cells[Math.floor(Math.random() * config.cells.length)]
+            );
+          }
+
+          // Calculate interval (support both fixed and progressive)
+          const interval = config.intervalRange
+            ? config.intervalRange[0] +
+              (config.intervalRange[1] - config.intervalRange[0]) * progress
+            : config.interval;
+
+          blinkTimeoutRef.current = setTimeout(scheduleNextBlink, interval);
+          return;
+        }
+        accumulatedTime += config.duration;
+      }
     };
 
     scheduleNextBlink();
   };
 
-  const finishAnimation = async () => {
-    try {
-      const txHash = await purchaseBoxes(1);
-
-      console.log("txHash", txHash);
-      // // Record gacha pull activity
-      if (authenticated && user?.wallet?.address && txHash) {
-        await awardActivityPoints(
-          user.wallet.address,
-          "GACHA_PULL",
-          {
-            timestamp: new Date().toISOString(),
-            amount: 1,
-          },
-          txHash
-        );
-      }
-
-      // Refresh balances after purchase
-      await refreshInventory();
-    } catch (error) {
-      console.error("Error purchasing boxes:", error);
-    } finally {
-      setIsSpinning(false);
-      // Use placeholder item for UI - actual item comes from contract
-      const result = getPlaceholderItem();
-
-      setAnimationPhase("none");
-      setBlinkingCell(null);
-
-      // Since we're using contract data, these functions now trigger refreshes
-      setCurrentBlindBox(result);
-
-      setShowBlindBoxModal(true);
-      setIsSpinning(false);
-    }
-  };
-
   const revealBlindBox = async () => {
     try {
+      console.log("[Gacha] Starting reveal watcher...");
       startRevealWatcher();
 
+      console.log("[Gacha] Calling openBoxes(1)...");
       const txHash = await openBoxes(1);
+      console.log("[Gacha] Transaction confirmed:", txHash);
 
       // Record reveal activity with additional metadata
       if (authenticated && user?.wallet?.address && txHash) {
@@ -291,12 +366,18 @@ export const useGachaMachine = () => {
           },
           txHash
         );
+
+        // Refresh user data to update level, points, and recent activities
+        await refreshUserData();
       }
 
+      console.log("[Gacha] Refreshing inventory...");
       await refreshInventory();
+      console.log("[Gacha] Reveal complete. Waiting for NFTMinted event...");
     } catch (error) {
       stopRevealWatcher();
-      console.error("Error opening box:", error);
+      console.error("[Gacha] Error opening box:", error);
+      throw error; // Re-throw so BlindBoxModal can show error
     }
   };
 
@@ -305,8 +386,10 @@ export const useGachaMachine = () => {
     setCurrentResults([]);
     setShowBlindBoxModal(false);
     setCurrentBlindBox(null);
+    setCurrentTransactionHash(null);
     setIsItemRevealed(false);
     setIsSpinning(false);
+    setShowBallDrop(false);
   };
 
   useEffect(() => {
@@ -324,9 +407,11 @@ export const useGachaMachine = () => {
     showResults,
     showBlindBoxModal,
     currentBlindBox,
+    currentTransactionHash,
     isItemRevealed,
     blinkingCell,
     animationPhase,
+    showBallDrop,
     inventory,
     unrevealedItems,
 

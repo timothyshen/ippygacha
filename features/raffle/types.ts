@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+
 // Contract-based interfaces
 export interface ContractRaffleInfo {
   active: boolean;
@@ -47,7 +49,7 @@ export interface Winner {
 export interface Prize {
   id: number;
   name: string;
-  icon: any; // Lucide icon component
+  icon: LucideIcon;
   color: string;
   tier?: number;
   probability?: number;

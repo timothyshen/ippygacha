@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  rateLimiter,
+  RATE_LIMITS,
+  getClientIdentifier,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting: 100 requests per minute per IP
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.GENERAL.limit,
+      RATE_LIMITS.GENERAL.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "points"; // 'points' or 'xp'
@@ -50,11 +72,19 @@ export async function GET(request: NextRequest) {
       joinedAt: user.createdAt,
     }));
 
-    return NextResponse.json({
-      type,
-      leaderboard,
-      total: leaderboard.length,
-    });
+    return NextResponse.json(
+      {
+        type,
+        leaderboard,
+        total: leaderboard.length,
+      },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
     return NextResponse.json(

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  rateLimiter,
+  RATE_LIMITS,
+  getClientIdentifier,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 // GET a single activity by ID
 export async function GET(
@@ -7,6 +13,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting: 100 requests per minute per IP
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.GENERAL.limit,
+      RATE_LIMITS.GENERAL.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const { id } = await params;
 
@@ -44,7 +66,15 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ activity });
+    return NextResponse.json(
+      { activity },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching activity:", error);
     return NextResponse.json(
@@ -60,6 +90,22 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting: 100 requests per minute per IP
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.GENERAL.limit,
+      RATE_LIMITS.GENERAL.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many update requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const { id } = await params;
     const body = await request.json();
@@ -114,7 +160,15 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({ activity });
+    return NextResponse.json(
+      { activity },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error updating activity:", error);
     return NextResponse.json(
@@ -130,6 +184,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting: 5 requests per minute per IP (very strict for deletes)
+    const clientId = getClientIdentifier(request);
+    const rateLimit = rateLimiter.check(
+      clientId,
+      RATE_LIMITS.STRICT.limit,
+      RATE_LIMITS.STRICT.windowMs
+    );
+
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(
+        "Too many delete requests. Please try again later.",
+        rateLimit.resetTime,
+        rateLimit.retryAfter!
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     const { id } = await params;
 
@@ -153,7 +223,13 @@ export async function DELETE(
 
     return NextResponse.json(
       { message: "Activity deleted successfully" },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+        },
+      }
     );
   } catch (error) {
     console.error("Error deleting activity:", error);

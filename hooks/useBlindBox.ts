@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   blindBoxABI,
   readClient,
@@ -8,9 +9,23 @@ import { parseEther, formatEther } from "viem";
 import { useNotifications } from "@/contexts/notification-context";
 import { getContractInfo, getUserBlindBoxBalance } from "./contractRead";
 
+type TransactionState =
+  | { status: "idle" }
+  | { status: "preparing" }
+  | { status: "signing" }
+  | { status: "confirming"; txHash: string }
+  | { status: "confirmed"; txHash: string }
+  | { status: "error"; error: Error };
+
 export const useBlindBox = () => {
   const { getWalletClient } = useWalletClient();
   const { addNotification } = useNotifications();
+  const [purchaseState, setPurchaseState] = useState<TransactionState>({
+    status: "idle",
+  });
+  const [openBoxState, setOpenBoxState] = useState<TransactionState>({
+    status: "idle",
+  });
 
   // Helper function to format contract info response
   const formatContractInfo = async () => {
@@ -69,7 +84,8 @@ export const useBlindBox = () => {
   // purchaseBoxes(uint256 amount) payable - Buy blind boxes
   const purchaseBoxes = async (amount: number) => {
     try {
-      // Step 1: Show preparing notification
+      // Step 1: Preparing
+      setPurchaseState({ status: "preparing" });
       addNotification({
         title: "Purchasing boxes...",
         message: `Purchasing ${amount} box${amount > 1 ? "es" : ""}...`,
@@ -85,8 +101,12 @@ export const useBlindBox = () => {
       // Get the account address
       const [account] = await walletClient.getAddresses();
 
+      // Get box price from contract
+      const contractInfoResult = await getContractInfo();
+      const [boxPrice] = contractInfoResult as [bigint, bigint, bigint, bigint, bigint];
+
       // Calculate total cost
-      const totalCost = parseEther("0.1") * BigInt(amount);
+      const totalCost = boxPrice * BigInt(amount);
 
       // First simulate the contract call to ensure it will succeed
       const { request } = await readClient.simulateContract({
@@ -98,20 +118,20 @@ export const useBlindBox = () => {
         account,
       });
 
-      // Step 2: Show submitting notification
+      // Step 2: Signing (wallet popup)
+      setPurchaseState({ status: "signing" });
       addNotification({
-        title: "Submitting transaction...",
-        message: `Sending purchase transaction for ${amount} box${
-          amount > 1 ? "es" : ""
-        }...`,
+        title: "Please sign transaction",
+        message: `Confirm purchase in your wallet...`,
         type: "info",
         duration: 5000,
       });
 
-      // Execute the actual transaction
+      // Execute the actual transaction (wallet will popup)
       const txHash = await walletClient.writeContract(request);
 
-      // Step 3: Show waiting for confirmation notification
+      // Step 3: Confirming (waiting for on-chain confirmation)
+      setPurchaseState({ status: "confirming", txHash });
       addNotification({
         title: "Transaction submitted!",
         message: `Waiting for confirmation... Hash: ${txHash.slice(0, 10)}...`,
@@ -126,7 +146,8 @@ export const useBlindBox = () => {
 
       const txLink = `https://aeneid.storyscan.io/tx/${txHash}`;
 
-      // Step 5: Show success notification
+      // Step 5: Confirmed
+      setPurchaseState({ status: "confirmed", txHash });
       addNotification({
         title: "Boxes purchased successfully!",
         message: `You have purchased ${amount} box${amount > 1 ? "es" : ""}!`,
@@ -144,11 +165,13 @@ export const useBlindBox = () => {
     } catch (error) {
       console.error("Error purchasing boxes:", error);
 
+      const err = error instanceof Error ? error : new Error("Unknown error");
+      setPurchaseState({ status: "error", error: err });
+
       // Show error notification
       addNotification({
         title: "Purchase failed",
-        message:
-          error instanceof Error ? error.message : "An unknown error occurred",
+        message: err.message,
         type: "error",
         duration: 8000,
       });
@@ -160,7 +183,8 @@ export const useBlindBox = () => {
   // openBoxes(uint256 amount) - Open boxes to reveal NFTs
   const openBoxes = async (amount: number) => {
     try {
-      // Step 1: Show preparing notification
+      // Step 1: Preparing
+      setOpenBoxState({ status: "preparing" });
       addNotification({
         title: "Preparing to open boxes...",
         message: `Setting up to open ${amount} boxes...`,
@@ -186,10 +210,15 @@ export const useBlindBox = () => {
         );
       }
 
-      // Step 2: Show submitting notification
+      // Get open box fee from contract if needed (currently hardcoded in contract)
+      // For now, use the known fee of 0.01 ETH
+      const openBoxFee = parseEther("0.01");
+
+      // Step 2: Signing (wallet popup)
+      setOpenBoxState({ status: "signing" });
       addNotification({
-        title: "Submitting transaction...",
-        message: `Opening ${amount} box${amount > 1 ? "es" : ""}...`,
+        title: "Please sign transaction",
+        message: `Confirm opening ${amount} box${amount > 1 ? "es" : ""} in your wallet...`,
         type: "info",
         duration: 5000,
       });
@@ -200,11 +229,12 @@ export const useBlindBox = () => {
         abi: blindBoxABI,
         functionName: "openBox",
         args: [BigInt(amount)],
-        value: parseEther("0.01"),
+        value: openBoxFee,
         account,
       });
 
-      // Step 3: Show waiting for confirmation notification
+      // Step 3: Confirming (waiting for on-chain confirmation)
+      setOpenBoxState({ status: "confirming", txHash });
       addNotification({
         title: "Transaction submitted!",
         message: `Waiting for box${
@@ -221,7 +251,8 @@ export const useBlindBox = () => {
 
       const txLink = `https://aeneid.storyscan.io/tx/${txHash}`;
 
-      // Step 5: Show success notification
+      // Step 5: Confirmed
+      setOpenBoxState({ status: "confirmed", txHash });
       addNotification({
         title: "Boxes opened successfully!",
         message: `${amount} box${
@@ -241,11 +272,13 @@ export const useBlindBox = () => {
     } catch (error) {
       console.error("Error opening boxes:", error);
 
+      const err = error instanceof Error ? error : new Error("Unknown error");
+      setOpenBoxState({ status: "error", error: err });
+
       // Show error notification
       addNotification({
         title: "Failed to open boxes",
-        message:
-          error instanceof Error ? error.message : "An unknown error occurred",
+        message: err.message,
         type: "error",
         duration: 8000,
       });
@@ -254,11 +287,20 @@ export const useBlindBox = () => {
     }
   };
 
+  // Reset transaction states
+  const resetPurchaseState = () => setPurchaseState({ status: "idle" });
+  const resetOpenBoxState = () => setOpenBoxState({ status: "idle" });
+
   return {
     purchaseBoxes,
     openBoxes,
     getContractInfo: formatContractInfo, // Use formatted version
     getUserBoxBalance,
     checkUserBalance,
+    // Transaction states
+    purchaseState,
+    openBoxState,
+    resetPurchaseState,
+    resetOpenBoxState,
   };
 };

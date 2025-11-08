@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { SortBy } from "@/features/inventory/components/inventory";
+import { SortBy } from "@/features/inventory/types";
 
 export const useInventoryFilters = () => {
   // UI filter state
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCollection, setSelectedCollection] = useState<string>("all");
   const [selectedVersion, setSelectedVersion] = useState<string>("all");
+  const [selectedNFTType, setSelectedNFTType] = useState<string>("all"); // NFT type filter (e.g., THIPPY, HIPPY)
   const [sortBy, setSortBy] = useState<SortBy>("recent");
 
   // Modal state
@@ -27,14 +27,21 @@ export const useInventoryFilters = () => {
     setSelectedCollectionDetail(null);
   };
 
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setSelectedVersion("all");
+    setSelectedNFTType("all");
+    setSortBy("recent");
+  };
+
   return {
     // Filter state
     searchTerm,
     setSearchTerm,
-    selectedCollection,
-    setSelectedCollection,
     selectedVersion,
     setSelectedVersion,
+    selectedNFTType,
+    setSelectedNFTType,
     sortBy,
     setSortBy,
 
@@ -47,5 +54,6 @@ export const useInventoryFilters = () => {
     // Actions
     openCollectionDetail,
     closeCollectionModal,
+    clearAllFilters,
   };
 };

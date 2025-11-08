@@ -25,7 +25,7 @@ export function BlindBoxTab({ unrevealedItems, onRevealItem }: BlindBoxTabProps)
 
     if (unrevealedItems.length === 0) {
         return (
-            <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm">
+            <Card className="bg-white/80 border-slate-200 shadow-lg backdrop-blur-sm mx-0.5 sm:mx-0">
                 <CardContent className="p-16 text-center">
                     <Package className="w-20 h-20 text-slate-300 mx-auto mb-6" />
                     <h3 className="text-2xl font-bold text-slate-700 mb-3">No Blind Boxes</h3>
@@ -43,7 +43,7 @@ export function BlindBoxTab({ unrevealedItems, onRevealItem }: BlindBoxTabProps)
 
 
     return (
-        <Card className="bg-gradient-to-r from-rose-50 to-pink-50 border-rose-300 shadow-xl">
+        <Card className="bg-gradient-to-r from-rose-50 to-pink-50 border-rose-300 shadow-xl mx-0.5 sm:mx-0">
             <CardHeader>
                 <CardTitle className="text-rose-800 flex items-center gap-3 text-xl">
                     <div className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center">

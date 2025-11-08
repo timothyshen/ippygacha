@@ -20,6 +20,11 @@ model User {
   updatedAt     DateTime   @updatedAt
   activities    Activity[]
 
+  // Indexes for performance
+  @@index([totalPoints(sort: Desc)], name: "idx_users_points")
+  @@index([totalXp(sort: Desc)], name: "idx_users_xp")
+  @@index([currentLevel(sort: Desc)], name: "idx_users_level")
+  @@index([createdAt(sort: Desc)], name: "idx_users_created")
   @@map("users")
 }
 
@@ -34,6 +39,11 @@ model Activity {
   txnHash      String?
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Indexes for performance
+  @@index([userId, createdAt(sort: Desc)], name: "idx_activities_user_created")
+  @@index([activityType], name: "idx_activities_type")
+  @@index([createdAt(sort: Desc)], name: "idx_activities_created")
+  @@index([txnHash], name: "idx_activities_txnhash")
   @@map("activities")
 }
 

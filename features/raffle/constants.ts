@@ -4,10 +4,10 @@ import { Prize } from "./types";
 // Contract-based prize tiers (matching OnChainRaffle.sol)
 export const PRIZE_TIERS = {
   GUARANTEED: 1, // Guaranteed return (100% of entry)
-  BONUS: 2, // Bonus prizes (40%, 120%, 200% + potential NFT)
+  BONUS: 2, // Bonus prizes (40%, 100% + NFT, 200%)
 } as const;
 
-// Display prizes based on contract logic
+// Display prizes based on contract logic (matching OnChainRaffle.sol exactly)
 export const PRIZES: Prize[] = [
   {
     id: 1,
@@ -15,7 +15,7 @@ export const PRIZES: Prize[] = [
     icon: Coins,
     color: "text-yellow-500",
     tier: PRIZE_TIERS.GUARANTEED,
-    probability: 100, // Always awarded
+    probability: 100, // Always awarded (100% of entry)
   },
   {
     id: 2,
@@ -23,39 +23,23 @@ export const PRIZES: Prize[] = [
     icon: Coins,
     color: "text-green-500",
     tier: PRIZE_TIERS.BONUS,
-    probability: 0.7, // 0.7% chance
+    probability: 0.7, // 0.7% chance (payoutPpm: 400_000)
   },
   {
     id: 3,
-    name: "100% Bonus",
-    icon: Trophy,
-    color: "text-pink-500",
+    name: "100% Bonus + NFT",
+    icon: ImageIcon,
+    color: "text-purple-500",
     tier: PRIZE_TIERS.BONUS,
-    probability: 0.02, // 0.02% chance
+    probability: 0.18, // 0.18% chance (payoutPpm: 1_000_000, givesNFT: true)
   },
   {
     id: 4,
-    name: "120% Bonus",
-    icon: Trophy,
-    color: "text-purple-500",
-    tier: PRIZE_TIERS.BONUS,
-    probability: 0.18, // 0.18% chance
-  },
-  {
-    id: 5,
     name: "200% Bonus",
     icon: Trophy,
     color: "text-pink-500",
     tier: PRIZE_TIERS.BONUS,
-    probability: 0.02, // 0.02% chance
-  },
-  {
-    id: 6,
-    name: "NFT",
-    icon: ImageIcon,
-    color: "text-purple-500",
-    tier: PRIZE_TIERS.BONUS,
-    probability: 0.18, // 0.18% chance
+    probability: 0.02, // 0.02% chance (payoutPpm: 2_000_000)
   },
 ];
 
@@ -68,19 +52,23 @@ export const CONTRACT_CONSTANTS = {
   PPM_DENOM: 1000000, // 1e6 (parts per million)
 } as const;
 
+// Wheel visualization constants
+export const WHEEL_CONFIG = {
+  REPETITIONS: 3, // Each prize repeats 3 times = 12 total shards
+  SPIN_DURATION: 4000, // Duration of spin animation in ms
+} as const;
+
 // Local cooldown period (5 minutes for demo - contract doesn't enforce cooldown)
 // Cooldown period (5 minutes - matches smart contract)
 export const COOLDOWN_PERIOD = 5 * 60; // 5 minutes in seconds (matches contract)
 export const COOLDOWN_PERIOD_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// Prize colors for UI display
+// Prize colors for UI display (matching contract bonus structure)
 export const PRIZE_COLORS = [
-  "bg-gradient-to-br from-yellow-400 to-yellow-600", // Guaranteed return
+  "bg-gradient-to-br from-yellow-400 to-yellow-600", // Guaranteed return (100%)
   "bg-gradient-to-br from-green-400 to-green-600", // 40% bonus
-  "bg-gradient-to-br from-purple-400 to-purple-600", // 120% bonus + NFT
+  "bg-gradient-to-br from-purple-400 to-purple-600", // 100% bonus + NFT
   "bg-gradient-to-br from-pink-400 to-pink-600", // 200% bonus
-  "bg-gradient-to-br from-purple-400 to-purple-600", // NFT
-  "bg-gradient-to-br from-pink-400 to-pink-600", // 100% bonus
 ];
 
 // Contract event names (for listening to events)

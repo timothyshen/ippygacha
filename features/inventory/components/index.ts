@@ -4,4 +4,4 @@ export { CollectionFilters } from "./CollectionFilters";
 export { CollectionView } from "./CollectionView";
 export { GridView } from "./GridView";
 export { CollectionModal } from "./CollectionModal";
-export * from "./inventory";
+export * from "@/features/inventory/types";

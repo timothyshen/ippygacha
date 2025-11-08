@@ -12,7 +12,7 @@ import {
     COLLECTION_TOTALS,
     COLLECTION_COLORS,
     VERSION_STYLES
-} from "./inventory"
+} from "@/features/inventory/types"
 
 interface CollectionViewProps {
     collectionCompletionPercentage: CollectionStats
