@@ -53,8 +53,6 @@ export class MarketplaceEventCacheManager {
             this.deserializeListing(listing),
           ])
         ),
-        soldItems: new Set(parsed.soldItems),
-        canceledItems: new Set(parsed.canceledItems),
         lastScannedBlock: BigInt(parsed.lastScannedBlock),
         updatedAt: parsed.updatedAt,
         version: parsed.version,
@@ -85,8 +83,6 @@ export class MarketplaceEventCacheManager {
             this.serializeListing(listing),
           ])
         ),
-        soldItems: Array.from(cache.soldItems),
-        canceledItems: Array.from(cache.canceledItems),
         lastScannedBlock: cache.lastScannedBlock.toString(),
         updatedAt: cache.updatedAt,
         version: cache.version,
@@ -126,8 +122,6 @@ export class MarketplaceEventCacheManager {
   initEmptyCache(startBlock: bigint = BigInt(0)): MarketplaceEventCache {
     return {
       activeListings: new Map(),
-      soldItems: new Set(),
-      canceledItems: new Set(),
       lastScannedBlock: startBlock,
       updatedAt: Date.now(),
       version: CACHE_VERSION,
@@ -152,14 +146,12 @@ export class MarketplaceEventCacheManager {
 
     const serialized = JSON.stringify({
       activeListings: Object.fromEntries(cache.activeListings),
-      soldItems: Array.from(cache.soldItems),
-      canceledItems: Array.from(cache.canceledItems),
     });
 
     return {
       activeListings: cache.activeListings.size,
-      soldItems: cache.soldItems.size,
-      canceledItems: cache.canceledItems.size,
+      soldItems: 0, // Legacy field, always 0
+      canceledItems: 0, // Legacy field, always 0
       lastScannedBlock: cache.lastScannedBlock.toString(),
       cacheAge: Date.now() - cache.updatedAt,
       cacheSizeKB: Math.round((serialized.length * 2) / 1024), // UTF-16 = 2 bytes per char

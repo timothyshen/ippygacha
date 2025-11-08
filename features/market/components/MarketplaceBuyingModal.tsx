@@ -23,6 +23,7 @@ import { getImageDisplayUrl } from "@/lib/metadata"
 
 interface MarketplaceBuyingModalProps {
     listing: MarketplaceListing
+    onPurchaseSuccess?: () => void
 }
 
 const traits = [
@@ -32,16 +33,22 @@ const traits = [
     { trait_type: "Type", value: "Standard", rarity: "45%" },
 ]
 
-export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps) => {
+export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: MarketplaceBuyingModalProps) => {
     const [isHovered, setIsHovered] = useState(false)
     const [detailOpen, setDetailOpen] = useState(false)
+    const [drawerOpen, setDrawerOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const { buyItem } = useMarketplace()
 
     const handlePurchase = async () => {
         try {
             setLoading(true)
-            await buyItem(listing.nftAddress, listing.tokenId, listing.priceInIP.toString())
+            await buyItem(listing.nftAddress, listing.tokenId, listing.priceInETH.toString())
+            // Close drawer and refresh on success
+            setDrawerOpen(false)
+            if (onPurchaseSuccess) {
+                onPurchaseSuccess()
+            }
         } catch (error) {
             console.error("Purchase failed:", error)
         } finally {
@@ -76,9 +83,18 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                     "p-0 transition-all duration-300 cursor-pointer border-2 shadow-lg hover:shadow-xl relative overflow-hidden",
                     COLLECTION_GLOW.ippy,
                 )}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
+                onMouseEnter={() => !loading && setIsHovered(true)}
+                onMouseLeave={() => !loading && setIsHovered(false)}
             >
+                {/* Loading overlay on card */}
+                {loading && (
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
+                        <div className="flex flex-col items-center gap-3">
+                            <Loader2 className="w-8 h-8 animate-spin text-white" />
+                            <p className="text-white text-sm font-medium">Processing purchase...</p>
+                        </div>
+                    </div>
+                )}
                 <CardContent className="p-0">
                     <div className="relative" onClick={() => setDetailOpen(true)}>
                         <div className="aspect-square flex items-center justify-center relative bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg">
@@ -108,7 +124,7 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                     <div className="w-full relative min-h-[40px]">
                         {isHovered ? (
                             <div className="flex w-full h-full animate-in slide-in-from-bottom-2 duration-500 ease-out">
-                                <Drawer onClose={() => setIsHovered(false)}>
+                                <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
                                     <DrawerTrigger asChild>
                                         <Button
                                             size="lg"
@@ -148,8 +164,8 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
-                                                            <div>{listing.priceInIP.toFixed(2)} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
+                                                            <div>{listing.priceInETH.toFixed(2)} ETH</div>
+                                                            <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -161,8 +177,8 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                                                 <div className="flex justify-between font-medium">
                                                     <span>Total</span>
                                                     <div className="text-right">
-                                                        <div>{listing.priceInIP.toFixed(2)} IP</div>
-                                                        <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
+                                                        <div>{listing.priceInETH.toFixed(2)} ETH</div>
+                                                        <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-gray-400">
@@ -188,10 +204,10 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                             <div className="flex w-full min-h-[40px] items-left justify-start bg-gray-800/80 backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out px-2">
                                 <div className="flex flex-col items-left ml-3 py-1">
                                     <p className="text-left text-gray-200 font-extrabold text-sm">
-                                        {listing.priceInIP.toFixed(2)} IP
+                                        {listing.priceInETH.toFixed(2)} ETH
                                     </p>
                                     <p className="text-left text-gray-400 font-extrabold text-xs">
-                                        (${(listing.priceInIP * 3).toFixed(2)})
+                                        (${(listing.priceInETH * 3).toFixed(2)})
                                     </p>
                                 </div>
                             </div>
@@ -238,7 +254,7 @@ export const MarketplaceBuyingModal = ({ listing }: MarketplaceBuyingModalProps)
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Price</span>
-                                        <span>{listing.priceInIP.toFixed(2)} IP</span>
+                                        <span>{listing.priceInETH.toFixed(2)} ETH</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Contract</span>

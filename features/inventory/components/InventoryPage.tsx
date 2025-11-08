@@ -32,6 +32,7 @@ export default function Inventory() {
         getFilteredItems,
         getNFTTypeBreakdown,
         revealItemFromInventory,
+        refreshInventory,
     } = useInventoryLogic()
 
     // Use the inventory filters hook
@@ -111,6 +112,8 @@ export default function Inventory() {
                 inventoryLength={inventory.length}
                 batchSelection={batchSelection}
                 favorites={favorites}
+                onListSuccess={refreshInventory}
+                onCancelSuccess={refreshInventory}
             />
         )
     }

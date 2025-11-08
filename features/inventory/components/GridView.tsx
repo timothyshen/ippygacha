@@ -17,9 +17,11 @@ interface GridViewProps {
         toggleFavorite: (itemId: string) => void
         isFavorite: (itemId: string) => boolean
     }
+    onListSuccess?: () => void
+    onCancelSuccess?: () => void
 }
 
-export function GridView({ items, inventoryLength, batchSelection, favorites }: GridViewProps) {
+export function GridView({ items, inventoryLength, batchSelection, favorites, onListSuccess, onCancelSuccess }: GridViewProps) {
     // Check if any items are still loading metadata
     const hasLoadingItems = items.some((item) => item.metadataLoading);
 
@@ -76,6 +78,8 @@ export function GridView({ items, inventoryLength, batchSelection, favorites }: 
                                 item={item}
                                 batchSelection={batchSelection}
                                 favorites={favorites}
+                                onListSuccess={onListSuccess}
+                                onCancelSuccess={onCancelSuccess}
                             />
                         </div>
                     ))}

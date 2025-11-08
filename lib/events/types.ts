@@ -4,12 +4,6 @@ export interface MarketplaceEventCache {
   // Active listings (not sold or canceled)
   activeListings: Map<string, CachedListing>;
 
-  // Sold items (tokenId set)
-  soldItems: Set<string>;
-
-  // Canceled items (tokenId set)
-  canceledItems: Set<string>;
-
   // Last scanned block number
   lastScannedBlock: bigint;
 
@@ -30,8 +24,6 @@ export interface CachedListing {
 // Serialized version for localStorage
 export interface SerializedEventCache {
   activeListings: Record<string, SerializedListing>;
-  soldItems: string[];
-  canceledItems: string[];
   lastScannedBlock: string;
   updatedAt: number;
   version: number;

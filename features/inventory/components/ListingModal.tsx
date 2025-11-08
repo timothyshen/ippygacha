@@ -40,9 +40,11 @@ interface ListingModalProps {
         toggleFavorite: (itemId: string) => void
         isFavorite: (itemId: string) => boolean
     }
+    onListSuccess?: () => void
+    onCancelSuccess?: () => void
 }
 
-export const ListingModal = ({ item, batchSelection, favorites }: ListingModalProps) => {
+export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, onCancelSuccess }: ListingModalProps) => {
     const isMobile = useIsMobile()
     const [isHovered, setIsHovered] = useState(false)
     const itemId = item.id || `${item.name}-${item.tokenId}`
@@ -123,7 +125,10 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
         try {
             setListingLoading(true)
             await listItem(ippyNFTAddress, tokenId.toString(), price.toString());
+
+            // Close drawer
             setListDrawerOpen(false)
+
             // Refetch listing status
             const listing = await getListing(ippyNFTAddress, tokenId.toString())
             if (listing && typeof listing === 'object' && 'price' in listing) {
@@ -132,6 +137,11 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                     setIsListed(true)
                     setListingPrice(formatEther(priceValue))
                 }
+            }
+
+            // Notify parent to refresh
+            if (onListSuccess) {
+                onListSuccess()
             }
         } catch (error) {
             console.error("Error listing item:", error)
@@ -148,6 +158,11 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
             await cancelListing(ippyNFTAddress, item.tokenId.toString())
             setIsListed(false)
             setListingPrice("0")
+
+            // Notify parent to refresh
+            if (onCancelSuccess) {
+                onCancelSuccess()
+            }
         } catch (error) {
             console.error("Error canceling listing:", error)
         } finally {
@@ -220,9 +235,20 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                     // Loading state styling
                     item.metadataLoading && "opacity-75"
                 )}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
+                onMouseEnter={() => !listingLoading && setIsHovered(true)}
+                onMouseLeave={() => !listingLoading && setIsHovered(false)}
             >
+                {/* Loading overlay on card */}
+                {listingLoading && (
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
+                        <div className="flex flex-col items-center gap-3">
+                            <Loader2 className="w-8 h-8 animate-spin text-white" />
+                            <p className="text-white text-sm font-medium">
+                                {isListed ? "Canceling listing..." : "Creating listing..."}
+                            </p>
+                        </div>
+                    </div>
+                )}
                 <CardContent className="p-0">
                     <div className="relative p-2 sm:p-2.5 md:p-3">
                         <div className="aspect-square flex items-center justify-center relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg sm:rounded-xl overflow-hidden">
@@ -360,7 +386,7 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                 <div className="flex w-full h-full gap-1.5 sm:gap-2 flex-col animate-in slide-in-from-bottom-2 duration-500 ease-out">
                                     <div className="text-center">
                                         <div className="text-xs text-slate-500">Listed Price</div>
-                                        <div className="text-sm sm:text-base font-bold text-green-600">{parseFloat(listingPrice).toFixed(4)} IP</div>
+                                        <div className="text-sm sm:text-base font-bold text-green-600">{parseFloat(listingPrice).toFixed(4)} ETH</div>
                                     </div>
                                     <Button
                                         size="sm"
@@ -386,7 +412,7 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                 <div className="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center">
                                     <div className="text-center">
                                         <div className="text-xs text-slate-500">Listed</div>
-                                        <div className="text-sm font-bold text-green-600">{parseFloat(listingPrice).toFixed(4)} IP</div>
+                                        <div className="text-sm font-bold text-green-600">{parseFloat(listingPrice).toFixed(4)} ETH</div>
                                     </div>
                                 </div>
                             )
@@ -467,11 +493,11 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                                             <div>—</div>
                                                             <div className="flex items-center gap-2">
                                                                 <Input type="number" placeholder="0.00" className="bg-gray-800 border-gray-700" onChange={handleFloorPriceChange} />
-                                                                <span className="text-sm">IP</span>
+                                                                <span className="text-sm">ETH</span>
                                                             </div>
                                                             <div className="text-right">
                                                                 <div>0</div>
-                                                                <div className="text-xs text-gray-400">IP</div>
+                                                                <div className="text-xs text-gray-400">ETH</div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -483,7 +509,7 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                             <div className="space-y-4">
                                                 <div className="flex justify-between">
                                                     <span>Total listing price</span>
-                                                    <span>{floorPrice || 0} IP</span>
+                                                    <span>{floorPrice || 0} ETH</span>
                                                 </div>
                                                 {/* 
                                                 <div className="flex justify-between text-gray-400">
@@ -493,7 +519,7 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
 
                                                 <div className="flex justify-between text-gray-400">
                                                     <span>Platform fees</span>
-                                                    <span>{handleCalculation(floorPrice).platformFee} IP</span>
+                                                    <span>{handleCalculation(floorPrice).platformFee} ETH</span>
                                                 </div>
 
                                                 <Separator className="bg-gray-800" />
@@ -501,7 +527,7 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                                 <div className="flex justify-between font-medium">
                                                     <span>Total est. proceeds</span>
                                                     <div className="text-right">
-                                                        <div>{handleCalculation(floorPrice).proceeds} IP</div>
+                                                        <div>{handleCalculation(floorPrice).proceeds} ETH</div>
                                                         <div className="text-xs text-gray-400">(${(handleCalculation(floorPrice).proceeds * 3).toFixed(2)})</div>
                                                     </div>
                                                 </div>
@@ -596,7 +622,7 @@ export const ListingModal = ({ item, batchSelection, favorites }: ListingModalPr
                                                         </div>
                                                         <div className="flex justify-between">
                                                             <span className="text-gray-600">Floor Price</span>
-                                                            <span>{nft.floorPrice} IP</span>
+                                                            <span>{nft.floorPrice} ETH</span>
                                                         </div>
                                                     </div>
                                                 </div>

@@ -24,7 +24,7 @@ export interface MarketplaceListing {
   nftAddress: string;
   tokenId: string;
   price: string; // in wei
-  priceInIP: number; // converted to IP for display
+  priceInETH: number; // converted to ETH for display
   seller: string;
   isActive: boolean;
   metadata?: GachaItemWithCount; // NFT metadata fetched separately
@@ -45,7 +45,7 @@ export const convertListingToGachaItem = (
   return {
     ...listing.metadata,
     // Add marketplace-specific fields
-    marketPrice: listing.priceInIP,
+    marketPrice: listing.priceInETH,
     seller: listing.seller,
     isListed: true,
   } as GachaItemWithCount & {
@@ -164,10 +164,6 @@ export const useMarketplace = () => {
           blockNumber: event.blockNumber,
           transactionHash: event.transactionHash,
         });
-
-        // Remove from sold/canceled sets (re-listing)
-        cache.soldItems.delete(key);
-        cache.canceledItems.delete(key);
       }
 
       // Process new purchases
@@ -175,8 +171,6 @@ export const useMarketplace = () => {
         const { nftAddress, tokenId } = event.args;
         const key = getCacheKey(nftAddress, tokenId);
 
-        // Mark as sold
-        cache.soldItems.add(key);
         // Remove from active listings
         cache.activeListings.delete(key);
       }
@@ -186,8 +180,6 @@ export const useMarketplace = () => {
         const { nftAddress, tokenId } = event.args;
         const key = getCacheKey(nftAddress, tokenId);
 
-        // Mark as canceled
-        cache.canceledItems.add(key);
         // Remove from active listings
         cache.activeListings.delete(key);
       }
@@ -234,7 +226,7 @@ export const useMarketplace = () => {
               nftAddress: cachedListing.nftAddress,
               tokenId: cachedListing.tokenId,
               price: listing.price.toString(),
-              priceInIP: parseFloat(formatEther(listing.price)),
+              priceInETH: parseFloat(formatEther(listing.price)),
               seller: listing.seller,
               isActive: true,
               metadata: metadata || undefined,
@@ -357,7 +349,7 @@ export const useMarketplace = () => {
 
       addNotification({
         title: "Item listed successfully!",
-        message: `You have listed item ${tokenId} for ${price} IP!`,
+        message: `You have listed item ${tokenId} for ${price} ETH!`,
         type: "success",
         action: {
           label: "View on StoryScan",
@@ -539,23 +531,83 @@ export const useMarketplace = () => {
     }
   };
 
-  const getProceeds = async (nftAddress: string) => {
+  const getProceeds = async (sellerAddress: string) => {
+    try {
+      const proceeds = await readClient.readContract({
+        address: nftMarketplaceAddress,
+        abi: NFTMarketplaceABI,
+        functionName: "getProceeds",
+        args: [sellerAddress],
+      });
+
+      return proceeds;
+    } catch (error) {
+      console.error(error);
+      return BigInt(0);
+    }
+  };
+
+  const withdrawProceeds = async () => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
         throw new Error("No wallet connected");
       }
 
-      const proceeds = await readClient.readContract({
+      const [account] = await walletClient.getAddresses();
+
+      // Check proceeds first
+      const proceeds = await getProceeds(account);
+      if (!proceeds || proceeds <= BigInt(0)) {
+        addNotification({
+          title: "No proceeds to withdraw",
+          message: "You don't have any proceeds to withdraw from sales.",
+          type: "info",
+          duration: 5000,
+        });
+        return;
+      }
+
+      const { request } = await readClient.simulateContract({
         address: nftMarketplaceAddress,
         abi: NFTMarketplaceABI,
-        functionName: "getProceeds",
-        args: [nftAddress],
+        functionName: "withdrawProceeds",
+        account,
       });
 
-      return proceeds;
+      const txHash = await walletClient.writeContract(request);
+
+      const tx = await readClient.waitForTransactionReceipt({
+        hash: txHash,
+      });
+
+      const proceedsInETH = formatEther(proceeds);
+      addNotification({
+        title: "Proceeds withdrawn successfully!",
+        message: `You have withdrawn ${proceedsInETH} ETH from your sales!`,
+        type: "success",
+        action: {
+          label: "View on StoryScan",
+          onClick: () => {
+            window.open(
+              `https://aeneid.storyscan.io/tx/${tx.transactionHash}`,
+              "_blank"
+            );
+          },
+        },
+        duration: 10000,
+      });
+
+      return tx;
     } catch (error) {
       console.error(error);
+      addNotification({
+        title: "Withdrawal failed",
+        message: error instanceof Error ? error.message : "Failed to withdraw proceeds",
+        type: "error",
+        duration: 5000,
+      });
+      throw error;
     }
   };
 
@@ -572,6 +624,7 @@ export const useMarketplace = () => {
     updateListing,
     getListing,
     getProceeds,
+    withdrawProceeds,
     isApprovedForMarketplace,
     getAllActiveListings,
     forceRefresh, // Expose force refresh to UI
