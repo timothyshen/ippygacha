@@ -31,7 +31,7 @@ export function CollectionHeader({
                 </div>
 
                 {/* Collection Icon */}
-                <div className="absolute -bottom-12 left-6 sm:left-8">
+                <div className="absolute -bottom-12 left-6 sm:left-8 z-50">
                     <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-2xl border-4 border-white shadow-2xl overflow-hidden">
                         <Image
                             src={IPPY_COLLECTION.image}

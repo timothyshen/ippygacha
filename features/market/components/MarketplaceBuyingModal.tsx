@@ -164,7 +164,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
-                                                            <div>{listing.priceInETH.toFixed(2)} ETH</div>
+                                                            <div>{listing.priceInETH.toFixed(2)} IP</div>
                                                             <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
                                                         </div>
                                                     </div>
@@ -177,7 +177,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                                 <div className="flex justify-between font-medium">
                                                     <span>Total</span>
                                                     <div className="text-right">
-                                                        <div>{listing.priceInETH.toFixed(2)} ETH</div>
+                                                        <div>{listing.priceInETH.toFixed(2)} IP</div>
                                                         <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
                                                     </div>
                                                 </div>
@@ -204,7 +204,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                             <div className="flex w-full min-h-[40px] items-left justify-start bg-gray-800/80 backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out px-2">
                                 <div className="flex flex-col items-left ml-3 py-1">
                                     <p className="text-left text-gray-200 font-extrabold text-sm">
-                                        {listing.priceInETH.toFixed(2)} ETH
+                                        {listing.priceInETH.toFixed(2)} IP
                                     </p>
                                     <p className="text-left text-gray-400 font-extrabold text-xs">
                                         (${(listing.priceInETH * 3).toFixed(2)})
@@ -254,7 +254,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Price</span>
-                                        <span>{listing.priceInETH.toFixed(2)} ETH</span>
+                                        <span>{listing.priceInETH.toFixed(2)} IP</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Contract</span>

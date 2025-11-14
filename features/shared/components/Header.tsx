@@ -266,7 +266,7 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                                 ) : (
                                                     <>
                                                         <div className="text-2xl font-bold text-emerald-900">
-                                                            {formatEther(proceeds)} ETH
+                                                            {formatEther(proceeds)} IP
                                                         </div>
                                                         <div className="text-xs text-emerald-600">
                                                             ≈ ${(parseFloat(formatEther(proceeds)) * 3000).toFixed(2)}

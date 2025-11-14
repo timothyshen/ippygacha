@@ -137,7 +137,7 @@ export function ProfileSidebar({
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-slate-600">Balance:</span>
-                                    <span className="font-semibold text-slate-800">100 ETH</span>
+                                    <span className="font-semibold text-slate-800">100 IP</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-slate-600">Gas:</span>

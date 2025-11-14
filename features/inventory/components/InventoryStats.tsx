@@ -12,7 +12,7 @@ export function InventoryStats(contractInfo: ContractInfo) {
 
             <Card className="bg-white/80 border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
                 <CardContent className="p-3 sm:p-4 text-center">
-                    <div className="text-lg sm:text-2xl md:text-3xl font-bold text-slate-800 mb-0.5 sm:mb-1">{(Number(contractInfo.boxPrice) / 1e18).toFixed(2)} ETH</div>
+                    <div className="text-lg sm:text-2xl md:text-3xl font-bold text-slate-800 mb-0.5 sm:mb-1">{(Number(contractInfo.boxPrice) / 1e18).toFixed(2)} IP</div>
                     <div className="text-xs sm:text-sm text-slate-600 font-medium">Box Price</div>
                 </CardContent>
             </Card>
