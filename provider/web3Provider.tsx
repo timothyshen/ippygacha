@@ -1,25 +1,72 @@
 "use client";
 
-import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
+import { PrivyProvider, usePrivy, useWallets } from "@privy-io/react-auth";
 import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
 import { storyAeneid } from "viem/chains";
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { ensureUserExists } from "@/lib/auth";
 
-// Auto-create user profile on login
-function AutoCreateUserProfile() {
-    const { authenticated, user } = usePrivy();
+const STORY_AENEID_CHAIN_ID = `eip155:${storyAeneid.id}`;
 
+// Auto-create user profile and ensure correct chain on login/wallet switch
+function WalletManager() {
+    const { authenticated, user } = usePrivy();
+    const { wallets } = useWallets();
+    const processedWalletsRef = useRef<Set<string>>(new Set());
+
+    // Switch a wallet to Story Aeneid if not already on it
+    const ensureCorrectChain = useCallback(async (wallet: typeof wallets[number]) => {
+        try {
+            if (wallet.chainId !== STORY_AENEID_CHAIN_ID) {
+                await wallet.switchChain(storyAeneid.id);
+            }
+        } catch (error) {
+            console.warn(`Failed to switch chain for wallet ${wallet.address}:`, error);
+        }
+    }, []);
+
+    // Handle user profile creation on authentication
     useEffect(() => {
-        const createUserProfile = async () => {
-            if (authenticated && user?.wallet?.address) {
-                // Auto-create user profile in database
-                await ensureUserExists(user.wallet.address);
+        if (authenticated && user?.wallet?.address) {
+            ensureUserExists(user.wallet.address);
+        }
+    }, [authenticated, user?.wallet?.address]);
+
+    // Handle wallet changes - detect new wallets or account switches
+    useEffect(() => {
+        if (!authenticated || wallets.length === 0) {
+            return;
+        }
+
+        const handleWalletChanges = async () => {
+            for (const wallet of wallets) {
+                // Create a unique key for this wallet instance (address + connector type)
+                const walletKey = `${wallet.address}-${wallet.walletClientType}`;
+
+                // Check if this is a new wallet we haven't processed
+                if (!processedWalletsRef.current.has(walletKey)) {
+                    processedWalletsRef.current.add(walletKey);
+                    await ensureCorrectChain(wallet);
+                }
+                // Also check if wallet switched to wrong chain externally
+                else if (wallet.chainId !== STORY_AENEID_CHAIN_ID) {
+                    await ensureCorrectChain(wallet);
+                }
+            }
+
+            // Clean up processed wallets that are no longer connected
+            const currentWalletKeys = new Set(
+                wallets.map(w => `${w.address}-${w.walletClientType}`)
+            );
+            for (const key of processedWalletsRef.current) {
+                if (!currentWalletKeys.has(key)) {
+                    processedWalletsRef.current.delete(key);
+                }
             }
         };
 
-        createUserProfile();
-    }, [authenticated, user?.wallet?.address]);
+        handleWalletChanges();
+    }, [authenticated, wallets, ensureCorrectChain]);
 
     return null;
 }
@@ -46,7 +93,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             }}
         >
             <SmartWalletsProvider>
-                <AutoCreateUserProfile />
+                <WalletManager />
                 {children}
             </SmartWalletsProvider>
         </PrivyProvider>
