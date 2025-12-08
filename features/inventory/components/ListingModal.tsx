@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Eye, List, Loader2, Minus, Plus, Heart, Check, X } from "lucide-react"
+import { usePrivy } from "@privy-io/react-auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -45,6 +46,7 @@ interface ListingModalProps {
 }
 
 export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, onCancelSuccess }: ListingModalProps) => {
+    const { user } = usePrivy()
     const isMobile = useIsMobile()
     const [isHovered, setIsHovered] = useState(false)
     const itemId = item.id || `${item.name}-${item.tokenId}`
@@ -181,24 +183,12 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
         }
     }
 
-    const nft = {
-        name: "THIPPY",
-        collection: "IPPY",
-        rarity: "STANDARD",
-        image: "/images/thippy-nft.png",
-        quantity: 1,
-        floorPrice: "0.00",
-        description:
-            "A cute and chubby character from the IPPY collection. This adorable creature features a round, soft appearance with a gentle expression.",
-        traits: [
-            { trait_type: "Background", value: "Light Blue", rarity: "15%" },
-            { trait_type: "Body", value: "Chubby", rarity: "8%" },
-            { trait_type: "Expression", value: "Peaceful", rarity: "12%" },
-            { trait_type: "Type", value: "Standard", rarity: "45%" },
-        ],
-        owner: "0x1234...5678",
-        tokenId: "#1234",
-    }
+    // Get real data from item and user
+    const ownerAddress = user?.wallet?.address || "Unknown"
+    const formattedOwner = ownerAddress !== "Unknown"
+        ? `${ownerAddress.slice(0, 6)}...${ownerAddress.slice(-4)}`
+        : "Unknown"
+    const itemTraits = item.metadata?.attributes || []
 
     // Determine glow animation based on rarity
     const getGlowAnimation = () => {
@@ -461,17 +451,17 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
                                                                 loading="lazy"
                                                             />
                                                             <span className="font-medium">
-                                                                {nft.collection} - {nft.name}
+                                                                {item.collection} - {item.name}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center gap-2">
-                                                            <Button variant="ghost" size="sm" disabled={true}>
+                                                            {/* <Button variant="ghost" size="sm" disabled={true}>
                                                                 <Minus className="w-4 h-4" />
-                                                            </Button>
+                                                            </Button> */}
                                                             <span className="w-8 text-center">x {quantity}</span>
-                                                            <Button variant="ghost" size="sm" disabled={true}>
+                                                            {/* <Button variant="ghost" size="sm" disabled={true}>
                                                                 <Plus className="w-4 h-4" />
-                                                            </Button>
+                                                            </Button> */}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -565,50 +555,46 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
 
 
                                     {/* Details Button */}
-                                    <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button
-                                                size="sm"
-                                                className="bg-blue-300 hover:bg-blue-500 active:bg-blue-800 flex-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 shadow-md hover:shadow-lg transform-gpu h-9 sm:h-10 text-xs sm:text-sm"
-                                                style={{
-                                                    animationDelay: '0.15s',
-                                                    transform: 'translateY(0)',
-                                                    transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0.15s'
-                                                }}
-                                            >
-                                                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1.5 transition-transform duration-300 ease-out" />
-                                                <span className="font-medium hidden xs:inline">Details</span>
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-2xl">
-                                            <DialogHeader>
-                                                <DialogTitle className="text-2xl">{nft.name}</DialogTitle>
-                                            </DialogHeader>
-
-                                            <div className="grid md:grid-cols-2 gap-6">
-                                                <div className="space-y-4">
-                                                    <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-6 flex items-center justify-center">
-                                                        <Image
-                                                            src={imageUrl}
-                                                            alt={getItemDisplayName(item)}
-                                                            width={300}
-                                                            height={300}
-                                                            className="rounded-lg object-contain"
-                                                        />
+                                    {isMobile ? (
+                                        <Drawer open={detailOpen} onOpenChange={setDetailOpen}>
+                                            <DrawerTrigger asChild>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-blue-300 hover:bg-blue-500 active:bg-blue-800 flex-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 shadow-md hover:shadow-lg transform-gpu h-9 sm:h-10 text-xs sm:text-sm"
+                                                    style={{
+                                                        animationDelay: '0.15s',
+                                                        transform: 'translateY(0)',
+                                                        transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0.15s'
+                                                    }}
+                                                >
+                                                    <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1.5 transition-transform duration-300 ease-out" />
+                                                    <span className="font-medium hidden xs:inline">Details</span>
+                                                </Button>
+                                            </DrawerTrigger>
+                                            <DrawerContent className="max-h-[90vh]">
+                                                <DrawerHeader className="border-b pb-4">
+                                                    <DrawerTitle className="text-xl">{item.name}</DrawerTitle>
+                                                </DrawerHeader>
+                                                <div className="overflow-y-auto p-4 space-y-6">
+                                                    <div className="space-y-4">
+                                                        <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-6 flex items-center justify-center">
+                                                            <Image
+                                                                src={imageUrl}
+                                                                alt={getItemDisplayName(item)}
+                                                                width={300}
+                                                                height={300}
+                                                                className="rounded-lg object-contain"
+                                                            />
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Badge variant="secondary">{item.collection}</Badge>
+                                                            <Badge variant="outline">{item.rarity}</Badge>
+                                                        </div>
                                                     </div>
-
-                                                    <div className="flex gap-2">
-                                                        <Badge variant="secondary">{item.collection}</Badge>
-                                                        <Badge variant="outline">{item.rarity}</Badge>
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-6">
                                                     <div>
                                                         <h3 className="font-semibold mb-2">Description</h3>
                                                         <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
                                                     </div>
-
                                                     <div>
                                                         <h3 className="font-semibold mb-3">Details</h3>
                                                         <div className="space-y-2 text-sm">
@@ -618,33 +604,114 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
                                                             </div>
                                                             <div className="flex justify-between">
                                                                 <span className="text-gray-600">Owner</span>
-                                                                <span className="font-mono">{nft.owner}</span>
+                                                                <span className="font-mono">{formattedOwner}</span>
                                                             </div>
-                                                            <div className="flex justify-between">
-                                                                <span className="text-gray-600">Floor Price</span>
-                                                                <span>{nft.floorPrice} IP</span>
-                                                            </div>
+                                                            {isListed && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Listed Price</span>
+                                                                    <span>{parseFloat(listingPrice).toFixed(4)} IP</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
-
-                                                    <div>
-                                                        <h3 className="font-semibold mb-3">Traits</h3>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {nft.traits.map((trait, index) => (
-                                                                <div key={index} className="bg-gray-50 rounded-lg p-3 text-center">
-                                                                    <div className="text-xs text-gray-500 uppercase tracking-wide">
-                                                                        {trait.trait_type}
+                                                    {itemTraits.length > 0 && (
+                                                        <div>
+                                                            <h3 className="font-semibold mb-3">Traits</h3>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                {itemTraits.map((trait: any, index: number) => (
+                                                                    <div key={index} className="bg-gray-50 rounded-lg p-3 text-center">
+                                                                        <div className="text-xs text-gray-500 uppercase tracking-wide">
+                                                                            {trait.trait_type}
+                                                                        </div>
+                                                                        <div className="font-medium">{trait.value}</div>
                                                                     </div>
-                                                                    <div className="font-medium">{trait.value}</div>
-                                                                    <div className="text-xs text-blue-600">{trait.rarity}</div>
-                                                                </div>
-                                                            ))}
+                                                                ))}
+                                                            </div>
                                                         </div>
+                                                    )}
+                                                </div>
+                                            </DrawerContent>
+                                        </Drawer>
+                                    ) : (
+                                        <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-blue-300 hover:bg-blue-500 active:bg-blue-800 flex-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 shadow-md hover:shadow-lg transform-gpu h-9 sm:h-10 text-xs sm:text-sm"
+                                                    style={{
+                                                        animationDelay: '0.15s',
+                                                        transform: 'translateY(0)',
+                                                        transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0.15s'
+                                                    }}
+                                                >
+                                                    <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1.5 transition-transform duration-300 ease-out" />
+                                                    <span className="font-medium hidden xs:inline">Details</span>
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                                <DialogHeader>
+                                                    <DialogTitle className="text-2xl">{item.name}</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="grid md:grid-cols-2 gap-6">
+                                                    <div className="space-y-4">
+                                                        <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg p-6 flex items-center justify-center">
+                                                            <Image
+                                                                src={imageUrl}
+                                                                alt={getItemDisplayName(item)}
+                                                                width={300}
+                                                                height={300}
+                                                                className="rounded-lg object-contain"
+                                                            />
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Badge variant="secondary">{item.collection}</Badge>
+                                                            <Badge variant="outline">{item.rarity}</Badge>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-6">
+                                                        <div>
+                                                            <h3 className="font-semibold mb-2">Description</h3>
+                                                            <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-semibold mb-3">Details</h3>
+                                                            <div className="space-y-2 text-sm">
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Token ID</span>
+                                                                    <span>{item.tokenId}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-600">Owner</span>
+                                                                    <span className="font-mono">{formattedOwner}</span>
+                                                                </div>
+                                                                {isListed && (
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Listed Price</span>
+                                                                        <span>{parseFloat(listingPrice).toFixed(4)} IP</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {itemTraits.length > 0 && (
+                                                            <div>
+                                                                <h3 className="font-semibold mb-3">Traits</h3>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {itemTraits.map((trait: any, index: number) => (
+                                                                        <div key={index} className="bg-gray-50 rounded-lg p-3 text-center">
+                                                                            <div className="text-xs text-gray-500 uppercase tracking-wide">
+                                                                                {trait.trait_type}
+                                                                            </div>
+                                                                            <div className="font-medium">{trait.value}</div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
 
                                 </div>
                             ) : (

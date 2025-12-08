@@ -43,7 +43,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
     const handlePurchase = async () => {
         try {
             setLoading(true)
-            await buyItem(listing.nftAddress, listing.tokenId, listing.priceInETH.toString())
+            await buyItem(listing.nftAddress, listing.tokenId, listing.priceInIP.toString())
             // Close drawer and refresh on success
             setDrawerOpen(false)
             if (onPurchaseSuccess) {
@@ -164,8 +164,8 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
-                                                            <div>{listing.priceInETH.toFixed(2)} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
+                                                            <div>{listing.priceInIP.toFixed(2)} IP</div>
+                                                            <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -177,8 +177,8 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                                 <div className="flex justify-between font-medium">
                                                     <span>Total</span>
                                                     <div className="text-right">
-                                                        <div>{listing.priceInETH.toFixed(2)} IP</div>
-                                                        <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
+                                                        <div>{listing.priceInIP.toFixed(2)} IP</div>
+                                                        <div className="text-xs text-gray-400">(${(listing.priceInIP * 3).toFixed(2)})</div>
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-gray-400">
@@ -204,10 +204,10 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                             <div className="flex w-full min-h-[40px] items-left justify-start bg-gray-800/80 backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out px-2">
                                 <div className="flex flex-col items-left ml-3 py-1">
                                     <p className="text-left text-gray-200 font-extrabold text-sm">
-                                        {listing.priceInETH.toFixed(2)} IP
+                                        {listing.priceInIP.toFixed(2)} IP
                                     </p>
                                     <p className="text-left text-gray-400 font-extrabold text-xs">
-                                        (${(listing.priceInETH * 3).toFixed(2)})
+                                        (${(listing.priceInIP * 3).toFixed(2)})
                                     </p>
                                 </div>
                             </div>
@@ -254,7 +254,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Price</span>
-                                        <span>{listing.priceInETH.toFixed(2)} IP</span>
+                                        <span>{listing.priceInIP.toFixed(2)} IP</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Contract</span>

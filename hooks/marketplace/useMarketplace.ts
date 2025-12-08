@@ -368,6 +368,7 @@ export const useMarketplace = () => {
         type: "error",
         duration: 5000,
       });
+      throw error;
     }
   };
 
@@ -410,7 +411,15 @@ export const useMarketplace = () => {
         duration: 10000,
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error canceling listing:", error);
+      addNotification({
+        title: "Failed to cancel listing",
+        message:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "error",
+        duration: 5000,
+      });
+      throw error;
     }
   };
 
@@ -458,7 +467,15 @@ export const useMarketplace = () => {
         duration: 10000,
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error buying item:", error);
+      addNotification({
+        title: "Failed to buy item",
+        message:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "error",
+        duration: 5000,
+      });
+      throw error;
     }
   };
 
@@ -505,7 +522,15 @@ export const useMarketplace = () => {
         duration: 10000,
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error updating listing:", error);
+      addNotification({
+        title: "Failed to update listing",
+        message:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "error",
+        duration: 5000,
+      });
+      throw error;
     }
   };
 
