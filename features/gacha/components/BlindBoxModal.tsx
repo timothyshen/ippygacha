@@ -93,7 +93,7 @@ export const BlindBoxModal = ({
     }
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg w-full shadow-2xl transition-all duration-700 border-0 items-center justify-center z-50 p-4 backdrop-blur-lg">
+            <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-700 border-0 items-center justify-center z-50 p-4 backdrop-blur-lg">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Box className="h-5 w-5" />

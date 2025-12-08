@@ -427,12 +427,12 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
                                                 <span className="font-medium hidden sm:inline ml-0.5"> Item</span>
                                             </Button>
                                         </DrawerTrigger>
-                                        <DrawerContent className="w-full bg-gray-900 text-white border-gray-800">
+                                        <DrawerContent className="w-full max-h-[85vh] bg-gray-900 text-white border-gray-800">
                                             <DrawerHeader className="border-b border-gray-800 pb-4">
                                                 <DrawerTitle className="text-white text-xl">Create listing</DrawerTitle>
                                             </DrawerHeader>
 
-                                            <div className="p-6 sm:p-8 md:p-10 space-y-6 max-w-2xl mx-auto">
+                                            <div className="p-6 sm:p-8 md:p-10 space-y-6 max-w-2xl mx-auto overflow-y-auto">
                                                 <div className="flex items-center gap-2 text-sm text-gray-400">
                                                     <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-xs">1</div>1
                                                     item
