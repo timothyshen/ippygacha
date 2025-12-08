@@ -24,7 +24,7 @@ export interface MarketplaceListing {
   nftAddress: string;
   tokenId: string;
   price: string; // in wei
-  priceInETH: number; // converted to ETH for display
+  priceInIP: number; // converted to IP for display
   seller: string;
   isActive: boolean;
   metadata?: GachaItemWithCount; // NFT metadata fetched separately
@@ -45,7 +45,7 @@ export const convertListingToGachaItem = (
   return {
     ...listing.metadata,
     // Add marketplace-specific fields
-    marketPrice: listing.priceInETH,
+    marketPrice: listing.priceInIP,
     seller: listing.seller,
     isListed: true,
   } as GachaItemWithCount & {
@@ -90,10 +90,7 @@ const getMetadata = async (
       theme: metadata.theme,
     } as GachaItemWithCount;
   } catch (error) {
-    console.error(
-      `Error fetching metadata for token ${tokenId}:`,
-      error
-    );
+    console.error(`Error fetching metadata for token ${tokenId}:`, error);
     return null;
   }
 };
@@ -114,39 +111,42 @@ export const useMarketplace = () => {
       const latestBlock = await readClient.getBlockNumber();
 
       // Step 3: Calculate block range to scan
-      const fromBlock = cache.lastScannedBlock === BigInt(0)
-        ? "earliest"
-        : cache.lastScannedBlock + BigInt(1);
+      const fromBlock =
+        cache.lastScannedBlock === BigInt(0)
+          ? "earliest"
+          : cache.lastScannedBlock + BigInt(1);
 
       // Step 4: Fetch only NEW events since last scan (INCREMENTAL!)
-      const [rawListedEvents, rawBoughtEvents, rawCanceledEvents] = await Promise.all([
-        readClient.getContractEvents({
-          address: nftMarketplaceAddress,
-          abi: NFTMarketplaceABI,
-          eventName: "ItemListed",
-          fromBlock,
-          toBlock: latestBlock,
-        }),
-        readClient.getContractEvents({
-          address: nftMarketplaceAddress,
-          abi: NFTMarketplaceABI,
-          eventName: "ItemBought",
-          fromBlock,
-          toBlock: latestBlock,
-        }),
-        readClient.getContractEvents({
-          address: nftMarketplaceAddress,
-          abi: NFTMarketplaceABI,
-          eventName: "ItemCanceled",
-          fromBlock,
-          toBlock: latestBlock,
-        }),
-      ]);
+      const [rawListedEvents, rawBoughtEvents, rawCanceledEvents] =
+        await Promise.all([
+          readClient.getContractEvents({
+            address: nftMarketplaceAddress,
+            abi: NFTMarketplaceABI,
+            eventName: "ItemListed",
+            fromBlock,
+            toBlock: latestBlock,
+          }),
+          readClient.getContractEvents({
+            address: nftMarketplaceAddress,
+            abi: NFTMarketplaceABI,
+            eventName: "ItemBought",
+            fromBlock,
+            toBlock: latestBlock,
+          }),
+          readClient.getContractEvents({
+            address: nftMarketplaceAddress,
+            abi: NFTMarketplaceABI,
+            eventName: "ItemCanceled",
+            fromBlock,
+            toBlock: latestBlock,
+          }),
+        ]);
 
       // Type-safe event casting
       const listedEvents = rawListedEvents as unknown as ItemListedEvent[];
       const boughtEvents = rawBoughtEvents as unknown as ItemBoughtEvent[];
-      const canceledEvents = rawCanceledEvents as unknown as ItemCanceledEvent[];
+      const canceledEvents =
+        rawCanceledEvents as unknown as ItemCanceledEvent[];
 
       // Step 5: Update cache with new events
 
@@ -226,7 +226,7 @@ export const useMarketplace = () => {
               nftAddress: cachedListing.nftAddress,
               tokenId: cachedListing.tokenId,
               price: listing.price.toString(),
-              priceInETH: parseFloat(formatEther(listing.price)),
+              priceInIP: parseFloat(formatEther(listing.price)),
               seller: listing.seller,
               isActive: true,
               metadata: metadata || undefined,
@@ -234,10 +234,7 @@ export const useMarketplace = () => {
 
             return marketplaceListing;
           } catch (error) {
-            console.error(
-              `Error processing listing ${key}:`,
-              error
-            );
+            console.error(`Error processing listing ${key}:`, error);
             return null;
           }
         }
@@ -349,7 +346,7 @@ export const useMarketplace = () => {
 
       addNotification({
         title: "Item listed successfully!",
-        message: `You have listed item ${tokenId} for ${price} ETH!`,
+        message: `You have listed item ${tokenId} for ${price} IP!`,
         type: "success",
         action: {
           label: "View on StoryScan",
@@ -447,7 +444,7 @@ export const useMarketplace = () => {
 
       addNotification({
         title: "Item bought successfully!",
-        message: `You have bought item ${tokenId} of ${nftAddress} for ${price} ETH!`,
+        message: `You have bought item ${tokenId} of ${nftAddress} for ${price} IP!`,
         type: "success",
         action: {
           label: "View on StoryScan",
@@ -494,7 +491,7 @@ export const useMarketplace = () => {
 
       addNotification({
         title: "Listing updated successfully!",
-        message: `You have updated listing of item ${tokenId} of ${nftAddress} to ${price} ETH!`,
+        message: `You have updated listing of item ${tokenId} of ${nftAddress} to ${price} IP!`,
         type: "success",
         action: {
           label: "View on StoryScan",
@@ -581,10 +578,10 @@ export const useMarketplace = () => {
         hash: txHash,
       });
 
-      const proceedsInETH = formatEther(proceeds);
+      const proceedsInIP = formatEther(proceeds as bigint);
       addNotification({
         title: "Proceeds withdrawn successfully!",
-        message: `You have withdrawn ${proceedsInETH} ETH from your sales!`,
+        message: `You have withdrawn ${proceedsInIP} IP from your sales!`,
         type: "success",
         action: {
           label: "View on StoryScan",
@@ -603,7 +600,10 @@ export const useMarketplace = () => {
       console.error(error);
       addNotification({
         title: "Withdrawal failed",
-        message: error instanceof Error ? error.message : "Failed to withdraw proceeds",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to withdraw proceeds",
         type: "error",
         duration: 5000,
       });
@@ -660,7 +660,9 @@ export const useActiveListings = () => {
       setListings(activeListings);
     } catch (err) {
       console.error("Error force refreshing listings:", err);
-      setError(err instanceof Error ? err.message : "Failed to refresh listings");
+      setError(
+        err instanceof Error ? err.message : "Failed to refresh listings"
+      );
     } finally {
       setLoading(false);
     }
