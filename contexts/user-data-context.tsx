@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { ensureUserExists, getUserActivities, type UserData, type Activity } from "@/lib/auth";
+import { useActiveWalletAddress } from "@/hooks/useActiveWalletAddress";
 
 interface UserDataContextType {
   userData: UserData | null;
@@ -14,6 +15,7 @@ const UserDataContext = createContext<UserDataContextType | undefined>(undefined
 
 export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { authenticated, user } = usePrivy();
+  const activeWalletAddress = useActiveWalletAddress();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
@@ -23,13 +25,13 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
    * Called after any action that awards points
    */
   const refreshUserData = useCallback(async () => {
-    if (!authenticated || !user?.wallet?.address) {
+    if (!authenticated || !activeWalletAddress) {
       setUserData(null);
       setRecentActivities([]);
       return;
     }
 
-    const walletAddress = user.wallet.address;
+    const walletAddress = activeWalletAddress;
 
     try {
       // Fetch user data and activities in parallel
@@ -43,12 +45,12 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (error) {
       console.error("Error refreshing user data:", error);
     }
-  }, [authenticated, user?.wallet?.address]);
+  }, [authenticated, activeWalletAddress]);
 
   // Initial load when user authenticates
   useEffect(() => {
     const initUser = async () => {
-      if (authenticated && user?.wallet?.address) {
+      if (authenticated && activeWalletAddress) {
         setIsLoadingUser(true);
         await refreshUserData();
         setIsLoadingUser(false);
@@ -59,7 +61,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     initUser();
-  }, [authenticated, user?.wallet?.address, refreshUserData]);
+  }, [authenticated, activeWalletAddress, refreshUserData]);
 
   return (
     <UserDataContext.Provider

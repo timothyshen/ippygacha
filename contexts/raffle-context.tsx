@@ -11,6 +11,7 @@ import {
   Winner,
   PrizeEvent,
 } from "@/features/raffle/types";
+import { useActiveWalletAddress } from "@/hooks/useActiveWalletAddress";
 
 interface RaffleContextValue {
   // Wallet state
@@ -57,9 +58,10 @@ const RaffleContext = createContext<RaffleContextValue | undefined>(undefined);
  */
 export function RaffleProvider({ children }: { children: ReactNode }) {
   // Get wallet info from Privy
-  const { user, authenticated } = usePrivy();
+  const { authenticated } = usePrivy();
+  const activeWalletAddress = useActiveWalletAddress();
   const walletConnected = authenticated;
-  const walletAddress = user?.wallet?.address || "";
+  const walletAddress = activeWalletAddress || "";
 
   // Contract data management
   const contractData = useRaffleContract(walletAddress);
