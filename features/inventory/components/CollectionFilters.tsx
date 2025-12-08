@@ -76,10 +76,6 @@ export function CollectionFilters({
                         {sortBy !== "recent" && (
                             <Badge variant="secondary" className="gap-1.5 bg-blue-50 text-blue-700 border-blue-200">
                                 <span className="text-xs">Sort: <strong>{sortBy}</strong></span>
-                                <X
-                                    className="w-3 h-3 cursor-pointer hover:text-red-600 transition-colors"
-                                    onClick={() => onSortChange("recent")}
-                                />
                             </Badge>
                         )}
                     </div>

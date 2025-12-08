@@ -285,8 +285,8 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
                                 </Badge>
                             </div>
 
-                            {/* Top left - Favorite button */}
-                            {favorites && !batchSelection?.batchMode && (
+                            {/* Top left - Favorite button (always visible) */}
+                            {favorites && (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation()
