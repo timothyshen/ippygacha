@@ -412,8 +412,30 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      console.error("Cancel listing error:", error);
+
+      // Extract error message from various error types
+      const errorString = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : String(error);
+
+      const message = errorString.toLowerCase();
+      let errorMessage = "Failed to cancel listing. Please try again.";
+
+      if (message.includes("user rejected") || message.includes("user denied") || message.includes("rejected the request")) {
+        errorMessage = "Transaction was cancelled by user.";
+      }
+
+      addNotification({
+        title: "Cancel listing failed",
+        message: errorMessage,
+        type: "error",
+        duration: 10000,
+      });
+      throw error;
     }
   };
 
@@ -460,8 +482,40 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      console.error("Purchase error:", error);
+
+      // Parse error message for user-friendly display
+      let errorMessage = "Failed to buy item. It may have already been purchased or cancelled.";
+
+      // Extract error message from various error types
+      const errorString = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : typeof error === 'object' && error !== null && 'shortMessage' in error
+            ? String((error as { shortMessage: unknown }).shortMessage)
+            : String(error);
+
+      const message = errorString.toLowerCase();
+
+      if (message.includes("user rejected") || message.includes("user denied") || message.includes("rejected the request")) {
+        errorMessage = "Transaction was cancelled by user.";
+      } else if (message.includes("insufficient funds") || message.includes("insufficient balance") || message.includes("exceeds the balance")) {
+        errorMessage = "Insufficient funds to complete this purchase.";
+      } else if (message.includes("cannotbuyownitem") || message.includes("cannot buy own")) {
+        errorMessage = "You cannot buy your own listing.";
+      } else if (message.includes("not listed") || message.includes("listing") || message.includes("does not exist") || message.includes("revert")) {
+        errorMessage = "This item is no longer available. It may have been sold or cancelled.";
+      }
+
+      addNotification({
+        title: "Purchase failed",
+        message: errorMessage,
+        type: "error",
+        duration: 10000,
+      });
+      throw error;
     }
   };
 
@@ -507,8 +561,30 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      console.error("Update listing error:", error);
+
+      // Extract error message from various error types
+      const errorString = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : String(error);
+
+      const message = errorString.toLowerCase();
+      let errorMessage = "Failed to update listing. Please try again.";
+
+      if (message.includes("user rejected") || message.includes("user denied") || message.includes("rejected the request")) {
+        errorMessage = "Transaction was cancelled by user.";
+      }
+
+      addNotification({
+        title: "Update listing failed",
+        message: errorMessage,
+        type: "error",
+        duration: 10000,
+      });
+      throw error;
     }
   };
 

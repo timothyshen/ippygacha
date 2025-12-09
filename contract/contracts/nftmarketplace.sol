@@ -12,6 +12,7 @@ error NoProceeds();
 error NotOwner();
 error NotApprovedForMarketplace();
 error PriceMustBeAboveZero();
+error CannotBuyOwnItem();
 
 contract NFTMarketplace is ReentrancyGuard {
     struct Listing {
@@ -114,6 +115,9 @@ contract NFTMarketplace is ReentrancyGuard {
         uint256 tokenId
     ) external payable isListed(nftAddress, tokenId) nonReentrant {
         Listing memory listedItem = s_listings[nftAddress][tokenId];
+        if (msg.sender == listedItem.seller) {
+            revert CannotBuyOwnItem();
+        }
         if (msg.value < listedItem.price) {
             revert PriceNotMet(nftAddress, tokenId, listedItem.price);
         }
