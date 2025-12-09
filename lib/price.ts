@@ -1,7 +1,6 @@
 // IP Token price fetching and caching utility
+// Uses our own API route to avoid CORS issues with CoinGecko
 
-const COINGECKO_API_URL = "https://api.coingecko.com/api/v3/simple/price";
-const IP_TOKEN_ID = "story-protocol"; // CoinGecko ID for IP token
 const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes cache
 const FALLBACK_PRICE = 3; // Fallback price in USD if API fails
 
@@ -14,8 +13,9 @@ let priceCache: PriceCache | null = null;
 let fetchPromise: Promise<number> | null = null;
 
 /**
- * Fetch IP token price from CoinGecko API
- * - Caches the result for 10 minutes
+ * Fetch IP token price from our API route (which proxies CoinGecko)
+ * - Caches the result for 10 minutes on client side
+ * - Server also caches for 10 minutes
  * - Returns fallback price if API fails
  * - Deduplicates concurrent requests
  */
@@ -33,27 +33,22 @@ export async function getIPTokenPrice(): Promise<number> {
   // Start new fetch
   fetchPromise = (async () => {
     try {
-      const response = await fetch(
-        `${COINGECKO_API_URL}?ids=${IP_TOKEN_ID}&vs_currencies=usd`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-          // Don't cache at HTTP level since we manage our own cache
-          cache: "no-store",
-        }
-      );
+      const response = await fetch("/api/price", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
       if (!response.ok) {
-        console.warn(`CoinGecko API error: ${response.status}`);
+        console.warn(`Price API error: ${response.status}`);
         return getCachedOrFallbackPrice();
       }
 
       const data = await response.json();
-      const price = data[IP_TOKEN_ID]?.usd;
+      const price = data.price;
 
       if (typeof price !== "number" || isNaN(price)) {
-        console.warn("Invalid price data from CoinGecko");
+        console.warn("Invalid price data from API");
         return getCachedOrFallbackPrice();
       }
 

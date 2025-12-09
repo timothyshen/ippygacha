@@ -6,7 +6,7 @@ import {
   NFTMarketplaceABI,
   ippyIPABI,
 } from "@/lib/contract";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { parseEther, formatEther } from "viem";
 import { GachaItemWithCount } from "@/features/inventory/types";
 import { marketplaceCache } from "@/lib/events/cache";
@@ -621,7 +621,7 @@ export const useMarketplace = () => {
     }
   };
 
-  const getListing = async (nftAddress: string, tokenId: string) => {
+  const getListing = useCallback(async (nftAddress: string, tokenId: string) => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
@@ -638,9 +638,9 @@ export const useMarketplace = () => {
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [getWalletClient]);
 
-  const getProceeds = async (sellerAddress: string) => {
+  const getProceeds = useCallback(async (sellerAddress: string) => {
     try {
       const proceeds = await readClient.readContract({
         address: nftMarketplaceAddress,
@@ -654,9 +654,9 @@ export const useMarketplace = () => {
       console.error(error);
       return BigInt(0);
     }
-  };
+  }, []);
 
-  const withdrawProceeds = async () => {
+  const withdrawProceeds = useCallback(async () => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
@@ -718,7 +718,7 @@ export const useMarketplace = () => {
       });
       throw error;
     }
-  };
+  }, [getWalletClient, getProceeds, addNotification]);
 
   // Force refresh: clear cache and fetch fresh data
   const forceRefresh = async (): Promise<MarketplaceListing[]> => {
