@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { COLLECTION_GLOW } from "@/features/inventory/types"
 import { cn } from "@/lib/utils"
 import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarketplace"
+import { useIPPrice } from "@/hooks/useIPPrice"
 
 interface BuyingModalProps {
     listing: MarketplaceListing
@@ -27,6 +28,7 @@ export const BuyingModal = ({ listing }: BuyingModalProps) => {
     const [isHovered, setIsHovered] = useState(false)
     const [detailOpen, setDetailOpen] = useState(false)
     const { buyItem } = useMarketplace();
+    const { price: ipPrice } = useIPPrice();
 
     const handlePurchase = async () => {
         await buyItem(listing.nftAddress, listing.tokenId, listing.priceInETH.toString());
@@ -178,7 +180,7 @@ export const BuyingModal = ({ listing }: BuyingModalProps) => {
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
                                                             <div>{listing.priceInETH.toFixed(2)} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
+                                                            <div className="text-xs text-gray-400">(${(listing.priceInETH * ipPrice).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -191,7 +193,7 @@ export const BuyingModal = ({ listing }: BuyingModalProps) => {
                                                     <span>Total</span>
                                                     <div className="text-right">
                                                         <div>{handleCalculation(listing.priceInETH).proceeds} IP</div>
-                                                        <div className="text-xs text-gray-400">(${(handleCalculation(listing.priceInETH).proceeds * 3).toFixed(2)})</div>
+                                                        <div className="text-xs text-gray-400">(${(handleCalculation(listing.priceInETH).proceeds * ipPrice).toFixed(2)})</div>
                                                     </div>
                                                 </div>
                                             </div>

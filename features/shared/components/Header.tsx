@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { cn } from "@/lib/utils";
 import { useUserData } from "@/contexts/user-data-context";
 import { useMarketplace } from "@/hooks/marketplace/useMarketplace";
+import { useIPPrice } from "@/hooks/useIPPrice";
 import { formatEther } from "viem";
 
 import { Box, Gift, LogOut, PackageOpen, ShoppingBag, Trophy, Activity as ActivityIcon, Sparkles, ExternalLink, Wallet, Loader2 } from "lucide-react";
@@ -59,6 +60,7 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
     const router = useRouter();
     const { userData, recentActivities, isLoadingUser } = useUserData();
     const { getProceeds, withdrawProceeds } = useMarketplace();
+    const { price: ipPrice } = useIPPrice();
 
     const [proceeds, setProceeds] = useState<bigint>(BigInt(0));
     const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -269,7 +271,7 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                                             {formatEther(proceeds)} IP
                                                         </div>
                                                         <div className="text-xs text-emerald-600">
-                                                            ≈ ${(parseFloat(formatEther(proceeds)) * 3).toFixed(2)}
+                                                            ≈ ${(parseFloat(formatEther(proceeds)) * ipPrice).toFixed(2)}
                                                         </div>
                                                     </>
                                                 )}

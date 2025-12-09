@@ -24,6 +24,7 @@ import { getItemDisplayName, getRarityInfo, hasRichMetadata, getItemDisplayStyle
 import { metadataMapping } from "@/lib/metadataMapping"
 import { cn } from "@/lib/utils"
 import { useMarketplace } from "@/hooks/marketplace/useMarketplace"
+import { useIPPrice } from "@/hooks/useIPPrice"
 import { ippyNFTAddress } from "@/lib/contract/contractAddress"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { formatEther } from "viem"
@@ -55,6 +56,7 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
     const [detailOpen, setDetailOpen] = useState(false)
     const [listDrawerOpen, setListDrawerOpen] = useState(false)
     const { listItem, cancelListing, getListing } = useMarketplace();
+    const { price: ipPrice } = useIPPrice();
 
     // Listing state
     const [isListed, setIsListed] = useState(false)
@@ -528,7 +530,7 @@ export const ListingModal = ({ item, batchSelection, favorites, onListSuccess, o
                                                         <span>Total est. proceeds</span>
                                                         <div className="text-right">
                                                             <div>{handleCalculation(floorPrice).proceeds} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(handleCalculation(floorPrice).proceeds * 3).toFixed(2)})</div>
+                                                            <div className="text-xs text-gray-400">(${(handleCalculation(floorPrice).proceeds * ipPrice).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>

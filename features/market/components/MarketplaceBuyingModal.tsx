@@ -21,6 +21,7 @@ import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarke
 import { metadataMapping } from "@/lib/metadataMapping"
 import { getImageDisplayUrl } from "@/lib/metadata"
 import { usePrivy } from "@privy-io/react-auth"
+import { useIPPrice } from "@/hooks/useIPPrice"
 
 interface MarketplaceBuyingModalProps {
     listing: MarketplaceListing
@@ -41,6 +42,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
     const [loading, setLoading] = useState(false)
     const { buyItem } = useMarketplace()
     const { user } = usePrivy()
+    const { price: ipPrice } = useIPPrice()
 
     // Check if current user is the seller
     const currentUserAddress = user?.wallet?.address?.toLowerCase()
@@ -180,7 +182,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-right">
                                                             <div>{listing.priceInETH.toFixed(2)} IP</div>
-                                                            <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
+                                                            <div className="text-xs text-gray-400">(${(listing.priceInETH * ipPrice).toFixed(2)})</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -193,7 +195,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                                     <span>Total</span>
                                                     <div className="text-right">
                                                         <div>{listing.priceInETH.toFixed(2)} IP</div>
-                                                        <div className="text-xs text-gray-400">(${(listing.priceInETH * 3).toFixed(2)})</div>
+                                                        <div className="text-xs text-gray-400">(${(listing.priceInETH * ipPrice).toFixed(2)})</div>
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-gray-400">
@@ -223,7 +225,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                         {listing.priceInETH.toFixed(2)} IP
                                     </p>
                                     <p className="text-left text-gray-400 font-extrabold text-xs">
-                                        (${(listing.priceInETH * 3).toFixed(2)})
+                                        (${(listing.priceInETH * ipPrice).toFixed(2)})
                                     </p>
                                 </div>
                             </div>
