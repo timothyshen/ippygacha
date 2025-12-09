@@ -33,13 +33,29 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0");
     const userId = searchParams.get("userId");
     const activityType = searchParams.get("activityType");
+    const activityTypes = searchParams.get("activityTypes"); // Comma-separated list
     const walletAddress = searchParams.get("walletAddress");
 
+    // Validate single activityType if provided
     if (activityType && !isActivityType(activityType)) {
       return NextResponse.json(
         { error: "Invalid activity type" },
         { status: 400 }
       );
+    }
+
+    // Validate multiple activityTypes if provided
+    let activityTypesList: string[] = [];
+    if (activityTypes) {
+      activityTypesList = activityTypes.split(",").map((t) => t.trim());
+      for (const type of activityTypesList) {
+        if (!isActivityType(type)) {
+          return NextResponse.json(
+            { error: `Invalid activity type: ${type}` },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     let resolvedUserId = userId;
@@ -94,6 +110,8 @@ export async function GET(request: NextRequest) {
 
     if (activityType) {
       query = query.eq("activityType", activityType);
+    } else if (activityTypesList.length > 0) {
+      query = query.in("activityType", activityTypesList);
     }
 
     const {

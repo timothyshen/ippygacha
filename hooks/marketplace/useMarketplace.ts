@@ -11,6 +11,7 @@ import { parseEther, formatEther } from "viem";
 import { GachaItemWithCount } from "@/features/inventory/types";
 import { marketplaceCache } from "@/lib/events/cache";
 import { getCacheKey } from "@/lib/events/types";
+import { awardActivityPoints } from "@/lib/auth";
 import {
   ItemListedEvent,
   ItemBoughtEvent,
@@ -395,6 +396,19 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
+
+      // Award activity points for listing
+      await awardActivityPoints(
+        account,
+        "MARKETPLACE_LIST",
+        {
+          tokenId,
+          nftAddress,
+          price,
+          timestamp: new Date().toISOString(),
+        },
+        tx.transactionHash
+      );
     } catch (error) {
       console.error("Error listing item:", error);
       addNotification({
@@ -515,6 +529,19 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
+
+      // Award activity points for purchase
+      await awardActivityPoints(
+        account,
+        "MARKETPLACE_PURCHASE",
+        {
+          tokenId,
+          nftAddress,
+          price,
+          timestamp: new Date().toISOString(),
+        },
+        tx.transactionHash
+      );
     } catch (error: unknown) {
       console.error("Purchase error:", error);
 
