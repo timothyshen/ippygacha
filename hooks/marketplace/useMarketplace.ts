@@ -149,39 +149,72 @@ export const useMarketplace = () => {
       const canceledEvents = rawCanceledEvents as unknown as ItemCanceledEvent[];
 
       // Step 5: Update cache with new events
+      // IMPORTANT: Events must be processed in chronological order (by block number, then log index)
+      // to handle cases where an item is bought and relisted in the same or subsequent blocks
 
-      // Process new listings
-      for (const event of listedEvents) {
-        const { nftAddress, tokenId, price, seller } = event.args;
-        const key = getCacheKey(nftAddress, tokenId);
+      type MarketplaceEvent = {
+        type: 'listed' | 'bought' | 'canceled';
+        blockNumber: bigint;
+        logIndex: number;
+        args: ItemListedEvent['args'] | ItemBoughtEvent['args'] | ItemCanceledEvent['args'];
+        transactionHash: string;
+      };
 
-        // Add to active listings
-        cache.activeListings.set(key, {
-          nftAddress,
-          tokenId: tokenId.toString(),
-          price: price.toString(),
-          seller,
-          blockNumber: event.blockNumber,
-          transactionHash: event.transactionHash,
-        });
-      }
+      // Combine all events with their types
+      const allEvents: MarketplaceEvent[] = [
+        ...listedEvents.map(e => ({
+          type: 'listed' as const,
+          blockNumber: e.blockNumber,
+          logIndex: e.logIndex,
+          args: e.args,
+          transactionHash: e.transactionHash
+        })),
+        ...boughtEvents.map(e => ({
+          type: 'bought' as const,
+          blockNumber: e.blockNumber,
+          logIndex: e.logIndex,
+          args: e.args,
+          transactionHash: e.transactionHash
+        })),
+        ...canceledEvents.map(e => ({
+          type: 'canceled' as const,
+          blockNumber: e.blockNumber,
+          logIndex: e.logIndex,
+          args: e.args,
+          transactionHash: e.transactionHash
+        })),
+      ];
 
-      // Process new purchases
-      for (const event of boughtEvents) {
-        const { nftAddress, tokenId } = event.args;
-        const key = getCacheKey(nftAddress, tokenId);
+      // Sort by block number, then by log index for events in the same block
+      allEvents.sort((a, b) => {
+        if (a.blockNumber !== b.blockNumber) {
+          return a.blockNumber < b.blockNumber ? -1 : 1;
+        }
+        return a.logIndex - b.logIndex;
+      });
 
-        // Remove from active listings
-        cache.activeListings.delete(key);
-      }
+      // Process events in chronological order
+      for (const event of allEvents) {
+        if (event.type === 'listed') {
+          const { nftAddress, tokenId, price, seller } = event.args as ItemListedEvent['args'];
+          const key = getCacheKey(nftAddress, tokenId);
 
-      // Process new cancellations
-      for (const event of canceledEvents) {
-        const { nftAddress, tokenId } = event.args;
-        const key = getCacheKey(nftAddress, tokenId);
+          // Add to active listings
+          cache.activeListings.set(key, {
+            nftAddress,
+            tokenId: tokenId.toString(),
+            price: price.toString(),
+            seller,
+            blockNumber: event.blockNumber,
+            transactionHash: event.transactionHash,
+          });
+        } else if (event.type === 'bought' || event.type === 'canceled') {
+          const { nftAddress, tokenId } = event.args as ItemBoughtEvent['args'];
+          const key = getCacheKey(nftAddress, tokenId);
 
-        // Remove from active listings
-        cache.activeListings.delete(key);
+          // Remove from active listings
+          cache.activeListings.delete(key);
+        }
       }
 
       // Step 6: Update cache metadata
