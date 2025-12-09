@@ -148,9 +148,11 @@ export const MarketplacePage = React.memo(() => {
 
   // Filter marketplace listings
   const filteredListings = marketplaceListings.filter((listing) => {
-    const matchesSearch = listing.metadata?.name
-      ?.toLowerCase()
-      .includes(searchTerm.toLowerCase()) ?? true
+    // If there's a search term, only match if metadata name contains it
+    // If no search term, show all items
+    const matchesSearch = searchTerm.trim() === ""
+      ? true
+      : (listing.metadata?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
     const matchesCollection = selectedCollection === "all" || listing.metadata?.collection === selectedCollection
     const matchesVersion = selectedVersion === "all" || listing.metadata?.version === selectedVersion
     return matchesSearch && matchesCollection && matchesVersion
