@@ -12,6 +12,7 @@ interface WinModalProps {
   selectedPrizeValue: string | null
   cooldownHours: number
   cooldownMinutes: number
+  cooldownSeconds: number
   raffleInfo: ContractRaffleInfo | null
   userStats: ContractUserStats | null
   transactionHash?: string | null
@@ -25,6 +26,7 @@ export const WinModal = React.memo(({
   selectedPrizeValue,
   cooldownHours,
   cooldownMinutes,
+  cooldownSeconds,
   userStats,
   transactionHash,
   latestPrize
@@ -58,7 +60,9 @@ export const WinModal = React.memo(({
           </div>
           <div className="text-center">
             <h3 className="text-xl font-bold text-primary">{selectedPrize}</h3>
-            <p className="text-lg font-semibold text-accent">{selectedPrizeValue}</p>
+            {selectedPrizeValue && selectedPrizeValue !== selectedPrize && (
+              <p className="text-lg font-semibold text-accent">{selectedPrizeValue}</p>
+            )}
           </div>
 
           {/* Real Prize Information from Contract */}
@@ -106,9 +110,14 @@ export const WinModal = React.memo(({
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-semibold">Transaction Hash</span>
               </div>
-              <p className="text-xs text-muted-foreground font-mono break-all">
+              <a
+                href={`https://aeneid.storyscan.io/tx/${transactionHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-mono break-all underline"
+              >
                 {transactionHash}
-              </p>
+              </a>
             </div>
           )}
 
@@ -136,7 +145,12 @@ export const WinModal = React.memo(({
                 <span className="font-semibold text-orange-800 dark:text-orange-200">Next Spin Available</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Come back in {cooldownHours > 0 ? `${cooldownHours}h ${cooldownMinutes}m` : `${cooldownMinutes}m`} to spin again!
+                Come back in {cooldownHours > 0
+                  ? `${cooldownHours}h ${cooldownMinutes}m`
+                  : cooldownMinutes > 0
+                    ? `${cooldownMinutes}m ${cooldownSeconds}s`
+                    : `${cooldownSeconds}s`
+                } to spin again!
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Secured by smart contract validation ✓

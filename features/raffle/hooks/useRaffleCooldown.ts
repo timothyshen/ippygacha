@@ -11,6 +11,9 @@ interface CooldownDisplay {
 }
 
 const COOLDOWN_PERIOD_MS = 5 * 60 * 1000; // 5 minutes
+// Buffer to account for block timestamp vs client time differences
+// This prevents users from clicking "Spin" right when timer hits 0 but blockchain still says cooldown active
+const COOLDOWN_BUFFER_MS = 3 * 1000; // 3 seconds buffer
 
 /**
  * Hook for managing raffle cooldown state
@@ -45,18 +48,20 @@ export const useRaffleCooldown = (walletAddress: string) => {
 
   /**
    * Check if user can spin (from smart contract)
+   * @param address - Wallet address to check
+   * @param forceCheck - Bypass throttle for critical checks (e.g., cooldown completion verification)
    */
   const checkCanSpin = useCallback(
-    async (address: string) => {
+    async (address: string, forceCheck: boolean = false) => {
       if (!address) return Promise.resolve();
 
       if (cooldownCheckPromiseRef.current) {
         return cooldownCheckPromiseRef.current;
       }
 
-      // Throttle contract calls - only allow one call per 2 seconds
+      // Throttle contract calls - only allow one call per 2 seconds (unless forced)
       const now = Date.now();
-      if (now - lastContractCallRef.current < 2000) {
+      if (!forceCheck && now - lastContractCallRef.current < 2000) {
         return Promise.resolve();
       }
       lastContractCallRef.current = now;
@@ -65,13 +70,17 @@ export const useRaffleCooldown = (walletAddress: string) => {
         try {
           // Check if raffle is active
           const raffleInfoData = await getRaffleInfo();
-          if (!raffleInfoData.active) {
+          if (!raffleInfoData || !raffleInfoData.active) {
             setCanSpin(false);
             return;
           }
 
           // Check smart contract cooldown
           const cooldownStatus = await getUserCooldownStatus(address);
+          if (!cooldownStatus) {
+            console.error("Failed to get cooldown status");
+            return;
+          }
 
           if (cooldownStatus.canEnter) {
             setCanSpin(true);
@@ -134,17 +143,20 @@ export const useRaffleCooldown = (walletAddress: string) => {
         const remainingTime = COOLDOWN_PERIOD_MS - timeSinceLastSpin;
 
         if (remainingTime <= 0) {
-          // Immediately set canSpin to true for instant UI feedback
-          setCanSpin(true);
-          setLastSpinTime(null);
+          // Timer shows 0, but DON'T enable button yet - verify with contract first
+          // This prevents race condition where frontend timer is ahead of blockchain
           updateCooldownDisplay(0, COOLDOWN_PERIOD_MS);
-
-          // Verify with contract in background (double-check)
-          checkCanSpin(walletAddress).catch((error) => {
-            console.error("Error verifying cooldown completion:", error);
-          });
-
           clearInterval(interval);
+
+          // Verify with contract before enabling spin (force check to bypass throttle)
+          checkCanSpin(walletAddress, true)
+            .catch((error) => {
+              console.error("Error verifying cooldown completion:", error);
+              // On error, retry after buffer period
+              setTimeout(() => {
+                checkCanSpin(walletAddress, true);
+              }, COOLDOWN_BUFFER_MS);
+            });
         } else {
           // Just update the display
           updateCooldownDisplay(remainingTime, COOLDOWN_PERIOD_MS);

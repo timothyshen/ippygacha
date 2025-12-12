@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, Store, Search } from "lucide-react"
+import { Activity, Store, Search, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { MarketplaceBuyingModal } from "./MarketplaceBuyingModal"
@@ -14,143 +14,119 @@ import { MarketStats } from "./MarketStats"
 import { useActiveListings } from "@/hooks/marketplace/useMarketplace"
 import Footer from "@/features/shared/components/Footer"
 
-// Update the GachaItem interface to include version
-interface GachaItem {
-  id: string
-  name: string
-  collection: "ippy"
-  emoji: string
-  description: string
-  version: "standard" | "hidden"
-}
-
 interface TradeActivity {
   id: string
-  type: "sale" | "listing" | "offer" | "transfer"
-  item: GachaItem | { isBlindBox: true; id: string; name: string; emoji: string }
-  from?: string
-  to?: string
+  type: "sale" | "listing" | "purchase"
+  item: { name: string; tokenId: string }
+  from: string
   price?: number
   timestamp: string
-  status: "completed" | "pending" | "cancelled"
+  status: "completed"
+  txnHash?: string
 }
 
-// Update the mock trades with collection-based items
-const MOCK_ACTIVITY: TradeActivity[] = [
-  {
-    id: "1",
-    type: "sale",
+// Database activity interface
+interface DBActivity {
+  id: string
+  activityType: string
+  metadata: {
+    tokenId?: string
+    nftAddress?: string
+    price?: string
+    timestamp?: string
+  }
+  txnHash?: string | null
+  createdAt: string
+  user: {
+    walletAddress: string
+    username?: string | null
+  }
+}
+
+// Format relative time
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`
+}
+
+// Shorten wallet address
+function shortenAddress(address: string): string {
+  if (!address) return "Unknown"
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
+
+// Transform database activity to TradeActivity
+function transformActivity(activity: DBActivity): TradeActivity {
+  const typeMap: Record<string, "listing" | "purchase" | "sale"> = {
+    MARKETPLACE_LIST: "listing",
+    MARKETPLACE_PURCHASE: "purchase",
+    MARKETPLACE_SALE: "sale",
+  }
+
+  return {
+    id: activity.id,
+    type: typeMap[activity.activityType] || "listing",
     item: {
-      id: "8",
-      name: "Dragon Egg",
-      collection: "ippy",
-      emoji: "🥚",
-      description: "Ancient and powerful",
-      version: "standard",
+      name: `IPPY #${activity.metadata?.tokenId || "?"}`,
+      tokenId: activity.metadata?.tokenId || "?",
     },
-    from: "DragonMaster",
-    to: "FantasyCollector",
-    price: 35,
-    timestamp: "2 minutes ago",
+    from: activity.user?.username || shortenAddress(activity.user?.walletAddress || ""),
+    price: activity.metadata?.price ? parseFloat(activity.metadata.price) : undefined,
+    timestamp: formatRelativeTime(activity.createdAt),
     status: "completed",
-  },
-  {
-    id: "2",
-    type: "listing",
-    item: {
-      id: "9h",
-      name: "Phoenix Feather",
-      collection: "ippy",
-      emoji: "🪶",
-      description: "Burns with eternal flame",
-      version: "hidden",
-    },
-    from: "FireBird",
-    price: 85,
-    timestamp: "5 minutes ago",
-    status: "pending",
-  },
-  {
-    id: "3",
-    type: "sale",
-    item: {
-      id: "16h",
-      name: "Moon Crystal",
-      collection: "ippy",
-      emoji: "🌙",
-      description: "Lunar energy",
-      version: "hidden",
-    },
-    from: "MoonWalker",
-    to: "SpaceExplorer",
-    price: 180,
-    timestamp: "12 minutes ago",
-    status: "completed",
-  },
-  {
-    id: "4",
-    type: "offer",
-    item: {
-      id: "4",
-      name: "Magic Wand",
-      collection: "ippy",
-      emoji: "🪄",
-      description: "Sparkles with mystery",
-      version: "standard",
-    },
-    from: "WizardKing",
-    to: "MagicUser",
-    price: 15,
-    timestamp: "18 minutes ago",
-    status: "pending",
-  },
-  {
-    id: "5",
-    type: "sale",
-    item: {
-      isBlindBox: true,
-      id: "bb1",
-      name: "Mystery Premium Box",
-      emoji: "📦",
-    },
-    from: "MysteryTrader",
-    to: "BoxCollector",
-    price: 8,
-    timestamp: "25 minutes ago",
-    status: "completed",
-  },
-  {
-    id: "6",
-    type: "transfer",
-    item: {
-      id: "11h",
-      name: "Laser Sword",
-      collection: "ippy",
-      emoji: "⚡",
-      description: "Futuristic weapon",
-      version: "hidden",
-    },
-    from: "TechMaster",
-    to: "CyberWarrior",
-    timestamp: "1 hour ago",
-    status: "completed",
-  },
-]
+    txnHash: activity.txnHash || undefined,
+  }
+}
 
 export const MarketplacePage = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState("")
-  const [trades] = useState<TradeActivity[]>(MOCK_ACTIVITY)
+  const [trades, setTrades] = useState<TradeActivity[]>([])
+  const [tradesLoading, setTradesLoading] = useState(true)
   const [selectedCollection, setSelectedCollection] = useState("all")
   const [selectedVersion] = useState("all")
 
   // Use real marketplace data
   const { listings: marketplaceListings, loading, error, refetch } = useActiveListings()
 
+  // Fetch marketplace activities
+  const fetchActivities = useCallback(async () => {
+    try {
+      setTradesLoading(true)
+      const response = await fetch(
+        "/api/activities?activityTypes=MARKETPLACE_LIST,MARKETPLACE_PURCHASE,MARKETPLACE_SALE&limit=20"
+      )
+      if (response.ok) {
+        const data = await response.json()
+        const transformedActivities = (data.activities || []).map(transformActivity)
+        setTrades(transformedActivities)
+      }
+    } catch (err) {
+      console.error("Error fetching activities:", err)
+    } finally {
+      setTradesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchActivities()
+  }, [fetchActivities])
+
   // Filter marketplace listings
   const filteredListings = marketplaceListings.filter((listing) => {
-    const matchesSearch = listing.metadata?.name
-      ?.toLowerCase()
-      .includes(searchTerm.toLowerCase()) ?? true
+    // If there's a search term, only match if metadata name contains it
+    // If no search term, show all items
+    const matchesSearch = searchTerm.trim() === ""
+      ? true
+      : (listing.metadata?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
     const matchesCollection = selectedCollection === "all" || listing.metadata?.collection === selectedCollection
     const matchesVersion = selectedVersion === "all" || listing.metadata?.version === selectedVersion
     return matchesSearch && matchesCollection && matchesVersion
@@ -162,9 +138,7 @@ export const MarketplacePage = React.memo(() => {
         return "text-green-600 bg-green-50 border-green-200"
       case "listing":
         return "text-blue-600 bg-blue-50 border-blue-200"
-      case "offer":
-        return "text-orange-600 bg-orange-50 border-orange-200"
-      case "transfer":
+      case "purchase":
         return "text-purple-600 bg-purple-50 border-purple-200"
       default:
         return "text-slate-600 bg-slate-50 border-slate-200"
@@ -324,61 +298,75 @@ export const MarketplacePage = React.memo(() => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {trades.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-4 p-4 bg-slate-50/50 rounded-lg border border-slate-200 hover:bg-slate-100/50 transition-colors"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-slate-800">
-                          {"isBlindBox" in item.item ? item.item.name : item.item.name}
-                        </span>
-                        <Badge className={cn("text-xs", getActivityColor(item.type))}>{item.type.toUpperCase()}</Badge>
-                        {"collection" in item.item && (
-                          <Badge variant="outline" className="text-xs">
-                            {item.item.collection.toUpperCase()}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="text-sm text-slate-600">
-                        {item.type === "sale" && (
-                          <>
-                            Sold by <span className="font-medium">{item.from}</span> to{" "}
-                            <span className="font-medium">{item.to}</span>
-                          </>
-                        )}
-                        {item.type === "listing" && (
-                          <>
-                            Listed by <span className="font-medium">{item.from}</span>
-                          </>
-                        )}
-                        {item.type === "offer" && (
-                          <>
-                            Offer from <span className="font-medium">{item.from}</span> to{" "}
-                            <span className="font-medium">{item.to}</span>
-                          </>
-                        )}
-                        {item.type === "transfer" && (
-                          <>
-                            Transferred from <span className="font-medium">{item.from}</span> to{" "}
-                            <span className="font-medium">{item.to}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      {item.price && (
-                        <div className="flex items-center gap-1 text-slate-800 font-bold">
-                          {item.price} IP
-                        </div>
-                      )}
-                      <div className="text-xs text-slate-500 mt-1">{item.timestamp}</div>
-                    </div>
+                {tradesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                   </div>
-                ))}
+                ) : trades.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <Activity className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                    <p>No marketplace activity yet</p>
+                    <p className="text-sm mt-2">Activities will appear here when users list or purchase NFTs</p>
+                  </div>
+                ) : (
+                  trades.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-4 p-4 bg-slate-50/50 rounded-lg border border-slate-200 hover:bg-slate-100/50 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-slate-800">
+                            {item.item.name}
+                          </span>
+                          <Badge className={cn("text-xs", getActivityColor(item.type))}>{item.type.toUpperCase()}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            IPPY
+                          </Badge>
+                        </div>
+
+                        <div className="text-sm text-slate-600">
+                          {item.type === "sale" && (
+                            <>
+                              Sold by <span className="font-medium">{item.from}</span>
+                            </>
+                          )}
+                          {item.type === "listing" && (
+                            <>
+                              Listed by <span className="font-medium">{item.from}</span>
+                            </>
+                          )}
+                          {item.type === "purchase" && (
+                            <>
+                              Purchased by <span className="font-medium">{item.from}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        {item.price && (
+                          <div className="flex items-center gap-1 text-slate-800 font-bold">
+                            {item.price} IP
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-slate-500">{item.timestamp}</span>
+                          {item.txnHash && (
+                            <a
+                              href={`https://aeneid.storyscan.io/tx/${item.txnHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>

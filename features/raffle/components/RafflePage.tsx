@@ -58,6 +58,7 @@ export default function RafflePage() {
           selectedPrizeValue={selectedPrizeValue}
           cooldownHours={cooldownHours}
           cooldownMinutes={cooldownMinutes}
+          cooldownSeconds={cooldownSeconds}
           userStats={userStats}
           transactionHash={transactionHash}
           raffleInfo={raffleInfo}

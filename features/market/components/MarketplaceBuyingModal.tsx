@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { useMarketplace, MarketplaceListing } from "@/hooks/marketplace/useMarketplace"
 import { metadataMapping } from "@/lib/metadataMapping"
 import { getImageDisplayUrl } from "@/lib/metadata"
+import { usePrivy } from "@privy-io/react-auth"
 
 interface MarketplaceBuyingModalProps {
     listing: MarketplaceListing
@@ -39,6 +40,11 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const { buyItem } = useMarketplace()
+    const { user } = usePrivy()
+
+    // Check if current user is the seller
+    const currentUserAddress = user?.wallet?.address?.toLowerCase()
+    const isOwnListing = currentUserAddress === listing.seller.toLowerCase()
 
     const handlePurchase = async () => {
         try {
@@ -124,6 +130,15 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                     <div className="w-full relative min-h-[40px]">
                         {isHovered ? (
                             <div className="flex w-full h-full animate-in slide-in-from-bottom-2 duration-500 ease-out">
+                                {isOwnListing ? (
+                                    <Button
+                                        size="lg"
+                                        className="items-center bg-gray-400 w-full rounded-none cursor-not-allowed"
+                                        disabled
+                                    >
+                                        <span className="text-sm font-medium">Your Listing</span>
+                                    </Button>
+                                ) : (
                                 <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
                                     <DrawerTrigger asChild>
                                         <Button
@@ -199,6 +214,7 @@ export const MarketplaceBuyingModal = ({ listing, onPurchaseSuccess }: Marketpla
                                         </div>
                                     </DrawerContent>
                                 </Drawer>
+                                )}
                             </div>
                         ) : (
                             <div className="flex w-full min-h-[40px] items-left justify-start bg-gray-800/80 backdrop-blur-sm animate-in fade-in-0 duration-300 ease-out px-2">

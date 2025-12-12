@@ -6,11 +6,12 @@ import {
   NFTMarketplaceABI,
   ippyIPABI,
 } from "@/lib/contract";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { parseEther, formatEther } from "viem";
 import { GachaItemWithCount } from "@/features/inventory/types";
 import { marketplaceCache } from "@/lib/events/cache";
 import { getCacheKey } from "@/lib/events/types";
+import { awardActivityPoints } from "@/lib/auth";
 import {
   ItemListedEvent,
   ItemBoughtEvent,
@@ -149,39 +150,72 @@ export const useMarketplace = () => {
         rawCanceledEvents as unknown as ItemCanceledEvent[];
 
       // Step 5: Update cache with new events
+      // IMPORTANT: Events must be processed in chronological order (by block number, then log index)
+      // to handle cases where an item is bought and relisted in the same or subsequent blocks
 
-      // Process new listings
-      for (const event of listedEvents) {
-        const { nftAddress, tokenId, price, seller } = event.args;
-        const key = getCacheKey(nftAddress, tokenId);
+      type MarketplaceEvent = {
+        type: 'listed' | 'bought' | 'canceled';
+        blockNumber: bigint;
+        logIndex: number;
+        args: ItemListedEvent['args'] | ItemBoughtEvent['args'] | ItemCanceledEvent['args'];
+        transactionHash: string;
+      };
 
-        // Add to active listings
-        cache.activeListings.set(key, {
-          nftAddress,
-          tokenId: tokenId.toString(),
-          price: price.toString(),
-          seller,
-          blockNumber: event.blockNumber,
-          transactionHash: event.transactionHash,
-        });
-      }
+      // Combine all events with their types
+      const allEvents: MarketplaceEvent[] = [
+        ...listedEvents.map(e => ({
+          type: 'listed' as const,
+          blockNumber: e.blockNumber,
+          logIndex: e.logIndex,
+          args: e.args,
+          transactionHash: e.transactionHash
+        })),
+        ...boughtEvents.map(e => ({
+          type: 'bought' as const,
+          blockNumber: e.blockNumber,
+          logIndex: e.logIndex,
+          args: e.args,
+          transactionHash: e.transactionHash
+        })),
+        ...canceledEvents.map(e => ({
+          type: 'canceled' as const,
+          blockNumber: e.blockNumber,
+          logIndex: e.logIndex,
+          args: e.args,
+          transactionHash: e.transactionHash
+        })),
+      ];
 
-      // Process new purchases
-      for (const event of boughtEvents) {
-        const { nftAddress, tokenId } = event.args;
-        const key = getCacheKey(nftAddress, tokenId);
+      // Sort by block number, then by log index for events in the same block
+      allEvents.sort((a, b) => {
+        if (a.blockNumber !== b.blockNumber) {
+          return a.blockNumber < b.blockNumber ? -1 : 1;
+        }
+        return a.logIndex - b.logIndex;
+      });
 
-        // Remove from active listings
-        cache.activeListings.delete(key);
-      }
+      // Process events in chronological order
+      for (const event of allEvents) {
+        if (event.type === 'listed') {
+          const { nftAddress, tokenId, price, seller } = event.args as ItemListedEvent['args'];
+          const key = getCacheKey(nftAddress, tokenId);
 
-      // Process new cancellations
-      for (const event of canceledEvents) {
-        const { nftAddress, tokenId } = event.args;
-        const key = getCacheKey(nftAddress, tokenId);
+          // Add to active listings
+          cache.activeListings.set(key, {
+            nftAddress,
+            tokenId: tokenId.toString(),
+            price: price.toString(),
+            seller,
+            blockNumber: event.blockNumber,
+            transactionHash: event.transactionHash,
+          });
+        } else if (event.type === 'bought' || event.type === 'canceled') {
+          const { nftAddress, tokenId } = event.args as ItemBoughtEvent['args'];
+          const key = getCacheKey(nftAddress, tokenId);
 
-        // Remove from active listings
-        cache.activeListings.delete(key);
+          // Remove from active listings
+          cache.activeListings.delete(key);
+        }
       }
 
       // Step 6: Update cache metadata
@@ -359,6 +393,19 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
+
+      // Award activity points for listing
+      await awardActivityPoints(
+        account,
+        "MARKETPLACE_LIST",
+        {
+          tokenId,
+          nftAddress,
+          price,
+          timestamp: new Date().toISOString(),
+        },
+        tx.transactionHash
+      );
     } catch (error) {
       console.error("Error listing item:", error);
       addNotification({
@@ -410,14 +457,28 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
-    } catch (error) {
-      console.error("Error canceling listing:", error);
+    } catch (error: unknown) {
+      console.error("Cancel listing error:", error);
+
+      // Extract error message from various error types
+      const errorString = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : String(error);
+
+      const message = errorString.toLowerCase();
+      let errorMessage = "Failed to cancel listing. Please try again.";
+
+      if (message.includes("user rejected") || message.includes("user denied") || message.includes("rejected the request")) {
+        errorMessage = "Transaction was cancelled by user.";
+      }
+
       addNotification({
-        title: "Failed to cancel listing",
-        message:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        title: "Cancel listing failed",
+        message: errorMessage,
         type: "error",
-        duration: 5000,
+        duration: 10000,
       });
       throw error;
     }
@@ -466,14 +527,51 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
-    } catch (error) {
-      console.error("Error buying item:", error);
+
+      // Award activity points for purchase
+      await awardActivityPoints(
+        account,
+        "MARKETPLACE_PURCHASE",
+        {
+          tokenId,
+          nftAddress,
+          price,
+          timestamp: new Date().toISOString(),
+        },
+        tx.transactionHash
+      );
+    } catch (error: unknown) {
+      console.error("Purchase error:", error);
+
+      // Parse error message for user-friendly display
+      let errorMessage = "Failed to buy item. It may have already been purchased or cancelled.";
+
+      // Extract error message from various error types
+      const errorString = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : typeof error === 'object' && error !== null && 'shortMessage' in error
+            ? String((error as { shortMessage: unknown }).shortMessage)
+            : String(error);
+
+      const message = errorString.toLowerCase();
+
+      if (message.includes("user rejected") || message.includes("user denied") || message.includes("rejected the request")) {
+        errorMessage = "Transaction was cancelled by user.";
+      } else if (message.includes("insufficient funds") || message.includes("insufficient balance") || message.includes("exceeds the balance")) {
+        errorMessage = "Insufficient funds to complete this purchase.";
+      } else if (message.includes("cannotbuyownitem") || message.includes("cannot buy own")) {
+        errorMessage = "You cannot buy your own listing.";
+      } else if (message.includes("not listed") || message.includes("listing") || message.includes("does not exist") || message.includes("revert")) {
+        errorMessage = "This item is no longer available. It may have been sold or cancelled.";
+      }
+
       addNotification({
-        title: "Failed to buy item",
-        message:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        title: "Purchase failed",
+        message: errorMessage,
         type: "error",
-        duration: 5000,
+        duration: 10000,
       });
       throw error;
     }
@@ -521,20 +619,34 @@ export const useMarketplace = () => {
         },
         duration: 10000,
       });
-    } catch (error) {
-      console.error("Error updating listing:", error);
+    } catch (error: unknown) {
+      console.error("Update listing error:", error);
+
+      // Extract error message from various error types
+      const errorString = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : String(error);
+
+      const message = errorString.toLowerCase();
+      let errorMessage = "Failed to update listing. Please try again.";
+
+      if (message.includes("user rejected") || message.includes("user denied") || message.includes("rejected the request")) {
+        errorMessage = "Transaction was cancelled by user.";
+      }
+
       addNotification({
-        title: "Failed to update listing",
-        message:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        title: "Update listing failed",
+        message: errorMessage,
         type: "error",
-        duration: 5000,
+        duration: 10000,
       });
       throw error;
     }
   };
 
-  const getListing = async (nftAddress: string, tokenId: string) => {
+  const getListing = useCallback(async (nftAddress: string, tokenId: string) => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
@@ -551,9 +663,9 @@ export const useMarketplace = () => {
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [getWalletClient]);
 
-  const getProceeds = async (sellerAddress: string) => {
+  const getProceeds = useCallback(async (sellerAddress: string) => {
     try {
       const proceeds = await readClient.readContract({
         address: nftMarketplaceAddress,
@@ -567,9 +679,9 @@ export const useMarketplace = () => {
       console.error(error);
       return BigInt(0);
     }
-  };
+  }, []);
 
-  const withdrawProceeds = async () => {
+  const withdrawProceeds = useCallback(async () => {
     try {
       const walletClient = await getWalletClient();
       if (!walletClient) {
@@ -634,7 +746,7 @@ export const useMarketplace = () => {
       });
       throw error;
     }
-  };
+  }, [getWalletClient, getProceeds, addNotification]);
 
   // Force refresh: clear cache and fetch fresh data
   const forceRefresh = async (): Promise<MarketplaceListing[]> => {

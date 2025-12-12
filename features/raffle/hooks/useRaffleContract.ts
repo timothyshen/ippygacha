@@ -57,7 +57,16 @@ export const useRaffleContract = (walletAddress: string) => {
           (prize, index) => convertContractPrizeToWinner(prize, index)
         );
 
-        setRecentWinners(displayWinners.slice(0, 10));
+        // Merge with existing winners to preserve locally-added entries
+        // that may not yet be reflected in contract data
+        setRecentWinners((prev) => {
+          // Get IDs of contract winners
+          const contractWinnerIds = new Set(displayWinners.map(w => w.id));
+          // Keep local winners that aren't in contract data yet (recent entries)
+          const localOnlyWinners = prev.filter(w => !contractWinnerIds.has(w.id));
+          // Combine: local-only first (newest), then contract data
+          return [...localOnlyWinners, ...displayWinners].slice(0, 10);
+        });
         setRaffleInfo(raffleInfoData);
         setEntryPrice(entryPriceData);
       } catch (error) {

@@ -4,6 +4,7 @@ import { awardActivityPoints } from "@/lib/auth";
 import { Winner } from "../types";
 import { formatEther } from "viem";
 import { useUserData } from "@/contexts/user-data-context";
+import { useNotifications } from "@/contexts/notification-context";
 
 interface UseRaffleUIProps {
   walletAddress: string;
@@ -42,6 +43,7 @@ export const useRaffleUI = ({
 
   const { enterRaffle, getUserCooldownStatus } = useRaffleEntry();
   const { refreshUserData } = useUserData();
+  const { addNotification } = useNotifications();
 
   /**
    * Handle wheel spin and raffle entry
@@ -149,11 +151,40 @@ export const useRaffleUI = ({
         loadContractData(),
         loadUserData(walletAddress),
       ]).catch((error) => console.error("Error refreshing data:", error));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Contract] Raffle entry failed:", error);
       setIsSpinning(false);
       setIsTransactionPending(false);
-      alert(`Raffle entry failed: ${error.message}`);
+
+      // Parse error for user-friendly message
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
+      let title = "Spin Failed";
+      let message = "Something went wrong. Please try again.";
+
+      if (errorMessage.includes("user rejected") || errorMessage.includes("user denied") || errorMessage.includes("rejected the request")) {
+        title = "Transaction Cancelled";
+        message = "You cancelled the transaction.";
+      } else if (errorMessage.includes("insufficient funds") || errorMessage.includes("insufficient balance")) {
+        title = "Insufficient Balance";
+        message = "You don't have enough IP tokens to enter the raffle.";
+      } else if (errorMessage.includes("cooldown")) {
+        title = "Cooldown Active";
+        message = "Please wait for the cooldown period to end before spinning again.";
+      } else if (errorMessage.includes("no wallet") || errorMessage.includes("wallet") || errorMessage.includes("account")) {
+        title = "Wallet Required";
+        message = "Please connect a wallet to participate in the raffle. Email login requires linking a wallet.";
+      } else if (errorMessage.includes("network") || errorMessage.includes("rpc") || errorMessage.includes("connection")) {
+        title = "Network Error";
+        message = "Unable to connect to the blockchain. Please check your connection and try again.";
+      }
+
+      addNotification({
+        title,
+        message,
+        type: "error",
+        duration: 8000,
+      });
     }
   }, [
     canSpin,
@@ -167,6 +198,7 @@ export const useRaffleUI = ({
     addWinner,
     updateTransactionHash,
     entryPrice,
+    addNotification,
   ]);
 
   return {
