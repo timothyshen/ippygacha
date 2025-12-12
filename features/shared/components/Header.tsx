@@ -187,9 +187,9 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                             </SheetTrigger>
                             <SheetContent
                                 side="right"
-                                className="w-full max-w-md border-l border-slate-200 bg-white p-0 text-slate-900"
+                                className="flex w-full max-w-md flex-col border-l border-slate-200 bg-white p-0 text-slate-900"
                             >
-                                <SheetHeader className="border-b border-slate-200 bg-slate-50 px-6 py-6 text-left">
+                                <SheetHeader className="flex-shrink-0 border-b border-slate-200 bg-slate-50 px-6 py-6 text-left">
                                     <SheetTitle>
                                         <div className="flex items-start gap-4 pr-8">
                                         <Avatar className="h-14 w-14 border border-amber-200">
@@ -210,7 +210,7 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                     </SheetTitle>
                                 </SheetHeader>
 
-                                <div className="space-y-6 px-6 py-6">
+                                <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
                                     {isLoadingUser ? (
                                         <div className="text-center text-sm text-slate-500">Loading user data...</div>
                                     ) : (
