@@ -45,7 +45,6 @@ export default function GachaPage() {
         }
       >
         <GachaMachine />
-        <Footer />
         <NotificationContainer />
       </Suspense>
     </ErrorBoundary>

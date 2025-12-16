@@ -35,7 +35,7 @@ export const WinModal = React.memo(({
   const totalWinnings = userStats ? formatEther(userStats.totalWinnings) : "0";
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold text-primary flex items-center justify-center gap-2">
             <Trophy className="h-6 w-6 text-yellow-500" />

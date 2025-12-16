@@ -21,7 +21,9 @@ const COOLDOWN_BUFFER_MS = 3 * 1000; // 3 seconds buffer
  */
 export const useRaffleCooldown = (walletAddress: string) => {
   const [canSpin, setCanSpin] = useState(true);
-  const [lastSpinTime, setLastSpinTime] = useState<number | null>(null);
+  // Store the target end time (client time when cooldown ends) instead of last spin time
+  // This accounts for block time vs client time differences
+  const [cooldownEndTime, setCooldownEndTime] = useState<number | null>(null);
   const [cooldownDisplay, setCooldownDisplay] = useState<CooldownDisplay>({
     hours: 0,
     minutes: 0,
@@ -84,7 +86,7 @@ export const useRaffleCooldown = (walletAddress: string) => {
 
           if (cooldownStatus.canEnter) {
             setCanSpin(true);
-            setLastSpinTime(null);
+            setCooldownEndTime(null);
             setCooldownDisplay({
               hours: 0,
               minutes: 0,
@@ -95,7 +97,9 @@ export const useRaffleCooldown = (walletAddress: string) => {
           } else {
             setCanSpin(false);
             const timeRemainingMs = Number(cooldownStatus.timeRemaining) * 1000;
-            setLastSpinTime(Number(cooldownStatus.lastEntryTime) * 1000);
+            // Calculate end time based on contract's remaining time (not lastEntryTime)
+            // This avoids block time vs client time discrepancies
+            setCooldownEndTime(Date.now() + timeRemainingMs);
             updateCooldownDisplay(timeRemainingMs, COOLDOWN_PERIOD_MS);
           }
         } catch (error) {
@@ -115,9 +119,10 @@ export const useRaffleCooldown = (walletAddress: string) => {
    * Manually update cooldown state (called after a successful spin)
    */
   const startCooldown = useCallback(
-    (timeRemainingMs: number, lastEntryTimeMs: number) => {
+    (timeRemainingMs: number, _lastEntryTimeMs: number) => {
       setCanSpin(false);
-      setLastSpinTime(lastEntryTimeMs);
+      // Calculate end time from now + remaining time
+      setCooldownEndTime(Date.now() + timeRemainingMs);
       updateCooldownDisplay(timeRemainingMs, COOLDOWN_PERIOD_MS);
     },
     [updateCooldownDisplay]
@@ -136,11 +141,18 @@ export const useRaffleCooldown = (walletAddress: string) => {
 
   // Cooldown monitoring effect - updates UI countdown
   useEffect(() => {
-    if (walletAddress && !canSpin && lastSpinTime) {
+    if (walletAddress && !canSpin && cooldownEndTime) {
+      // Calculate initial remaining time to check if we should even start
+      const initialRemaining = cooldownEndTime - Date.now();
+
+      // If already expired based on cooldownEndTime, verify with contract immediately
+      if (initialRemaining <= 0) {
+        checkCanSpin(walletAddress, true);
+        return;
+      }
+
       const interval = setInterval(() => {
-        const now = Date.now();
-        const timeSinceLastSpin = now - lastSpinTime;
-        const remainingTime = COOLDOWN_PERIOD_MS - timeSinceLastSpin;
+        const remainingTime = cooldownEndTime - Date.now();
 
         if (remainingTime <= 0) {
           // Timer shows 0, but DON'T enable button yet - verify with contract first
@@ -165,7 +177,7 @@ export const useRaffleCooldown = (walletAddress: string) => {
 
       return () => clearInterval(interval);
     }
-  }, [walletAddress, canSpin, lastSpinTime, checkCanSpin, updateCooldownDisplay]);
+  }, [walletAddress, canSpin, cooldownEndTime, checkCanSpin, updateCooldownDisplay]);
 
   return {
     // State

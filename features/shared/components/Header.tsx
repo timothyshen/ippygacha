@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { cn } from "@/lib/utils";
 import { useUserData } from "@/contexts/user-data-context";
 import { useMarketplace } from "@/hooks/marketplace/useMarketplace";
+import { useActiveWalletAddress } from "@/hooks/useActiveWalletAddress";
 import { useIPPrice } from "@/hooks/useIPPrice";
 import { formatEther } from "viem";
 
@@ -57,6 +58,7 @@ const getTimeAgo = (date: Date) => {
 
 export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
     const { login, logout, user } = usePrivy();
+    const activeWalletAddress = useActiveWalletAddress();
     const router = useRouter();
     const { userData, recentActivities, isLoadingUser } = useUserData();
     const { getProceeds, withdrawProceeds } = useMarketplace();
@@ -92,10 +94,10 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
     // Fetch proceeds when user wallet is available
     useEffect(() => {
         const fetchProceeds = async () => {
-            if (user?.wallet?.address) {
+            if (activeWalletAddress) {
                 try {
                     setIsLoadingProceeds(true);
-                    const userProceeds = await getProceeds(user.wallet.address);
+                    const userProceeds = await getProceeds(activeWalletAddress);
                     setProceeds(userProceeds || BigInt(0));
                 } catch (error) {
                     console.error("Error fetching proceeds:", error);
@@ -106,15 +108,15 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
         };
 
         fetchProceeds();
-    }, [user?.wallet?.address, getProceeds]);
+    }, [activeWalletAddress, getProceeds]);
 
     const handleWithdraw = async () => {
         try {
             setIsWithdrawing(true);
             await withdrawProceeds();
             // Refresh proceeds after withdrawal
-            if (user?.wallet?.address) {
-                const userProceeds = await getProceeds(user.wallet.address);
+            if (activeWalletAddress) {
+                const userProceeds = await getProceeds(activeWalletAddress);
                 setProceeds(userProceeds || BigInt(0));
             }
         } catch (error) {
@@ -175,31 +177,31 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                     <Avatar className="h-8 w-8 border border-white/40">
                                         <AvatarImage src={""} alt="User avatar" />
                                         <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-xs font-semibold text-white">
-                                            {user?.wallet?.address ? user.wallet.address.slice(2, 4).toUpperCase() : "IP"}
+                                            {activeWalletAddress ? activeWalletAddress.slice(2, 4).toUpperCase() : "IP"}
                                         </AvatarFallback>
                                     </Avatar>
                                     <span className="hidden sm:inline text-xs font-semibold">
-                                        {sliceAddress(user?.wallet?.address || "") || "Profile"}
+                                        {sliceAddress(activeWalletAddress || "") || "Profile"}
                                     </span>
                                 </button>
                             </SheetTrigger>
                             <SheetContent
                                 side="right"
-                                className="w-full max-w-md border-l border-slate-200 bg-white p-0 text-slate-900"
+                                className="flex w-full max-w-md flex-col border-l border-slate-200 bg-white p-0 text-slate-900"
                             >
-                                <SheetHeader className="border-b border-slate-200 bg-slate-50 px-6 py-6 text-left">
+                                <SheetHeader className="flex-shrink-0 border-b border-slate-200 bg-slate-50 px-6 py-6 text-left">
                                     <SheetTitle>
                                         <div className="flex items-start gap-4 pr-8">
-                                            <Avatar className="h-14 w-14 border border-amber-200">
-                                                <AvatarImage src={""} alt="User avatar" />
-                                                <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-base font-semibold text-white">
-                                                    {user?.wallet?.address ? user.wallet.address.slice(2, 4).toUpperCase() : "IP"}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                                <p className="text-lg font-semibold text-slate-900">
-                                                    {sliceAddress(user?.wallet?.address || "")}
-                                                </p>
+                                        <Avatar className="h-14 w-14 border border-amber-200">
+                                            <AvatarImage src={""} alt="User avatar" />
+                                            <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-base font-semibold text-white">
+                                                {activeWalletAddress ? activeWalletAddress.slice(2, 4).toUpperCase() : "IP"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1">
+                                            <p className="text-lg font-semibold text-slate-900">
+                                                {sliceAddress(activeWalletAddress || "")}
+                                            </p>
                                                 <Badge className="rounded-full bg-amber-100 px-3 text-amber-700">
                                                     Level {userData?.currentLevel || 1}
                                                 </Badge>
@@ -208,7 +210,7 @@ export const Header = memo(({ name, subtitle, isDark }: HeaderProps) => {
                                     </SheetTitle>
                                 </SheetHeader>
 
-                                <div className="space-y-6 px-6 py-6">
+                                <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
                                     {isLoadingUser ? (
                                         <div className="text-center text-sm text-slate-500">Loading user data...</div>
                                     ) : (

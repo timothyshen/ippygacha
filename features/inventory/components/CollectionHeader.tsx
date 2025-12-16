@@ -66,7 +66,7 @@ export function CollectionHeader({
                     <div className="space-y-1">
                         <div className="text-xs sm:text-sm text-slate-500 font-medium">Floor Price</div>
                         <div className="text-xl sm:text-2xl font-bold text-slate-900">
-                            {(Number(contractInfo.boxPrice) / 1e18).toFixed(3)} ETH
+                            {(Number(contractInfo.boxPrice) / 1e18).toFixed(3)} IP
                         </div>
                     </div>
 

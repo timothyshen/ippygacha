@@ -55,7 +55,7 @@ export const UnrevealedBoxView = ({
             <Button
                 onClick={onReveal}
                 size="lg"
-                disabled={isRevealing}
+                disabled={isRevealing || unrevealedBoxes === 0}
                 className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isRevealing ? (

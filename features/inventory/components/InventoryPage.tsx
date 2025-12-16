@@ -94,6 +94,15 @@ export default function Inventory() {
     // Get filtered items based on current filters
     let filteredItems = getFilteredItems(searchTerm, selectedVersion, selectedNFTType, sortBy)
 
+    // Store the base filtered count before applying quick filter
+    const allItemsCount = filteredItems.length
+
+    // Calculate favorites count from filtered items
+    const filteredFavoritesCount = filteredItems.filter((item) => {
+        const itemId = item.id || `${item.name}-${item.tokenId}`
+        return favorites.isFavorite(itemId)
+    }).length
+
     // Apply quick filter for favorites
     if (quickFilter === "favorites") {
         filteredItems = filteredItems.filter((item) => {
@@ -234,7 +243,7 @@ export default function Inventory() {
                                         className="h-9 text-xs sm:text-sm"
                                     >
                                         All Items
-                                        <span className="ml-1.5 font-bold">({filteredItems.length})</span>
+                                        <span className="ml-1.5 font-bold">({allItemsCount})</span>
                                     </Button>
                                     <Button
                                         size="sm"
@@ -244,7 +253,7 @@ export default function Inventory() {
                                     >
                                         <Heart className="w-3.5 h-3.5 mr-1.5" />
                                         Favorites
-                                        <span className="ml-1.5 font-bold">({favorites.favoriteCount})</span>
+                                        <span className="ml-1.5 font-bold">({filteredFavoritesCount})</span>
                                     </Button>
                                 </div>
 

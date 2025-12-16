@@ -67,16 +67,21 @@ export const useInventoryLogic = () => {
     };
   }, [getUniqueItems]);
 
-  // Get NFT type breakdown from contract stats with memoization
+  // Get NFT type breakdown from unique items (to match collection cards count)
   const getNFTTypeBreakdown = useMemo(() => {
-    if (stats?.nftTypeCounts) {
-      return Object.entries(stats.nftTypeCounts).map(([typeName, count]) => ({
-        typeName,
-        count,
-      }));
-    }
-    return [];
-  }, [stats?.nftTypeCounts]);
+    // Count unique items by name (type)
+    const typeCounts = new Map<string, number>();
+
+    getUniqueItems.forEach((item) => {
+      const currentCount = typeCounts.get(item.name) || 0;
+      typeCounts.set(item.name, currentCount + 1);
+    });
+
+    return Array.from(typeCounts.entries()).map(([typeName, count]) => ({
+      typeName,
+      count,
+    }));
+  }, [getUniqueItems]);
 
   // Reveal function using useBlindBox hook
   const revealItemFromInventory = async (index: number) => {
